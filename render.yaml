@@ -19,7 +19,7 @@ services:
     name: dynprot-backend
     env: node
     plan: free
-    buildCommand: pnpm install
+    buildCommand: pnpm install && pnpm run build
     startCommand: pnpm run start
     rootDir: dynprot-app/dynprot-backend
     envVars:
