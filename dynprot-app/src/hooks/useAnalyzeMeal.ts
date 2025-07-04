@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { VoiceAnalysisService, VoiceAnalysis } from '@/services/VoiceAnalysisService';
-import { TextAnalysisService, TextAnalysisResult } from '@/services/TextAnalysisService';
+import { VoiceAnalysisService, VoiceAnalysis } from '@/services/voiceAnalysisService';
+import { TextAnalysisService, TextAnalysisResult } from '@/services/textAnalysisService';
 
 export interface UnifiedAnalysisResult {
   detectedFoods: string[];
