@@ -1,0 +1,248 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                       String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email                    String            @unique @db.VarChar(255)
+  username                 String            @unique @db.VarChar(100)
+  password_hash            String            @db.VarChar(255)
+  first_name               String?           @db.VarChar(100)
+  last_name                String?           @db.VarChar(100)
+  avatar_url               String?
+  email_verified           Boolean?          @default(false)
+  has_completed_onboarding Boolean?          @default(false)
+  is_active                Boolean?          @default(true)
+  created_at               DateTime?         @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime?         @default(now()) @db.Timestamptz(6)
+  last_login_at            DateTime?         @db.Timestamptz(6)
+  activity_logs            activity_logs[]
+  daily_summaries          daily_summaries[]
+  data_exports             data_exports[]
+  favorite_meals           favorite_meals[]
+  meal_analyses            meal_analyses[]
+  meal_entries             meal_entries[]
+  user_profiles            user_profiles?
+
+  @@index([created_at], map: "idx_users_created_at")
+  @@index([email], map: "idx_users_email")
+  @@index([username], map: "idx_users_username")
+  @@map("users")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model activity_logs {
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id     String?   @db.Uuid
+  action_type String    @db.VarChar(50)
+  table_name  String?   @db.VarChar(50)
+  record_id   String?   @db.Uuid
+  old_values  Json?
+  new_values  Json?
+  ip_address  String?   @db.Inet
+  user_agent  String?
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  users       User?     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([action_type], map: "idx_activity_logs_action_type")
+  @@index([created_at(sort: Desc)], map: "idx_activity_logs_created_at")
+  @@index([table_name, record_id], map: "idx_activity_logs_table_record")
+  @@index([user_id], map: "idx_activity_logs_user_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model daily_summaries {
+  id                      String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id                 String    @db.Uuid
+  summary_date            DateTime  @db.Date
+  total_protein           Decimal?  @default(0) @db.Decimal(8, 2)
+  total_calories          Int?      @default(0)
+  total_carbs             Decimal?  @default(0) @db.Decimal(8, 2)
+  total_fat               Decimal?  @default(0) @db.Decimal(8, 2)
+  total_fiber             Decimal?  @default(0) @db.Decimal(6, 2)
+  total_meals             Int?      @default(0)
+  morning_meals           Int?      @default(0)
+  afternoon_meals         Int?      @default(0)
+  evening_meals           Int?      @default(0)
+  night_meals             Int?      @default(0)
+  protein_goal            Int
+  calorie_goal            Int?
+  protein_goal_met        Boolean?  @default(false)
+  calorie_goal_met        Boolean?  @default(false)
+  protein_goal_percentage Decimal?  @default(0) @db.Decimal(5, 2)
+  calorie_goal_percentage Decimal?  @default(0) @db.Decimal(5, 2)
+  ai_assisted_meals       Int?      @default(0)
+  created_at              DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime? @default(now()) @db.Timestamptz(6)
+  users                   User      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, summary_date])
+  @@index([summary_date(sort: Desc)], map: "idx_daily_summaries_date")
+  @@index([protein_goal_met], map: "idx_daily_summaries_goal_met")
+  @@index([user_id, summary_date(sort: Desc)], map: "idx_daily_summaries_user_date")
+  @@index([user_id], map: "idx_daily_summaries_user_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model data_exports {
+  id                    String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id               String    @db.Uuid
+  export_format         String    @db.VarChar(10)
+  date_range_start      DateTime  @db.Date
+  date_range_end        DateTime  @db.Date
+  include_meals         Boolean?  @default(true)
+  include_favorites     Boolean?  @default(true)
+  include_summary       Boolean?  @default(true)
+  include_personal_info Boolean?  @default(true)
+  total_records         Int?
+  file_size_bytes       BigInt?
+  export_status         String?   @default("pending") @db.VarChar(20)
+  filename              String?   @db.VarChar(255)
+  download_url          String?
+  expires_at            DateTime? @db.Timestamptz(6)
+  created_at            DateTime? @default(now()) @db.Timestamptz(6)
+  completed_at          DateTime? @db.Timestamptz(6)
+  users                 User      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([created_at(sort: Desc)], map: "idx_data_exports_created_at")
+  @@index([export_status], map: "idx_data_exports_status")
+  @@index([user_id], map: "idx_data_exports_user_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model dietary_preferences_reference {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(50)
+  description String?
+  common      Boolean? @default(false)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model favorite_meals {
+  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id       String    @db.Uuid
+  name          String    @db.VarChar(200)
+  description   String
+  protein_grams Decimal   @db.Decimal(6, 2)
+  calories      Int?
+  carbs_grams   Decimal?  @db.Decimal(6, 2)
+  fat_grams     Decimal?  @db.Decimal(6, 2)
+  use_count     Int?      @default(0)
+  last_used_at  DateTime? @db.Timestamptz(6)
+  tags          String[]
+  photo_url     String?
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime? @default(now()) @db.Timestamptz(6)
+  users         User      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([last_used_at(sort: Desc)], map: "idx_favorite_meals_last_used")
+  @@index([name(ops: raw("gin_trgm_ops"))], map: "idx_favorite_meals_name_search", type: Gin)
+  @@index([use_count(sort: Desc)], map: "idx_favorite_meals_use_count")
+  @@index([user_id], map: "idx_favorite_meals_user_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model meal_analyses {
+  id                     String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  meal_entry_id          String?       @db.Uuid
+  user_id                String        @db.Uuid
+  input_text             String?
+  input_type             String        @db.VarChar(20)
+  detected_foods         String[]
+  confidence_score       Decimal       @db.Decimal(3, 2)
+  confidence_level       String        @db.VarChar(20)
+  estimated_protein      Decimal?      @db.Decimal(6, 2)
+  estimated_calories     Int?
+  estimated_completeness Decimal?      @db.Decimal(3, 2)
+  suggestions            String[]
+  breakdown              Json?
+  processing_time_ms     Int?
+  ai_model_version       String?       @db.VarChar(50)
+  created_at             DateTime?     @default(now()) @db.Timestamptz(6)
+  meal_entries           meal_entries? @relation(fields: [meal_entry_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                  User          @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([confidence_level], map: "idx_meal_analyses_confidence")
+  @@index([created_at], map: "idx_meal_analyses_created_at")
+  @@index([input_type], map: "idx_meal_analyses_input_type")
+  @@index([meal_entry_id], map: "idx_meal_analyses_meal_entry")
+  @@index([user_id], map: "idx_meal_analyses_user_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model meal_entries {
+  id                 String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id            String          @db.Uuid
+  description        String
+  meal_timestamp     DateTime        @db.Timestamptz(6)
+  protein_grams      Decimal         @db.Decimal(6, 2)
+  calories           Int?
+  carbs_grams        Decimal?        @db.Decimal(6, 2)
+  fat_grams          Decimal?        @db.Decimal(6, 2)
+  fiber_grams        Decimal?        @db.Decimal(5, 2)
+  source_type        String?         @default("manual") @db.VarChar(20)
+  ai_estimated       Boolean?        @default(false)
+  photo_url          String?
+  photo_data         String?
+  tags               String[]
+  meal_type          String?         @db.VarChar(20)
+  meal_time_category String?         @default("other") @db.VarChar(20)
+  created_at         DateTime?       @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime?       @default(now()) @db.Timestamptz(6)
+  meal_analyses      meal_analyses[]
+  users              User            @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([meal_type], map: "idx_meal_entries_meal_type")
+  @@index([source_type], map: "idx_meal_entries_source")
+  @@index([tags], map: "idx_meal_entries_tags", type: Gin)
+  @@index([meal_timestamp], map: "idx_meal_entries_timestamp")
+  @@index([user_id], map: "idx_meal_entries_user_id")
+  @@index([user_id, meal_timestamp(sort: Desc)], map: "idx_meal_entries_user_timestamp")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model schema_migrations {
+  version    String    @id @db.VarChar(14)
+  applied_at DateTime? @default(now()) @db.Timestamptz(6)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model user_profiles {
+  id                     String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id                String    @unique @db.Uuid
+  weight_kg              Decimal?  @db.Decimal(5, 2)
+  height_cm              Int?
+  age                    Int?
+  gender                 String?   @db.VarChar(20)
+  body_fat_percentage    Decimal?  @db.Decimal(4, 1)
+  daily_protein_goal     Int       @default(120)
+  daily_calorie_goal     Int?      @default(2000)
+  activity_level         String    @default("moderate") @db.VarChar(20)
+  fitness_goal           String?   @default("maintain") @db.VarChar(50)
+  training_days_per_week Int?      @default(3)
+  preferred_units        String?   @default("metric") @db.VarChar(10)
+  diet_preferences       String[]
+  dark_mode              Boolean?  @default(false)
+  notifications_enabled  Boolean?  @default(true)
+  share_data             Boolean?  @default(false)
+  allow_analytics        Boolean?  @default(true)
+  reduced_motion         Boolean?  @default(false)
+  high_contrast          Boolean?  @default(false)
+  large_text             Boolean?  @default(false)
+  created_at             DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime? @default(now()) @db.Timestamptz(6)
+  users                  User      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_user_profiles_user_id")
+}
