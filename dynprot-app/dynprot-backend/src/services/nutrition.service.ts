@@ -518,7 +518,7 @@ export function estimateNutritionFromDescription(description: string): MacroCalc
   
   for (const word of words) {
     for (const [food, nutrition] of Object.entries(FOOD_DATABASE)) {
-      if (food.includes(word) || word.includes(food.split(' ')[0])) {
+      if (food.includes(word) || word.includes((food.split(' ')[0]) || "")) {
         totalProtein += nutrition.protein;
         totalCalories += nutrition.calories;
         totalCarbs += nutrition.carbs;
