@@ -22,7 +22,7 @@ services:
         value: DENY
     envVars:
       - key: VITE_API_URL
-        value: https://dynprot-backend.onrender.com
+        value: https://dynprot-backend.onrender.com/api
 
   - type: web
     name: dynprot-backend
