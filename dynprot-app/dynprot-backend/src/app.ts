@@ -56,7 +56,8 @@ app.get('/', (_, res) => {
   res.status(200).json({
     success: true,
     message: 'DynProt API is running',
-    version: '1.0.0',
+    version: '1.0.1',
+    timestamp: new Date().toISOString(),
     endpoints: {
       health: '/health',
       api: '/api'
