@@ -13,6 +13,10 @@ services:
     staticPublishPath: dist
     buildCommand: pnpm install && pnpm run build
     rootDir: dynprot-app
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
     envVars:
       - key: VITE_API_URL
         value: https://dynprot-backend.onrender.com
