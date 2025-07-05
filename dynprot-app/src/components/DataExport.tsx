@@ -341,7 +341,7 @@ export default function DataExport({
                     initialFocus
                     mode="range"
                     defaultMonth={customDateRange?.from}
-                    selected={customDateRange}
+                    selected={customDateRange && customDateRange.from && customDateRange.to ? customDateRange as any : undefined}
                     onSelect={handleCustomDateRange}
                     numberOfMonths={2}
                   />

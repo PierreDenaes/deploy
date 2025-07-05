@@ -1,2 +1,15 @@
-# Redirect all routes to index.html for React Router
+# SPA routing for React Router on Render
+# Redirect all non-file requests to index.html for client-side routing
 /*    /index.html   200
+
+# Specific redirects for common authentication routes
+/login    /index.html   200
+/register    /index.html   200
+/forgot-password    /index.html   200
+/onboarding/*    /index.html   200
+
+# Dashboard and app routes
+/dashboard    /index.html   200
+/profile    /index.html   200
+/analytics    /index.html   200
+/add-meal    /index.html   200

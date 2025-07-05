@@ -171,7 +171,23 @@ export async function register(req: Request, res: Response): Promise<void> {
 
     res.status(201).json(createAuthResponse(authUser, tokens));
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('🚨 Registration error:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      requestBody: req.body ? {
+        email: req.body.email,
+        username: req.body.username,
+        hasFirstName: !!req.body.firstName,
+        hasLastName: !!req.body.lastName,
+        // Don't log the actual password
+        hasPassword: !!req.body.password
+      } : 'no body',
+      timestamp: new Date().toISOString(),
+      userAgent: req.headers['user-agent'],
+      ip: req.ip
+    });
+
+    // Send generic error to client for security
     res.status(500).json({
       success: false,
       error: 'Registration failed',

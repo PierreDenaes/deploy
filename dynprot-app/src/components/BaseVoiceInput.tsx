@@ -11,6 +11,9 @@ import { useAnalyzeMeal, UnifiedAnalysisResult } from '@/hooks/useAnalyzeMeal';
 import { useAppContext } from '@/context/AppContext';
 import { cn } from '@/lib/utils';
 
+// @ts-ignore
+const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
 export type VoiceInputVariant = 'simple' | 'enhanced';
 
 export type VoiceState = 'idle' | 'recording' | 'analyzing' | 'done' | 'error';
@@ -41,7 +44,7 @@ export const BaseVoiceInput: React.FC<BaseVoiceInputProps> = ({
   const [recordingTime, setRecordingTime] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<any>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const recordingStartTimeRef = useRef<number | null>(null);
 
@@ -60,7 +63,6 @@ export const BaseVoiceInput: React.FC<BaseVoiceInputProps> = ({
       return null;
     }
 
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     
     recognition.continuous = variant === 'enhanced';

@@ -8,6 +8,21 @@ const PORT = process.env.PORT || 3001;
 
 async function startServer() {
   try {
+    console.log('🔍 Starting DynProt backend server...');
+    console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🌐 CORS Origin: ${process.env.CORS_ORIGIN || 'not set'}`);
+    
+    // Check critical environment variables
+    const criticalVars = ['DATABASE_URL', 'JWT_SECRET', 'JWT_REFRESH_SECRET'];
+    const missingVars = criticalVars.filter(varName => !process.env[varName]);
+    
+    if (missingVars.length > 0) {
+      console.warn(`⚠️  Missing critical environment variables: ${missingVars.join(', ')}`);
+      if (process.env.NODE_ENV === 'production') {
+        console.error('🚨 Critical variables missing in production environment!');
+      }
+    }
+
     // Check database connection
     const dbConnected = await checkDatabaseConnection();
     if (!dbConnected) {

@@ -69,6 +69,32 @@ if (missing.length > 0) {
     console.log(`   - ${varName}`);
   });
   console.log('\n💡 Add these variables in your Render dashboard under Environment tab');
+  
+  console.log('\n🔧 Suggested values for missing variables:');
+  missing.forEach(varName => {
+    switch(varName) {
+      case 'JWT_SECRET':
+        console.log(`   ${varName}: Generate a random 64-character string`);
+        break;
+      case 'JWT_REFRESH_SECRET':
+        console.log(`   ${varName}: Generate a different random 64-character string`);
+        break;
+      case 'OPENAI_API_KEY':
+        console.log(`   ${varName}: Your OpenAI API key from https://platform.openai.com/api-keys`);
+        break;
+      case 'CLOUDINARY_API_KEY':
+      case 'CLOUDINARY_API_SECRET':
+      case 'CLOUDINARY_CLOUD_NAME':
+        console.log(`   ${varName}: Get from your Cloudinary dashboard`);
+        break;
+      case 'DATABASE_URL':
+        console.log(`   ${varName}: Should be automatically set by Render when database is connected`);
+        break;
+      default:
+        console.log(`   ${varName}: Check documentation for required value`);
+    }
+  });
+  
   process.exit(1);
 } else {
   console.log('\n🎉 All required environment variables are set!');

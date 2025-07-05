@@ -42,7 +42,7 @@ export const CameraInterface = ({ onCapture }: CameraInterfaceProps) => {
   // Check if camera is supported
   const isCameraSupported = useCallback(() => {
     // Check for modern MediaDevices API (all modern browsers)
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
       return true;
     }
     

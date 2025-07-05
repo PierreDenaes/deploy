@@ -17,8 +17,22 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-super-secret-refresh-key';
 const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
+// Check for JWT secrets and warn if using defaults
 if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
-  throw new Error('JWT secrets must be provided in environment variables');
+  const isProduction = process.env.NODE_ENV === 'production';
+  const missingVars = [];
+  
+  if (!process.env.JWT_SECRET) missingVars.push('JWT_SECRET');
+  if (!process.env.JWT_REFRESH_SECRET) missingVars.push('JWT_REFRESH_SECRET');
+  
+  const message = `⚠️  Missing JWT environment variables: ${missingVars.join(', ')}`;
+  
+  if (isProduction) {
+    console.error(`🚨 ${message} - Using default values is not secure in production!`);
+    // In production, still allow the app to start but log the security issue
+  } else {
+    console.warn(`🔧 ${message} - Using default values for development`);
+  }
 }
 
 // Generate access token

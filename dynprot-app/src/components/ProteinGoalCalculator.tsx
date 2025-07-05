@@ -227,17 +227,11 @@ export default function ProteinGoalCalculator({ goalSetterRef }: ProteinGoalCalc
     ];
     
     const completedRequired = requiredFields.filter(field => {
-      if (typeof field.value === 'string') {
-        return field.value && field.value !== '';
-      }
-      return field.value && field.value !== '' && field.value > 0;
+      return typeof field.value === 'number' ? field.value > 0 : field.value && field.value !== '';
     }).length;
     
     const completedOptional = optionalFields.filter(field => {
-      if (typeof field.value === 'string') {
-        return field.value && field.value !== '';
-      }
-      return field.value && field.value !== '' && field.value > 0;
+      return typeof field.value === 'number' ? field.value > 0 : field.value && field.value !== '';
     }).length;
     
     const requiredProgress = (completedRequired / requiredFields.length) * 100;
@@ -530,7 +524,7 @@ export default function ProteinGoalCalculator({ goalSetterRef }: ProteinGoalCalc
       console.error('Erreur critique lors du calcul:', error);
       
       // Ultimate fallback with basic recommendations
-      const fallbackWeight = weightKg || weight || 70;
+      const fallbackWeight = weight || 70;
       const basicProtein = Math.round(fallbackWeight * 1.0); // Very basic 1g/kg
       const basicCalories = Math.round(fallbackWeight * 25); // Very basic calorie estimate
       
@@ -753,9 +747,7 @@ export default function ProteinGoalCalculator({ goalSetterRef }: ProteinGoalCalc
           {/* Field checklist */}
           <div className="grid grid-cols-2 gap-2 text-xs">
             {calculateProgress.requiredFields.map((field) => {
-              const isCompleted = typeof field.value === 'string' 
-                ? field.value && field.value !== ''
-                : field.value && field.value !== '' && field.value > 0;
+              const isCompleted = typeof field.value === 'number' ? field.value > 0 : field.value && field.value !== '';
               return (
                 <div key={field.key} className="flex items-center gap-2">
                   {isCompleted ? (
@@ -1078,10 +1070,7 @@ export default function ProteinGoalCalculator({ goalSetterRef }: ProteinGoalCalc
                 <span className="block mt-1 text-xs text-muted-foreground">
                   Champs manquants : {calculateProgress.requiredFields
                     .filter(field => {
-                      if (typeof field.value === 'string') {
-                        return !(field.value && field.value !== '');
-                      }
-                      return !(field.value && field.value !== '' && field.value > 0);
+                      return typeof field.value === 'number' ? !(field.value > 0) : !(field.value && field.value !== '');
                     })
                     .map(field => field.label)
                     .join(', ')}
