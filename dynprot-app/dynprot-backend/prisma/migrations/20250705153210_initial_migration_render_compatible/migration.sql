@@ -1,9 +1,6 @@
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
 -- CreateTable
 CREATE TABLE "users" (
-    "id" UUID NOT NULL DEFAULT uuid_generate_v4(),
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "email" VARCHAR(255) NOT NULL,
     "username" VARCHAR(100) NOT NULL,
     "password_hash" VARCHAR(255) NOT NULL,
@@ -22,7 +19,7 @@ CREATE TABLE "users" (
 
 -- CreateTable
 CREATE TABLE "activity_logs" (
-    "id" UUID NOT NULL DEFAULT uuid_generate_v4(),
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "user_id" UUID,
     "action_type" VARCHAR(50) NOT NULL,
     "table_name" VARCHAR(50),
@@ -38,7 +35,7 @@ CREATE TABLE "activity_logs" (
 
 -- CreateTable
 CREATE TABLE "daily_summaries" (
-    "id" UUID NOT NULL DEFAULT uuid_generate_v4(),
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "user_id" UUID NOT NULL,
     "summary_date" DATE NOT NULL,
     "total_protein" DECIMAL(8,2) DEFAULT 0,
@@ -66,7 +63,7 @@ CREATE TABLE "daily_summaries" (
 
 -- CreateTable
 CREATE TABLE "data_exports" (
-    "id" UUID NOT NULL DEFAULT uuid_generate_v4(),
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "user_id" UUID NOT NULL,
     "export_format" VARCHAR(10) NOT NULL,
     "date_range_start" DATE NOT NULL,
@@ -99,7 +96,7 @@ CREATE TABLE "dietary_preferences_reference" (
 
 -- CreateTable
 CREATE TABLE "favorite_meals" (
-    "id" UUID NOT NULL DEFAULT uuid_generate_v4(),
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "user_id" UUID NOT NULL,
     "name" VARCHAR(200) NOT NULL,
     "description" TEXT NOT NULL,
@@ -119,7 +116,7 @@ CREATE TABLE "favorite_meals" (
 
 -- CreateTable
 CREATE TABLE "meal_analyses" (
-    "id" UUID NOT NULL DEFAULT uuid_generate_v4(),
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "meal_entry_id" UUID,
     "user_id" UUID NOT NULL,
     "input_text" TEXT,
@@ -141,7 +138,7 @@ CREATE TABLE "meal_analyses" (
 
 -- CreateTable
 CREATE TABLE "meal_entries" (
-    "id" UUID NOT NULL DEFAULT uuid_generate_v4(),
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "user_id" UUID NOT NULL,
     "description" TEXT NOT NULL,
     "meal_timestamp" TIMESTAMPTZ(6) NOT NULL,
@@ -173,7 +170,7 @@ CREATE TABLE "schema_migrations" (
 
 -- CreateTable
 CREATE TABLE "user_profiles" (
-    "id" UUID NOT NULL DEFAULT uuid_generate_v4(),
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "user_id" UUID NOT NULL,
     "weight_kg" DECIMAL(5,2),
     "height_cm" INTEGER,
@@ -258,7 +255,7 @@ CREATE UNIQUE INDEX "dietary_preferences_reference_name_key" ON "dietary_prefere
 CREATE INDEX "idx_favorite_meals_last_used" ON "favorite_meals"("last_used_at" DESC);
 
 -- CreateIndex
-CREATE INDEX "idx_favorite_meals_name_search" ON "favorite_meals" USING GIN ("name" gin_trgm_ops);
+CREATE INDEX "idx_favorite_meals_name_search" ON "favorite_meals"("name");
 
 -- CreateIndex
 CREATE INDEX "idx_favorite_meals_use_count" ON "favorite_meals"("use_count" DESC);
@@ -286,9 +283,6 @@ CREATE INDEX "idx_meal_entries_meal_type" ON "meal_entries"("meal_type");
 
 -- CreateIndex
 CREATE INDEX "idx_meal_entries_source" ON "meal_entries"("source_type");
-
--- CreateIndex
-CREATE INDEX "idx_meal_entries_tags" ON "meal_entries" USING GIN ("tags");
 
 -- CreateIndex
 CREATE INDEX "idx_meal_entries_timestamp" ON "meal_entries"("meal_timestamp");

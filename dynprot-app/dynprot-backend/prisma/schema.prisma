@@ -8,7 +8,7 @@ datasource db {
 }
 
 model User {
-  id                       String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id                       String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email                    String            @unique @db.VarChar(255)
   username                 String            @unique @db.VarChar(100)
   password_hash            String            @db.VarChar(255)
@@ -37,7 +37,7 @@ model User {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model activity_logs {
-  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id     String?   @db.Uuid
   action_type String    @db.VarChar(50)
   table_name  String?   @db.VarChar(50)
@@ -58,7 +58,7 @@ model activity_logs {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model daily_summaries {
-  id                      String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id                 String    @db.Uuid
   summary_date            DateTime  @db.Date
   total_protein           Decimal?  @default(0) @db.Decimal(8, 2)
@@ -92,7 +92,7 @@ model daily_summaries {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model data_exports {
-  id                    String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id               String    @db.Uuid
   export_format         String    @db.VarChar(10)
   date_range_start      DateTime  @db.Date
@@ -127,7 +127,7 @@ model dietary_preferences_reference {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model favorite_meals {
-  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id       String    @db.Uuid
   name          String    @db.VarChar(200)
   description   String
@@ -144,7 +144,7 @@ model favorite_meals {
   users         User      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([last_used_at(sort: Desc)], map: "idx_favorite_meals_last_used")
-  @@index([name(ops: raw("gin_trgm_ops"))], map: "idx_favorite_meals_name_search", type: Gin)
+  @@index([name], map: "idx_favorite_meals_name_search")
   @@index([use_count(sort: Desc)], map: "idx_favorite_meals_use_count")
   @@index([user_id], map: "idx_favorite_meals_user_id")
 }
@@ -152,7 +152,7 @@ model favorite_meals {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model meal_analyses {
-  id                     String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id                     String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   meal_entry_id          String?       @db.Uuid
   user_id                String        @db.Uuid
   input_text             String?
@@ -181,7 +181,7 @@ model meal_analyses {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model meal_entries {
-  id                 String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id                 String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id            String          @db.Uuid
   description        String
   meal_timestamp     DateTime        @db.Timestamptz(6)
@@ -204,7 +204,6 @@ model meal_entries {
 
   @@index([meal_type], map: "idx_meal_entries_meal_type")
   @@index([source_type], map: "idx_meal_entries_source")
-  @@index([tags], map: "idx_meal_entries_tags", type: Gin)
   @@index([meal_timestamp], map: "idx_meal_entries_timestamp")
   @@index([user_id], map: "idx_meal_entries_user_id")
   @@index([user_id, meal_timestamp(sort: Desc)], map: "idx_meal_entries_user_timestamp")
@@ -219,7 +218,7 @@ model schema_migrations {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model user_profiles {
-  id                     String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id                String    @unique @db.Uuid
   weight_kg              Decimal?  @db.Decimal(5, 2)
   height_cm              Int?
