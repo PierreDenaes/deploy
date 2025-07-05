@@ -3,6 +3,8 @@ databases:
     databaseName: dynprot_db
     user: dynprot_user
     plan: free
+    region: oregon
+    ipAllowList: []
 
 services:
   - type: web
@@ -22,6 +24,7 @@ services:
     buildCommand: pnpm install && pnpm run build
     startCommand: pnpm run start
     rootDir: dynprot-app/dynprot-backend
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production

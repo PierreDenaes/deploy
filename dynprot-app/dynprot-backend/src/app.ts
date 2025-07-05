@@ -44,8 +44,31 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Health check route
-app.get('/health', (_, res) => {
-  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+app.get('/health', async (_, res) => {
+  try {
+    const { checkDatabaseConnection } = await import('./lib/prisma');
+    const dbConnected = await checkDatabaseConnection(1); // Single retry for health check
+    
+    const healthStatus = {
+      status: dbConnected ? 'OK' : 'DEGRADED',
+      timestamp: new Date().toISOString(),
+      services: {
+        database: dbConnected ? 'connected' : 'disconnected',
+        api: 'running'
+      }
+    };
+    
+    res.status(dbConnected ? 200 : 503).json(healthStatus);
+  } catch (error) {
+    res.status(503).json({ 
+      status: 'ERROR', 
+      timestamp: new Date().toISOString(),
+      services: {
+        database: 'error',
+        api: 'running'
+      }
+    });
+  }
 });
 
 // API routes

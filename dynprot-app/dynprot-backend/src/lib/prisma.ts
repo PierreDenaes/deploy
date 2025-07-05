@@ -11,6 +11,15 @@ const prisma = globalThis.__prisma || new PrismaClient({
     ? ['query', 'error', 'warn']
     : ['error'],
   errorFormat: 'pretty',
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL
+    }
+  },
+  transactionOptions: {
+    maxWait: 5000, // 5 seconds max wait
+    timeout: 10000, // 10 seconds timeout
+  },
 });
 
 // In development, save to global to prevent hot reload issues
@@ -18,16 +27,52 @@ if (process.env.NODE_ENV === 'development') {
   globalThis.__prisma = prisma;
 }
 
-// Database connection health check
-export async function checkDatabaseConnection(): Promise<boolean> {
-  try {
-    await prisma.$connect();
-    await prisma.$queryRaw`SELECT 1`;
-    return true;
-  } catch (error) {
-    console.error('Database connection failed:', error);
-    return false;
+// Database connection health check with retry logic
+export async function checkDatabaseConnection(retries = 3): Promise<boolean> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      await prisma.$connect();
+      await prisma.$queryRaw`SELECT 1`;
+      console.log(`Database connection successful on attempt ${attempt}`);
+      return true;
+    } catch (error) {
+      lastError = error as Error;
+      console.error(`Database connection attempt ${attempt} failed:`, error);
+      
+      if (attempt < retries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // Exponential backoff, max 5s
+        console.log(`Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
   }
+  
+  console.error('All database connection attempts failed:', lastError);
+  return false;
+}
+
+// Connection with timeout wrapper
+export async function withConnectionTimeout<T>(
+  operation: () => Promise<T>,
+  timeoutMs: number = 15000
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error(`Database operation timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    operation()
+      .then(result => {
+        clearTimeout(timeout);
+        resolve(result);
+      })
+      .catch(error => {
+        clearTimeout(timeout);
+        reject(error);
+      });
+  });
 }
 
 // Graceful shutdown
