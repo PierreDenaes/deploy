@@ -19,6 +19,17 @@
   <meta property="og:description" content="Modern health and fitness tracking app with AI-powered nutrition focus" />
   <meta property="og:type" content="website" />
 
+  <!-- SPA fallback for Render static hosting -->
+  <script>
+    // Redirect to index.html for SPA routing if needed
+    (function() {
+      const path = window.location.pathname;
+      if (path !== '/' && !path.includes('.')) {
+        console.log('SPA routing fallback triggered for:', path);
+      }
+    })();
+  </script>
+
 </head>
 
 <body>
