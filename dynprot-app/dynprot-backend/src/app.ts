@@ -26,7 +26,9 @@ if (corsOrigin && corsOrigin.includes(',')) {
 
 app.use(cors({
   origin: allowedOrigins,
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
 // Rate limiting (disabled in development)
@@ -42,6 +44,25 @@ if (process.env.NODE_ENV === 'production') {
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`📝 ${req.method} ${req.path} - Origin: ${req.get('origin')} - User-Agent: ${req.get('user-agent')?.slice(0, 50)}`);
+  next();
+});
+
+// Root route
+app.get('/', (_, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'DynProt API is running',
+    version: '1.0.0',
+    endpoints: {
+      health: '/health',
+      api: '/api'
+    }
+  });
+});
 
 // Health check route
 app.get('/health', async (_, res) => {
