@@ -134,7 +134,7 @@ export class SummaryService {
     const params = new URLSearchParams({
       start_date: validatedQuery.start_date,
       end_date: validatedQuery.end_date,
-      period: validatedQuery.period
+      period: String(validatedQuery.period)
     });
 
     const response: ApiResponse<{ summaries: DailySummary[] }> = await apiClient.get(
@@ -155,7 +155,8 @@ export class SummaryService {
 
     const params = new URLSearchParams({
       start_date: validatedQuery.start_date,
-      end_date: validatedQuery.end_date
+      end_date: validatedQuery.end_date,
+      period: String(validatedQuery.period)
     });
 
     const response: ApiResponse<{ summary: NutritionSummary }> = await apiClient.get(
@@ -176,7 +177,8 @@ export class SummaryService {
 
     const params = new URLSearchParams({
       start_date: validatedQuery.start_date,
-      end_date: validatedQuery.end_date
+      end_date: validatedQuery.end_date,
+      period: String(validatedQuery.period)
     });
 
     const response: ApiResponse<{ trends: WeeklyTrend[] }> = await apiClient.get(
@@ -197,7 +199,8 @@ export class SummaryService {
 
     const params = new URLSearchParams({
       start_date: validatedQuery.start_date,
-      end_date: validatedQuery.end_date
+      end_date: validatedQuery.end_date,
+      period: String(validatedQuery.period)
     });
 
     const response: ApiResponse<{ monthlyStats: MonthlyStats[] }> = await apiClient.get(

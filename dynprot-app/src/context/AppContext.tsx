@@ -349,15 +349,28 @@ const appReducer = (state: AppState, action: ActionType): AppState => {
     case 'UPDATE_USER_SETTINGS':
       newState = {
         ...state,
-        userSettings: { ...state.userSettings, ...action.payload },
+        userSettings: {
+          ...state.userSettings,
+          proteinGoal: action.payload?.proteinGoal ?? state.userSettings?.proteinGoal ?? 120,
+          calorieGoal: action.payload?.calorieGoal ?? state.userSettings?.calorieGoal ?? 2000,
+          weightKg: action.payload?.weightKg ?? state.userSettings?.weightKg ?? 75,
+          heightCm: action.payload?.heightCm ?? state.userSettings?.heightCm ?? 175,
+          activityLevel: (action.payload?.activityLevel ?? state.userSettings?.activityLevel ?? 'moderate') as 'sedentary' | 'light' | 'moderate' | 'very_active' | 'extremely_active',
+          preferredUnits: (action.payload?.preferredUnits ?? state.userSettings?.preferredUnits ?? 'metric') as 'metric' | 'imperial',
+          age: action.payload?.age ?? state.userSettings?.age,
+          gender: action.payload?.gender ?? state.userSettings?.gender,
+          fitnessGoal: action.payload?.fitnessGoal ?? state.userSettings?.fitnessGoal,
+          bodyFatPercentage: action.payload?.bodyFatPercentage ?? state.userSettings?.bodyFatPercentage,
+          trainingDays: action.payload?.trainingDays ?? state.userSettings?.trainingDays,
+        },
         user: { 
           ...state.user, 
-          dailyProteinGoal: action.payload.proteinGoal || state.user.dailyProteinGoal,
-          calorieGoal: action.payload.calorieGoal || state.user.calorieGoal,
-          weightKg: action.payload.weightKg || state.user.weightKg,
-          heightCm: action.payload.heightCm || state.user.heightCm,
-          activityLevel: action.payload.activityLevel as typeof state.user.activityLevel || state.user.activityLevel,
-          preferredUnits: action.payload.preferredUnits || state.user.preferredUnits,
+          dailyProteinGoal: action.payload?.proteinGoal ?? state.user.dailyProteinGoal,
+          calorieGoal: action.payload?.calorieGoal ?? state.user.calorieGoal,
+          weightKg: action.payload?.weightKg ?? state.user.weightKg,
+          heightCm: action.payload?.heightCm ?? state.user.heightCm,
+          activityLevel: (action.payload?.activityLevel ?? state.user.activityLevel) as 'sedentary' | 'light' | 'moderate' | 'very_active' | 'extremely_active',
+          preferredUnits: (action.payload?.preferredUnits ?? state.user.preferredUnits) as 'metric' | 'imperial',
         }
       };
       // Note: User settings are now saved via profile API
@@ -437,8 +450,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             dailyProteinGoal: profile.daily_protein_goal,
             weightKg: profile.weight_kg || 75,
             heightCm: profile.height_cm || 175,
-            preferredUnits: profile.preferred_units || 'metric',
-            activityLevel: profile.activity_level || 'moderate',
+            preferredUnits: (profile.preferred_units as 'metric' | 'imperial') || 'metric',
+            activityLevel: (profile.activity_level as 'sedentary' | 'light' | 'moderate' | 'very_active' | 'extremely_active') || 'moderate',
             dietPreferences: profile.diet_preferences || [],
             calorieGoal: profile.daily_calorie_goal || undefined,
           };
@@ -453,13 +466,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
               calorieGoal: profile.daily_calorie_goal || undefined,
               weightKg: profile.weight_kg || 75,
               heightCm: profile.height_cm || 175,
-              activityLevel: profile.activity_level || 'moderate',
-              preferredUnits: profile.preferred_units || 'metric',
+              activityLevel: (profile.activity_level as 'sedentary' | 'light' | 'moderate' | 'very_active' | 'extremely_active') || 'moderate',
+              preferredUnits: (profile.preferred_units as 'metric' | 'imperial') || 'metric',
               age: profile.age || undefined,
               gender: profile.gender || undefined,
               fitnessGoal: profile.fitness_goal || undefined,
-              bodyFatPercentage: profile.body_fat_percentage || undefined,
-              trainingDays: profile.training_days_per_week || undefined,
+              bodyFatPercentage: (profile as any).body_fat_percentage || undefined,
+              trainingDays: (profile as any).training_days_per_week || undefined,
             }
           });
         });
@@ -686,14 +699,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Helper function to update user settings - now saves to API
-  const updateUserSettings = async (settings: Partial<AppState['userSettings']>) => {
+  const updateUserSettings = async (settings: Partial<AppState['userSettings']> = {}) => {
     try {
       // Update profile via API
-      if (settings.proteinGoal || settings.calorieGoal) {
+      if (settings?.proteinGoal || settings?.calorieGoal) {
         // Filter out undefined values and validate
         const nutritionGoals: any = {};
-        if (settings.proteinGoal !== undefined) nutritionGoals.daily_protein_goal = settings.proteinGoal;
-        if (settings.calorieGoal !== undefined) nutritionGoals.daily_calorie_goal = settings.calorieGoal;
+        if (settings?.proteinGoal !== undefined) nutritionGoals.daily_protein_goal = settings.proteinGoal;
+        if (settings?.calorieGoal !== undefined) nutritionGoals.daily_calorie_goal = settings.calorieGoal;
         
         if (Object.keys(nutritionGoals).length > 0) {
           await executeOperation(
@@ -705,11 +718,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       
       // Only process physical info if we actually have physical data to update
       const physicalInfo: any = {};
-      if (settings.weightKg !== undefined) physicalInfo.weight_kg = settings.weightKg;
-      if (settings.heightCm !== undefined) physicalInfo.height_cm = settings.heightCm;
-      if (settings.age !== undefined) physicalInfo.age = settings.age;
-      if (settings.gender !== undefined) physicalInfo.gender = settings.gender;
-      if (settings.bodyFatPercentage !== undefined) physicalInfo.body_fat_percentage = settings.bodyFatPercentage;
+      if (settings?.weightKg !== undefined) physicalInfo.weight_kg = settings.weightKg;
+      if (settings?.heightCm !== undefined) physicalInfo.height_cm = settings.heightCm;
+      if (settings?.age !== undefined) physicalInfo.age = settings.age;
+      if (settings?.gender !== undefined) physicalInfo.gender = settings.gender;
+      if (settings?.bodyFatPercentage !== undefined) physicalInfo.body_fat_percentage = settings.bodyFatPercentage;
       
       if (Object.keys(physicalInfo).length > 0) {
         await executeOperation(
@@ -718,12 +731,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         );
       }
       
-      if (settings.activityLevel || settings.fitnessGoal || settings.trainingDays) {
+      if (settings?.activityLevel || settings?.fitnessGoal || settings?.trainingDays) {
         // Filter out undefined values and validate
         const fitnessInfo: any = {};
-        if (settings.activityLevel !== undefined) fitnessInfo.activity_level = settings.activityLevel;
-        if (settings.fitnessGoal !== undefined) fitnessInfo.fitness_goal = settings.fitnessGoal;
-        if (settings.trainingDays !== undefined) fitnessInfo.training_days_per_week = settings.trainingDays;
+        if (settings?.activityLevel !== undefined) fitnessInfo.activity_level = settings.activityLevel;
+        if (settings?.fitnessGoal !== undefined) fitnessInfo.fitness_goal = settings.fitnessGoal;
+        if (settings?.trainingDays !== undefined) fitnessInfo.training_days_per_week = settings.trainingDays;
         
         if (Object.keys(fitnessInfo).length > 0) {
           await executeOperation(

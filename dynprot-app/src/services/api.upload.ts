@@ -71,10 +71,10 @@ export class UploadService {
       // Upload avec retry
       const response: ApiResponse<{ image: ImageUploadResult }> = await withRetry(
         async () => {
-          const result = await fetch(`${apiClient.baseURL}/upload/image`, {
+          const result = await fetch('/upload/image', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${apiClient.getToken()}`
+              'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`
             },
             body: formData
           });

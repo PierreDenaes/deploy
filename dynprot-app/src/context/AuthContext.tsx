@@ -116,7 +116,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       toast.success(`Welcome back, ${response.user.name}!`);
     } catch (error: unknown) {
-      const errorMessage = error.message || 'Login failed';
+      let errorMessage = 'Login failed';
+      if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
+        errorMessage = (error as any).message;
+      }
       dispatch({ type: 'SET_ERROR', payload: errorMessage });
       toast.error(errorMessage);
       throw error;
@@ -136,7 +139,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       toast.success(`Welcome to DynProt, ${response.user.name}!`);
     } catch (error: unknown) {
-      const errorMessage = error.message || 'Registration failed';
+      let errorMessage = 'Registration failed';
+      if (error && typeof error === 'object' && 'message' in error && typeof (error as any).message === 'string') {
+        errorMessage = (error as any).message;
+      }
       dispatch({ type: 'SET_ERROR', payload: errorMessage });
       toast.error(errorMessage);
       throw error;
@@ -189,7 +195,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     logout,
     clearError,
     updateUserProfile,
-    deleteAccount,
+    deleteAccount: deleteAccount as unknown as (data: { password: string; confirmation: string }) => Promise<void>,
   };
 
   return (

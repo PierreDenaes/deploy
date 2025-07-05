@@ -273,7 +273,7 @@ export default function AddMealForm() {
             suggestions: result.suggestions
           }
         });
-        dispatch({ type: 'MOVE_TO_VALIDATION' });
+        dispatch({ type: 'SET_STEP', payload: 'validation' });
       }
     }
     
@@ -411,9 +411,9 @@ export default function AddMealForm() {
           id: Date.now().toString(),
           description: sanitizeMealDescription(description),
           timestamp: new Date().toISOString(),
-          protein: sanitizeNumber(protein, 0, 1000),
+          protein: sanitizeNumber(protein || 0, 0, 1000),
           calories: calories ? sanitizeNumber(calories, 0, 10000) : null,
-          photo: state.capturedPhoto,
+          photo: state.capturedPhoto || undefined,
           source: state.currentMode === 'ai_photo' ? 'ai_scan' : 'text',
         };
 
@@ -461,7 +461,7 @@ export default function AddMealForm() {
         timestamp: new Date().toISOString(),
         protein: sanitizeNumber(protein || 0, 0, 1000),
         calories: calories ? sanitizeNumber(calories, 0, 10000) : null,
-        photo: state.capturedPhoto,
+        photo: state.capturedPhoto || undefined,
         source: state.currentMode === 'manual' ? 'manual' : 
                 state.currentMode === 'ai_photo' ? 'ai_scan' : 'text',
       };
