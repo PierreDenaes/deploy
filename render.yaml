@@ -32,7 +32,7 @@ services:
     name: dynprot-backend
     env: node
     plan: free
-    buildCommand: pnpm install && pnpm run build
+    buildCommand: pnpm install && pnpm run build && pnpm run migrate
     startCommand: pnpm run start
     rootDir: dynprot-app/dynprot-backend
     healthCheckPath: /health
