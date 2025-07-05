@@ -219,7 +219,10 @@ class ApiClient {
       if (!response.ok) {
         if (response.status === 401 && requireAuth) {
           TokenManager.clearTokens();
-          window.location.href = '/login';
+          // Don't force redirect if already on login page
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
           throw new ApiError(401, 'Session expirée, redirection...');
         }
         throw ApiError.fromResponse(response, data);

@@ -77,6 +77,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         dispatch({ type: 'SET_LOADING', payload: true });
         
+        // Only check auth if there's a stored token
+        const hasStoredToken = localStorage.getItem('access_token');
+        if (!hasStoredToken) {
+          dispatch({ type: 'SET_LOADING', payload: false });
+          return;
+        }
+        
         // Ensure demo user exists for testing
         await authService.ensureDemoUser();
         
