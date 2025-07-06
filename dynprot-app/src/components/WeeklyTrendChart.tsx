@@ -28,8 +28,7 @@ export function WeeklyTrendChart({
   const { state, userSettings } = useAppContext();
 
   const weeklyData = useMemo(() => {
-    if (!state) return []; // Move the early return inside useMemo if it depends on state
-    const meals = state.meals ?? [];
+    const meals = state?.meals ?? [];
     const last7Days = getLastSevenDays();
     
     // Initialize data structure for the last 7 days
@@ -55,9 +54,9 @@ export function WeeklyTrendChart({
     });
 
     return dailyData;
-  }, [state.meals, userSettings]);
+  }, [state?.meals, userSettings]);
 
-  const isDarkMode = state.preferences.darkMode;
+  const isDarkMode = state?.preferences?.darkMode ?? false;
   const axisColor = isDarkMode ? "#A0A0A0" : "#6B7280"; // Gray-400 / Gray-500
   const gridColor = isDarkMode ? "#4B5563" : "#E5E7EB"; // Gray-600 / Gray-200
   const proteinColor = isDarkMode ? "#93C5FD" : "#8884d8"; // Blue-300 / Original

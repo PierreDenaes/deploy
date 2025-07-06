@@ -96,7 +96,10 @@ export function getWeekRanges(n: number): Array<{ start: Date; end: Date; label:
   
   for (let weekIndex = 0; weekIndex < n; weekIndex++) {
     const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - (today.getDay() + weekIndex * 7));
+    // Calculate days to go back to Monday (1 = Monday in French calendar)
+    const dayOfWeek = today.getDay();
+    const daysToMonday = (dayOfWeek === 0 ? 6 : dayOfWeek - 1); // Sunday = 0, so 6 days back to Monday
+    startOfWeek.setDate(today.getDate() - daysToMonday - (weekIndex * 7));
     
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6);
@@ -145,7 +148,7 @@ export function isDateInRange(date: Date, start: Date, end: Date): boolean {
 }
 
 /**
- * Format date range for display
+ * Format date range for display (French format: DD/MM)
  */
 export function formatDateRange(start: Date, end: Date): string {
   const startStr = `${start.getDate()}/${start.getMonth() + 1}`;
