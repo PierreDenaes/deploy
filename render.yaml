@@ -83,3 +83,9 @@ services:
         value: 2
       - key: AI_TIMEOUT_MS
         value: 30000
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        value: noreply@dynprot.com
+      - key: FRONTEND_URL
+        value: https://dynprot-frontend.onrender.com

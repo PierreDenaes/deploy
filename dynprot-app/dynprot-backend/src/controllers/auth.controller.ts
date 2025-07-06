@@ -549,20 +549,218 @@ export async function requestPasswordReset(req: Request, res: Response): Promise
       } as ApiResponse);
       return;
     }
-    const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+
+    const user = await prisma.user.findUnique({ 
+      where: { 
+        email: email.toLowerCase(),
+        is_active: true 
+      }
+    });
+
     if (!user) {
       // For security, do not reveal if the email exists
-      res.status(200).json({ success: true, message: 'If this email exists, a reset link will be sent.' });
+      res.status(200).json({ 
+        success: true, 
+        message: 'Si cet email existe, un lien de réinitialisation a été envoyé.' 
+      });
       return;
     }
-    // TODO: Generate a reset token and send email
-    res.status(200).json({ success: true, message: 'If this email exists, a reset link will be sent.' });
+
+    // Import des services nécessaires
+    const { TokenService } = await import('../services/token.service');
+    const { EmailService } = await import('../services/email.service');
+
+    // Invalider tous les tokens de réinitialisation existants pour cet utilisateur
+    await prisma.password_reset_tokens.updateMany({
+      where: {
+        user_id: user.id,
+        used_at: null,
+        expires_at: {
+          gt: new Date()
+        }
+      },
+      data: {
+        used_at: new Date()
+      }
+    });
+
+    // Générer un nouveau token
+    const { token, hashedToken, tokenId } = TokenService.createPasswordResetTokenPair(user.id, user.email);
+    
+    // Sauvegarder le token en base
+    await prisma.password_reset_tokens.create({
+      data: {
+        user_id: user.id,
+        token_id: tokenId,
+        hashed_token: hashedToken,
+        expires_at: new Date(Date.now() + 60 * 60 * 1000), // 1 heure
+      }
+    });
+
+    // Envoyer l'email
+    await EmailService.sendPasswordReset(
+      user.email,
+      token,
+      user.first_name || undefined
+    );
+
+    // Log de l'activité
+    await logActivity(
+      user.id,
+      'PASSWORD_RESET_REQUESTED',
+      'password_reset_tokens',
+      undefined,
+      null,
+      { email: user.email },
+      getClientContext(req)
+    );
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Si cet email existe, un lien de réinitialisation a été envoyé.' 
+    });
   } catch (error) {
     console.error('Request password reset error:', error);
     res.status(500).json({
       success: false,
       error: 'Request password reset failed',
       message: 'An error occurred while requesting password reset'
+    } as ApiResponse);
+  }
+}
+
+export async function resetPassword(req: Request, res: Response): Promise<void> {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || typeof token !== 'string') {
+      res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        message: 'Token is required'
+      } as ApiResponse);
+      return;
+    }
+
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
+      res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        message: 'New password must be at least 8 characters long'
+      } as ApiResponse);
+      return;
+    }
+
+    // Import du service de tokens
+    const { TokenService } = await import('../services/token.service');
+
+    // Valider le token JWT
+    const tokenPayload = TokenService.validateTokenWithId(token, 'password_reset');
+    if (!tokenPayload) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid token',
+        message: 'Le lien de réinitialisation est invalide ou expiré'
+      } as ApiResponse);
+      return;
+    }
+
+    // Vérifier que le token existe en base et n'a pas été utilisé
+    const storedToken = await prisma.password_reset_tokens.findUnique({
+      where: {
+        token_id: tokenPayload.tokenId,
+        used_at: null,
+        expires_at: {
+          gt: new Date()
+        }
+      },
+      include: {
+        users: true
+      }
+    });
+
+    if (!storedToken) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid token',
+        message: 'Le lien de réinitialisation est invalide ou expiré'
+      } as ApiResponse);
+      return;
+    }
+
+    // Vérifier que l'email correspond
+    if (storedToken.users.email !== tokenPayload.email) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid token',
+        message: 'Le lien de réinitialisation est invalide'
+      } as ApiResponse);
+      return;
+    }
+
+    // Vérifier que le token hashé correspond
+    if (!TokenService.verifyHashedToken(token, storedToken.hashed_token)) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid token',
+        message: 'Le lien de réinitialisation est invalide'
+      } as ApiResponse);
+      return;
+    }
+
+    // Hasher le nouveau mot de passe
+    const newPasswordHash = await hashPassword(newPassword);
+
+    // Transaction pour mettre à jour le mot de passe et marquer le token comme utilisé
+    await prisma.$transaction(async (tx) => {
+      // Mettre à jour le mot de passe
+      await tx.user.update({
+        where: { id: storedToken.user_id },
+        data: { 
+          password_hash: newPasswordHash,
+          updated_at: new Date()
+        }
+      });
+
+      // Marquer le token comme utilisé
+      await tx.password_reset_tokens.update({
+        where: { id: storedToken.id },
+        data: { used_at: new Date() }
+      });
+
+      // Invalider tous les autres tokens de réinitialisation pour cet utilisateur
+      await tx.password_reset_tokens.updateMany({
+        where: {
+          user_id: storedToken.user_id,
+          id: { not: storedToken.id },
+          used_at: null
+        },
+        data: { used_at: new Date() }
+      });
+    });
+
+    // Log de l'activité
+    await logActivity(
+      storedToken.user_id,
+      'PASSWORD_RESET_COMPLETED',
+      'users',
+      storedToken.user_id,
+      null,
+      null,
+      getClientContext(req)
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Mot de passe réinitialisé avec succès'
+    } as ApiResponse);
+
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Password reset failed',
+      message: 'An error occurred while resetting password'
     } as ApiResponse);
   }
 }

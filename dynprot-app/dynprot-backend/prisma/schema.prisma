@@ -8,19 +8,19 @@ datasource db {
 }
 
 model User {
-  id                       String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email                    String            @unique @db.VarChar(255)
-  username                 String            @unique @db.VarChar(100)
-  password_hash            String            @db.VarChar(255)
-  first_name               String?           @db.VarChar(100)
-  last_name                String?           @db.VarChar(100)
+  id                       String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                    String                    @unique @db.VarChar(255)
+  username                 String                    @unique @db.VarChar(100)
+  password_hash            String                    @db.VarChar(255)
+  first_name               String?                   @db.VarChar(100)
+  last_name                String?                   @db.VarChar(100)
   avatar_url               String?
-  email_verified           Boolean?          @default(false)
-  has_completed_onboarding Boolean?          @default(false)
-  is_active                Boolean?          @default(true)
-  created_at               DateTime?         @default(now()) @db.Timestamptz(6)
-  updated_at               DateTime?         @default(now()) @db.Timestamptz(6)
-  last_login_at            DateTime?         @db.Timestamptz(6)
+  email_verified           Boolean?                  @default(false)
+  has_completed_onboarding Boolean?                  @default(false)
+  is_active                Boolean?                  @default(true)
+  created_at               DateTime?                 @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime?                 @default(now()) @db.Timestamptz(6)
+  last_login_at            DateTime?                 @db.Timestamptz(6)
   activity_logs            activity_logs[]
   daily_summaries          daily_summaries[]
   data_exports             data_exports[]
@@ -28,6 +28,8 @@ model User {
   meal_analyses            meal_analyses[]
   meal_entries             meal_entries[]
   user_profiles            user_profiles?
+  password_reset_tokens    password_reset_tokens[]
+  email_verification_tokens email_verification_tokens[]
 
   @@index([created_at], map: "idx_users_created_at")
   @@index([email], map: "idx_users_email")
@@ -244,4 +246,38 @@ model user_profiles {
   users                  User      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([user_id], map: "idx_user_profiles_user_id")
+}
+
+/// This model contains password reset tokens for secure password reset functionality
+model password_reset_tokens {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String    @db.Uuid
+  token_id         String    @unique @db.VarChar(64)
+  hashed_token     String    @db.VarChar(64)
+  expires_at       DateTime  @db.Timestamptz(6)
+  used_at          DateTime? @db.Timestamptz(6)
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  users            User      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_password_reset_tokens_user_id")
+  @@index([token_id], map: "idx_password_reset_tokens_token_id")
+  @@index([expires_at], map: "idx_password_reset_tokens_expires_at")
+  @@index([used_at], map: "idx_password_reset_tokens_used_at")
+}
+
+/// This model contains email verification tokens for secure email verification
+model email_verification_tokens {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String    @db.Uuid
+  token_id         String    @unique @db.VarChar(64)
+  hashed_token     String    @db.VarChar(64)
+  expires_at       DateTime  @db.Timestamptz(6)
+  used_at          DateTime? @db.Timestamptz(6)
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  users            User      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_email_verification_tokens_user_id")
+  @@index([token_id], map: "idx_email_verification_tokens_token_id")
+  @@index([expires_at], map: "idx_email_verification_tokens_expires_at")
+  @@index([used_at], map: "idx_email_verification_tokens_used_at")
 }

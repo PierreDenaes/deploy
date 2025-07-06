@@ -32,11 +32,17 @@ const DeleteAccountSchema = z.object({
   })
 });
 
+const ResetPasswordSchema = z.object({
+  token: z.string().min(1, 'Token requis'),
+  newPassword: z.string().min(8, 'Nouveau mot de passe trop court')
+});
+
 // Types TypeScript
 export type LoginRequest = z.infer<typeof LoginSchema>;
 export type RegisterRequest = z.infer<typeof RegisterSchema>;
 export type ChangePasswordRequest = z.infer<typeof ChangePasswordSchema>;
 export type DeleteAccountRequest = z.infer<typeof DeleteAccountSchema>;
+export type ResetPasswordRequest = z.infer<typeof ResetPasswordSchema>;
 
 export interface AuthUser {
   id: string;
@@ -205,6 +211,17 @@ export class AuthService {
     const response: ApiResponse = await apiClient.post('/auth/request-password-reset', { email }, false);
     if (!response.success) {
       throw new Error(response.message || 'Erreur lors de la demande de réinitialisation du mot de passe');
+    }
+  }
+
+  // Réinitialiser le mot de passe avec un token
+  static async resetPassword(data: ResetPasswordRequest): Promise<void> {
+    // Validation côté client
+    const validatedData = validateWithSchema(ResetPasswordSchema, data);
+
+    const response: ApiResponse = await apiClient.post('/auth/reset-password', validatedData, false);
+    if (!response.success) {
+      throw new Error(response.message || 'Erreur lors de la réinitialisation du mot de passe');
     }
   }
 

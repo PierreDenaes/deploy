@@ -10,7 +10,10 @@ const requiredEnvVars = [
   'OPENAI_API_KEY',
   'CLOUDINARY_CLOUD_NAME',
   'CLOUDINARY_API_KEY',
-  'CLOUDINARY_API_SECRET'
+  'CLOUDINARY_API_SECRET',
+  'RESEND_API_KEY',
+  'RESEND_FROM_EMAIL',
+  'FRONTEND_URL'
 ];
 
 // Vérifier que les variables requises sont présentes
@@ -78,6 +81,17 @@ export const config = {
     confidenceThreshold: parseFloat(process.env.AI_CONFIDENCE_THRESHOLD || '0.7'),
     maxRetries: parseInt(process.env.AI_MAX_RETRIES || '2', 10),
     timeoutMs: parseInt(process.env.AI_TIMEOUT_MS || '30000', 10),
+  },
+
+  // Resend Email Configuration
+  resend: {
+    apiKey: process.env.RESEND_API_KEY!,
+    fromEmail: process.env.RESEND_FROM_EMAIL!,
+  },
+
+  // Application Configuration
+  app: {
+    frontendUrl: process.env.FRONTEND_URL!,
   },
 } as const;
 
