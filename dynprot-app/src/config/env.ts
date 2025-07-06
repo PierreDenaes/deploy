@@ -48,9 +48,9 @@ export const ANALYTICS_CONFIG = {
   sentryDsn: import.meta.env.VITE_SENTRY_DSN || '',
 } as const;
 
-// AI Services Configuration
+// AI Services Configuration - handled by backend API only
 export const AI_CONFIG = {
-  openaiApiKey: import.meta.env.VITE_OPENAI_API_KEY || '',
+  // openaiApiKey removed for security - use backend API instead
   nutritionApiKey: import.meta.env.VITE_NUTRITION_API_KEY || '',
   visionApiKey: import.meta.env.VITE_VISION_API_KEY || '',
 } as const;

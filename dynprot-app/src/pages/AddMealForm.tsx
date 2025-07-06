@@ -15,7 +15,6 @@ import { CameraInterface } from "@/components/CameraInterface";
 import BaseVoiceInput from "@/components/BaseVoiceInput";
 import QuantityInput from "@/components/QuantityInput";
 import { TextAnalysisService, TextAnalysisResult } from "@/services/textAnalysisService";
-import { analyzeMealFromText, MealAnalysisResult, MealNutritionData } from "@/services/gpt";
 import { UnifiedAnalysisResult } from "@/hooks/useAnalyzeMeal";
 import { AnalysisService, useMealAnalysis } from "@/services/api.analysis";
 import { sanitizeMealDescription, sanitizeNumber, validateImageDataUrl } from "@/utils/sanitize";
@@ -212,18 +211,18 @@ export default function AddMealForm() {
     dispatch({ type: 'CLEAR_ALL_ERRORS' });
 
     try {
-      // Use OpenAI GPT service first, fallback to local service if needed
-      const gptResult = await analyzeMealFromText(state.textInput);
+      // Use backend AI analysis service
+      const backendResult = await AnalysisService.analyzeTextMeal(state.textInput);
       
-      if (gptResult.success && gptResult.data) {
-        // Convert GPT result to TextAnalysisResult format
+      if (backendResult) {
+        // Convert backend result to TextAnalysisResult format
         const textResult: TextAnalysisResult = {
-          protein: gptResult.data.protein,
-          calories: gptResult.data.calories || null,
-          confidence: gptResult.data.confidence === 'high' ? 0.9 : 
-                     gptResult.data.confidence === 'medium' ? 0.7 : 0.5,
-          detectedFoods: gptResult.data.breakdown.map(item => item.name),
-          suggestions: gptResult.data.suggestions
+          protein: backendResult.estimated_protein || 0,
+          calories: backendResult.estimated_calories || null,
+          confidence: backendResult.confidence_level === 'high' ? 0.9 : 
+                     backendResult.confidence_level === 'medium' ? 0.7 : 0.5,
+          detectedFoods: backendResult.detected_foods || [],
+          suggestions: backendResult.suggestions || []
         };
         
         dispatch({ type: 'SET_TEXT_ANALYSIS_RESULT', payload: textResult });
@@ -231,7 +230,7 @@ export default function AddMealForm() {
         toast.success('🤖 Analyse IA terminée !');
       } else {
         // Fallback to local analysis service
-        console.log('GPT analysis failed, falling back to local service:', gptResult.error);
+        console.log('Backend AI analysis failed, falling back to local service');
         
         const response = await TextAnalysisService.analyzeText(state.textInput);
         
