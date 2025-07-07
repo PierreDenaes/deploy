@@ -179,16 +179,35 @@ IDENTIFICATION PRÉCISE DES PRODUITS:
 - Inclus la variété, parfum, format si visible: "Nature", "Chocolat", "Bio", "0%", etc.
 - Note le poids/volume si affiché: "125g", "1L", "250ml", etc.
 
-LECTURE TABLEAU NUTRITIONNEL (si visible):
-- Cherche "Valeurs nutritionnelles", "Nutrition Facts", "Informations nutritionnelles"
-- Lis EXACTEMENT les valeurs de protéines indiquées
-- Note l'unité de référence: "pour 100g", "par portion", "par unité"
+LECTURE TABLEAU NUTRITIONNEL (PRIORITÉ ABSOLUE si visible):
+- Cherche activement "Valeurs nutritionnelles", "Nutrition Facts", "Informations nutritionnelles"
+- Lis EXACTEMENT les valeurs de protéines indiquées sur l'emballage
+- Note l'unité de référence: "pour 100g", "par portion", "par tranche", "par unité"
+- SI TABLEAU LISIBLE: utilise CES valeurs exactes, pas d'estimation !
+- Indique dataSource: "OFFICIAL_LABEL" et confidence: 0.95
 
-ESTIMATION NUTRITIONNELLE:
-- Utilise la base de données nutritionnelle CIQUAL française quand possible
-- Prends en compte les modes de cuisson qui affectent les valeurs nutritionnelles
-- Calcule les portions en grammes en utilisant des références visuelles
-- Sois conservateur dans tes estimations si l'image est ambiguë
+CALCUL DE PORTIONS CRITIQUE POUR TOUS PRODUITS:
+- RÈGLE D'OR: valeurs OpenFoodFacts sont TOUJOURS pour 100g/100ml
+- IDENTIFIE la portion réelle consommée, puis calcule:
+  * 1 tranche pain de mie (≈25g) = valeur_100g × 0.25
+  * 1 pot yaourt (≈125g) = valeur_100g × 1.25  
+  * 1 biscuit (≈10g) = valeur_100g × 0.10
+  * 1 portion fromage (≈30g) = valeur_100g × 0.30
+  * 1 canette soda (≈330ml) = valeur_100ml × 3.3
+
+ESTIMATION DU POIDS DE PORTION:
+- Utilise les références visuelles (taille assiette, main, couverts)
+- Poids typiques: tranche pain=25g, biscuit=10g, yaourt=125g
+- SI INCERTAIN sur le poids: demande à l'utilisateur la quantité
+- TOUJOURS indiquer l'unité utilisée dans explanation
+
+ESTIMATION NUTRITIONNELLE (uniquement si tableau non visible):
+- Pour pain de mie/brioche: 7-10g protéines/100g 
+- Pour yaourts nature: 3-5g protéines/100g
+- Pour fromages: 15-25g protéines/100g selon type
+- Utilise la base de données nutritionnelle CIQUAL française
+- SOIS TRÈS CONSERVATEUR: mieux sous-estimer que sur-estimer
+- Si incertain: baisse la confidence à 0.4-0.6
 
 QUALITÉ DE L'IMAGE:
 - Excellent: Image nette, bonne lumière, tous les aliments clairement visibles

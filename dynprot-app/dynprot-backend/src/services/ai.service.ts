@@ -166,11 +166,10 @@ export class AIService {
           const parsed = JSON.parse(cleanedResponse);
           aiResponse = this.normalizeAIResponse(parsed);
           
-          // Tenter l'enrichissement automatique pour tous les produits emballés identifiés
+          // FORCER la recherche dès qu'une marque est identifiée ou produit emballé détecté
           if (parsed.productType === 'PACKAGED_PRODUCT' && 
-              (parsed.productName || parsed.brand) &&
-              parsed.productName !== null &&
-              parsed.brand !== 'marque_non_visible') {
+              (parsed.brand && parsed.brand !== 'marque_non_visible') ||
+              (parsed.productName && parsed.productName !== null)) {
             
             console.log(`🔍 Produit emballé détecté - Tentative d'enrichissement:`, {
               productName: parsed.productName,
@@ -190,21 +189,31 @@ export class AIService {
                   source: onlineData.source
                 });
                 
-                // Fusionner les données en gardant les meilleures valeurs
-                aiResponse.protein = onlineData.proteins;
-                aiResponse.calories = onlineData.calories || aiResponse.calories;
-                aiResponse.carbs = onlineData.carbs || aiResponse.carbs;
-                aiResponse.fat = onlineData.fat || aiResponse.fat;
-                aiResponse.fiber = onlineData.fiber || aiResponse.fiber;
-                aiResponse.confidence = Math.max(aiResponse.confidence, onlineData.confidence / 100);
+                // Calculer les valeurs pour la portion réelle consommée
+                const portionData = this.calculatePortionFromOpenFoodFacts(onlineData, aiResponse, parsed);
+                
+                // Utiliser les données calculées pour la portion
+                aiResponse.protein = portionData.protein;
+                aiResponse.calories = portionData.calories;
+                aiResponse.carbs = portionData.carbs;
+                aiResponse.fat = portionData.fat;
+                aiResponse.fiber = portionData.fiber;
+                
+                // Confiance élevée pour OpenFoodFacts
+                aiResponse.confidence = 0.90;
                 aiResponse.dataSource = 'ONLINE_DATABASE';
                 aiResponse.isExactValue = true;
                 aiResponse.onlineSearchResult = onlineData;
-                aiResponse.explanation = `${aiResponse.explanation} [Données enrichies via ${onlineData.source}]`;
+                aiResponse.explanation = portionData.explanation;
+                
+                console.log(`🎯 Portion calculée: ${portionData.protein}g protéines pour ${portionData.estimatedWeight}g`);
               } else {
-                console.log('⚠️ Produit non trouvé dans OpenFoodFacts');
+                console.log('⚠️ Produit non trouvé dans OpenFoodFacts - utilisation estimation IA avec confiance réduite');
                 aiResponse.searchAvailable = true;
-                aiResponse.notes = `Produit identifié: ${parsed.brand || ''} ${parsed.productName}. Recherche automatique dans les bases de données nutritionnelles échouée.`;
+                aiResponse.confidence = Math.min(aiResponse.confidence, 0.65); // Réduire confiance si pas de données officielles
+                aiResponse.dataSource = 'VISUAL_ESTIMATION';
+                aiResponse.notes = `Produit identifié: ${parsed.brand || ''} ${parsed.productName}. Données basées sur estimation visuelle - valeurs exactes non disponibles.`;
+                aiResponse.explanation = `${aiResponse.explanation} [Estimation visuelle - prenez une photo du tableau nutritionnel pour plus de précision]`;
               }
             } catch (enrichmentError) {
               console.error('❌ Erreur enrichissement:', enrichmentError);
@@ -468,10 +477,10 @@ export class AIService {
       brand ? `${brand} ${productName}` : null,
       // Stratégie 2: Nom de produit seulement
       productName,
-      // Stratégie 3: Marque seulement (si nom trop spécifique)
-      brand && productName.length > 20 ? brand : null,
-      // Stratégie 4: Mots-clés extraits (sans poids/volume)
+      // Stratégie 3: Mots-clés extraits (sans poids/volume)
       this.extractProductKeywords(productName, brand),
+      // Stratégie 4: Marque seulement
+      brand,
     ].filter(Boolean) as string[];
     
     console.log(`📝 Stratégies de recherche:`, searchStrategies);
@@ -519,6 +528,132 @@ export class AIService {
     
     console.log(`🔤 Mots-clés extraits: "${productName}" → "${keywords}"`);
     return keywords;
+  }
+
+  // Calculer les valeurs nutritionnelles pour la portion réelle à partir des données OpenFoodFacts (pour 100g)
+  private static calculatePortionFromOpenFoodFacts(
+    openFoodData: NutritionalData, 
+    aiResponse: AIAnalysisResult, 
+    parsed: any
+  ): {
+    protein: number;
+    calories: number;
+    carbs: number;
+    fat: number;
+    fiber: number;
+    explanation: string;
+    estimatedWeight: number;
+  } {
+    
+    // Estimer le poids de la portion en analysant les foods et breakdown
+    let estimatedWeight = this.estimatePortionWeight(aiResponse.foods, aiResponse.breakdown, parsed);
+    
+    // Si pas d'estimation, utiliser les valeurs originales de l'IA (qui sont censées être pour la portion)
+    if (estimatedWeight === 0) {
+      console.log('⚠️ Impossible d\'estimer le poids, utilisation valeurs IA originales');
+      return {
+        protein: aiResponse.protein,
+        calories: aiResponse.calories || 0,
+        carbs: aiResponse.carbs || 0,
+        fat: aiResponse.fat || 0,
+        fiber: aiResponse.fiber || 0,
+        explanation: `${openFoodData.productName} trouvé dans OpenFoodFacts. Portion estimée par IA utilisée.`,
+        estimatedWeight: 0
+      };
+    }
+    
+    // Calculer les valeurs pour la portion estimée (OpenFoodFacts donne pour 100g)
+    const ratio = estimatedWeight / 100;
+    
+    const portionData = {
+      protein: Math.round((openFoodData.proteins || 0) * ratio * 10) / 10,
+      calories: Math.round((openFoodData.calories || 0) * ratio),
+      carbs: Math.round((openFoodData.carbs || 0) * ratio * 10) / 10,
+      fat: Math.round((openFoodData.fat || 0) * ratio * 10) / 10,
+      fiber: Math.round((openFoodData.fiber || 0) * ratio * 10) / 10,
+      explanation: `${openFoodData.productName} (OpenFoodFacts): ${estimatedWeight}g portion = ${Math.round((openFoodData.proteins || 0) * ratio * 10) / 10}g protéines (basé sur ${openFoodData.proteins}g/100g).`,
+      estimatedWeight
+    };
+    
+    console.log('📊 Calcul portion:', {
+      openFoodProteins100g: openFoodData.proteins,
+      estimatedWeightG: estimatedWeight,
+      ratio: ratio,
+      finalProteinG: portionData.protein
+    });
+    
+    return portionData;
+  }
+  
+  // Estimer le poids d'une portion en analysant les aliments détectés
+  private static estimatePortionWeight(foods: string[], breakdown: any, parsed: any): number {
+    // Rechercher des indices dans les descriptions d'aliments
+    const foodsLower = foods.join(' ').toLowerCase();
+    
+    // Poids typiques pour différents produits
+    if (foodsLower.includes('tranche') && (foodsLower.includes('pain') || foodsLower.includes('mie'))) {
+      return 25; // 1 tranche de pain de mie
+    }
+    if (foodsLower.includes('biscuit') || foodsLower.includes('cookie')) {
+      return 10; // 1 biscuit moyen
+    }
+    if (foodsLower.includes('yaourt') || foodsLower.includes('yogurt')) {
+      return 125; // 1 pot de yaourt standard
+    }
+    if (foodsLower.includes('fromage') && foodsLower.includes('portion')) {
+      return 30; // Portion fromage standard
+    }
+    if (foodsLower.includes('canette') || foodsLower.includes('33cl')) {
+      return 330; // Canette standard
+    }
+    if (foodsLower.includes('bouteille') && foodsLower.includes('50cl')) {
+      return 500; // Bouteille 50cl
+    }
+    
+    // Analyser le breakdown si disponible pour des indices de quantité
+    if (breakdown) {
+      for (const [, data] of Object.entries(breakdown)) {
+        if (typeof data === 'object' && (data as any).quantity) {
+          const quantity = (data as any).quantity.toLowerCase();
+          // Extraire les grammes de la description
+          const gramsMatch = quantity.match(/(\d+)\s*g/);
+          if (gramsMatch) {
+            const grams = parseInt(gramsMatch[1]);
+            if (grams > 5 && grams < 1000) { // Valeurs raisonnables
+              console.log(`📏 Poids extrait du breakdown: ${grams}g`);
+              return grams;
+            }
+          }
+        }
+      }
+    }
+    
+    // Rechercher dans le nom du produit des indices de poids
+    if (parsed.productName) {
+      const productLower = parsed.productName.toLowerCase();
+      const weightMatch = productLower.match(/(\d+)\s*g/);
+      if (weightMatch) {
+        const weight = parseInt(weightMatch[1]);
+        // Si c'est un poids de produit entier, estimer une portion
+        if (weight > 100) {
+          console.log(`📦 Poids produit entier: ${weight}g, estimation portion`);
+          // Estimation basée sur le type de produit
+          if (productLower.includes('pain') || productLower.includes('mie')) {
+            return 25; // Une tranche
+          }
+          if (productLower.includes('yaourt')) {
+            return weight; // Tout le pot
+          }
+          return Math.min(weight, 100); // Max 100g pour une portion
+        } else if (weight >= 10) {
+          console.log(`📏 Poids portion détecté: ${weight}g`);
+          return weight;
+        }
+      }
+    }
+    
+    console.log('❓ Impossible d\'estimer le poids de la portion');
+    return 0; // Impossible d'estimer
   }
 
   // Rechercher dans la base de données OpenFoodFacts avec une requête simple
