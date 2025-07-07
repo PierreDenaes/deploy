@@ -514,8 +514,8 @@ export async function resetTodayData(req: Request, res: Response): Promise<void>
       user.id,
       'TODAY_DATA_RESET',
       'meal_entries',
-      null,
-      null,
+      undefined,
+      undefined,
       { deletedCount: deletedMeals.count, date: startOfDay.toISOString() },
       getClientContext(req)
     );
@@ -678,8 +678,8 @@ export async function deleteSelectiveData(req: Request, res: Response): Promise<
       user.id,
       'SELECTIVE_DATA_DELETION',
       'multiple_tables',
-      null,
-      null,
+      undefined,
+      undefined,
       {
         dateRange: { start: startDate.toISOString(), end: endDate.toISOString() },
         includeData,

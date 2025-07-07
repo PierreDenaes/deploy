@@ -160,6 +160,7 @@ export async function authenticateToken(
       created_at: user.created_at,
       updated_at: user.updated_at,
       last_login_at: user.last_login_at,
+      last_analytics_viewed: user.last_analytics_viewed,
       profile: user.user_profiles || undefined
     };
 

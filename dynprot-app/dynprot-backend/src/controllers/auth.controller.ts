@@ -155,6 +155,7 @@ export async function register(req: Request, res: Response): Promise<void> {
       created_at: result.user.created_at,
       updated_at: result.user.updated_at,
       last_login_at: result.user.last_login_at,
+      last_analytics_viewed: result.user.last_analytics_viewed,
       profile: result.profile
     };
 
@@ -278,6 +279,7 @@ export async function login(req: Request, res: Response): Promise<void> {
       created_at: user.created_at,
       updated_at: user.updated_at,
       last_login_at: user.last_login_at,
+      last_analytics_viewed: user.last_analytics_viewed,
       profile: user.user_profiles || undefined
     };
 
