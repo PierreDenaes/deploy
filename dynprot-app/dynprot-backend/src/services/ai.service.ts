@@ -1,5 +1,5 @@
 // Service d'intelligence artificielle avec OpenAI
-import { openai, AI_CONFIG, AI_PROMPTS, AIError, AI_ERROR_CODES, validateAIResponse, validateVisionResponse, AIAnalysisResult, AIVisionResult } from '../config/openai';
+import { openai, AI_CONFIG, AI_PROMPTS, AIError, AI_ERROR_CODES, validateAIResponse, validateVisionResponse, AIAnalysisResult, AIVisionResult, NutritionalData, ProductType, DataSource } from '../config/openai';
 
 export class AIService {
   // Analyser un texte de description de repas
@@ -33,21 +33,19 @@ export class AIService {
           throw new AIError('Réponse vide de l\'IA', AI_ERROR_CODES.INVALID_RESPONSE, true);
         }
 
-        // Parser la réponse JSON avec nettoyage intelligent
-        let aiResponse: any;
+        // Utiliser le nouveau système de traitement avec recherche automatique
+        let aiResponse: AIAnalysisResult;
         try {
-          // Nettoyer la réponse pour extraire uniquement le JSON
-          const cleanedResponse = this.cleanJSONResponse(responseText);
-          aiResponse = JSON.parse(cleanedResponse);
+          aiResponse = await this.processAIResponseWithSearch(responseText);
         } catch (parseError) {
           console.error('Erreur parsing JSON IA:', parseError);
           console.error('Réponse brute:', responseText);
           
-          // Tentative de récupération avec extraction de JSON plus agressive
+          // Fallback sur l'ancien système de parsing
           try {
-            const extractedJSON = this.extractJSONFromText(responseText);
-            aiResponse = JSON.parse(extractedJSON);
-            console.log('✅ Récupération JSON réussie');
+            const cleanedResponse = this.cleanJSONResponse(responseText);
+            const parsed = JSON.parse(cleanedResponse);
+            aiResponse = this.normalizeAIResponse(parsed);
           } catch (secondParseError) {
             throw new AIError('Réponse IA invalide (JSON malformé)', AI_ERROR_CODES.INVALID_RESPONSE, true);
           }
@@ -65,7 +63,10 @@ export class AIService {
           aiResponse.requiresManualReview = true;
         }
 
-        console.log(`✅ Analyse IA réussie (confiance: ${aiResponse.confidence})`);
+        // Appliquer la gestion d'erreurs améliorée
+        aiResponse = this.handleAnalysisError(aiResponse);
+
+        console.log(`✅ Analyse IA réussie (confiance: ${aiResponse.confidence}, type: ${aiResponse.productType || 'unknown'})`);
         return aiResponse;
 
       } catch (error: any) {
@@ -156,21 +157,19 @@ export class AIService {
           throw new AIError('Réponse vide de l\'IA Vision', AI_ERROR_CODES.INVALID_RESPONSE, true);
         }
 
-        // Parser la réponse JSON avec nettoyage intelligent
-        let aiResponse: any;
+        // Utiliser le nouveau système de traitement avec recherche automatique
+        let aiResponse: AIAnalysisResult;
         try {
-          // Nettoyer la réponse pour extraire uniquement le JSON
-          const cleanedResponse = this.cleanJSONResponse(responseText);
-          aiResponse = JSON.parse(cleanedResponse);
+          aiResponse = await this.processAIResponseWithSearch(responseText);
         } catch (parseError) {
           console.error('Erreur parsing JSON IA Vision:', parseError);
           console.error('Réponse brute:', responseText);
           
-          // Tentative de récupération avec extraction de JSON plus agressive
+          // Fallback sur l'ancien système de parsing
           try {
-            const extractedJSON = this.extractJSONFromText(responseText);
-            aiResponse = JSON.parse(extractedJSON);
-            console.log('✅ Récupération JSON Vision réussie');
+            const cleanedResponse = this.cleanJSONResponse(responseText);
+            const parsed = JSON.parse(cleanedResponse);
+            aiResponse = this.normalizeAIResponse(parsed);
           } catch (secondParseError) {
             throw new AIError('Réponse IA Vision invalide (JSON malformé)', AI_ERROR_CODES.INVALID_RESPONSE, true);
           }
@@ -194,8 +193,19 @@ export class AIService {
           aiResponse.requiresManualReview = true;
         }
 
-        console.log(`✅ Analyse IA Vision réussie (confiance: ${aiResponse.confidence}, qualité: ${aiResponse.imageQuality})`);
-        return aiResponse;
+        // Appliquer la gestion d'erreurs améliorée
+        aiResponse = this.handleAnalysisError(aiResponse);
+
+        // Ensure detectedItems is present for AIVisionResult compatibility
+        const visionResult: AIVisionResult = {
+          ...aiResponse,
+          detectedItems: aiResponse.detectedItems || [],
+          imageQuality: aiResponse.imageQuality || 'fair',
+          requiresManualReview: aiResponse.requiresManualReview || false,
+        };
+
+        console.log(`✅ Analyse IA Vision réussie (confiance: ${visionResult.confidence}, qualité: ${visionResult.imageQuality}, type: ${visionResult.productType || 'unknown'})`);
+        return visionResult;
 
       } catch (error: any) {
         retries++;
@@ -388,5 +398,246 @@ export class AIService {
       imageQuality: response.imageQuality || undefined,
       requiresManualReview: response.requiresManualReview || false,
     };
+  }
+
+  // =====================================================
+  // NOUVELLES FONCTIONS DE RECHERCHE NUTRITIONNELLE
+  // =====================================================
+
+  // Rechercher les données nutritionnelles d'un produit en ligne
+  static async searchProductNutrition(productName: string, brand?: string): Promise<NutritionalData | null> {
+    try {
+      console.log(`🔍 Recherche nutritionnelle: ${brand ? brand + ' ' : ''}${productName}`);
+      
+      // Option 1: OpenFoodFacts API (base de données ouverte française)
+      const openFoodFactsResult = await this.searchOpenFoodFacts(productName, brand);
+      if (openFoodFactsResult) {
+        console.log('✅ Données trouvées via OpenFoodFacts');
+        return openFoodFactsResult;
+      }
+      
+      // Option 2: Recherche alternative si OpenFoodFacts échoue
+      console.log('⚠️ Produit non trouvé dans OpenFoodFacts');
+      return null;
+      
+    } catch (error) {
+      console.error('❌ Erreur recherche produit:', error);
+      return null;
+    }
+  }
+
+  // Rechercher dans la base de données OpenFoodFacts
+  static async searchOpenFoodFacts(productName: string, brand?: string): Promise<NutritionalData | null> {
+    try {
+      const searchQuery = brand ? `${brand} ${productName}` : productName;
+      const encodedQuery = encodeURIComponent(searchQuery);
+      
+      console.log(`📡 Requête OpenFoodFacts: ${searchQuery}`);
+      
+      const response = await fetch(
+        `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodedQuery}&search_simple=1&action=process&json=1&page_size=5`,
+        {
+          method: 'GET',
+          headers: {
+            'User-Agent': 'DynProt-App/1.0 (https://dynprot.app)',
+          },
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const data: any = await response.json();
+      
+      if (data.products && data.products.length > 0) {
+        // Prendre le premier produit avec le meilleur score de correspondance
+        const product = data.products[0];
+        
+        // Vérifier que le produit a des données nutritionnelles utilisables
+        if (!product.nutriments) {
+          console.log('⚠️ Produit trouvé mais sans données nutritionnelles');
+          return null;
+        }
+        
+        const nutritionalData: NutritionalData = {
+          productName: product.product_name || productName,
+          brand: product.brands || brand,
+          proteins: this.extractNutrientValue(product.nutriments, 'proteins'),
+          calories: this.extractNutrientValue(product.nutriments, 'energy-kcal'),
+          carbs: this.extractNutrientValue(product.nutriments, 'carbohydrates'),
+          fat: this.extractNutrientValue(product.nutriments, 'fat'),
+          fiber: this.extractNutrientValue(product.nutriments, 'fiber'),
+          source: 'OpenFoodFacts',
+          confidence: this.calculateOpenFoodFactsConfidence(product, searchQuery),
+        };
+        
+        console.log(`✅ OpenFoodFacts trouvé: ${nutritionalData.productName} (${nutritionalData.confidence}% confiance)`);
+        return nutritionalData;
+      }
+      
+      console.log('❌ Aucun produit trouvé dans OpenFoodFacts');
+      return null;
+      
+    } catch (error) {
+      console.error('❌ Erreur OpenFoodFacts:', error);
+      return null;
+    }
+  }
+
+  // Extraire une valeur nutritionnelle des données OpenFoodFacts
+  private static extractNutrientValue(nutriments: any, key: string): number | null {
+    // OpenFoodFacts utilise différents suffixes (_100g, _serving, etc.)
+    const possibleKeys = [
+      `${key}_100g`,
+      `${key}-100g`,
+      `${key}_per_100g`,
+      key,
+    ];
+    
+    for (const possibleKey of possibleKeys) {
+      if (nutriments[possibleKey] !== undefined && nutriments[possibleKey] !== null) {
+        const value = parseFloat(nutriments[possibleKey]);
+        if (!isNaN(value) && value >= 0) {
+          return value;
+        }
+      }
+    }
+    
+    return null;
+  }
+
+  // Calculer la confiance pour un résultat OpenFoodFacts
+  private static calculateOpenFoodFactsConfidence(product: any, searchQuery: string): number {
+    let confidence = 60; // Base de confiance pour OpenFoodFacts
+    
+    // Augmenter la confiance si le produit a des données complètes
+    if (product.nutriments?.proteins_100g !== undefined) confidence += 15;
+    if (product.nutriments?.['energy-kcal_100g'] !== undefined) confidence += 15;
+    if (product.brands && product.brands.length > 0) confidence += 5;
+    if (product.product_name && product.product_name.length > 0) confidence += 5;
+    
+    // Vérifier la correspondance du nom (approximative)
+    if (product.product_name) {
+      const normalizedProductName = product.product_name.toLowerCase();
+      const normalizedQuery = searchQuery.toLowerCase();
+      
+      if (normalizedProductName.includes(normalizedQuery) || 
+          normalizedQuery.includes(normalizedProductName)) {
+        confidence += 10;
+      }
+    }
+    
+    return Math.min(confidence, 95); // Maximum 95% de confiance
+  }
+
+  // Traiter une réponse IA avec recherche en ligne automatique
+  static async processAIResponseWithSearch(response: string): Promise<AIAnalysisResult> {
+    try {
+      const parsed = JSON.parse(response);
+      
+      // Si produit emballé mais données incomplètes, tenter recherche en ligne
+      if (parsed.productType === 'PACKAGED_PRODUCT' && 
+          parsed.dataSource !== 'OFFICIAL_LABEL' && 
+          parsed.productName) {
+        
+        console.log(`🔍 Recherche en ligne: ${parsed.brand || ''} ${parsed.productName}`);
+        const onlineData = await this.searchProductNutrition(parsed.productName, parsed.brand);
+        
+        if (onlineData && onlineData.proteins !== null) {
+          console.log('✅ Données enrichies via recherche en ligne');
+          
+          return {
+            ...parsed,
+            protein: onlineData.proteins,
+            calories: onlineData.calories || parsed.calories,
+            carbs: onlineData.carbs || parsed.carbs,
+            fat: onlineData.fat || parsed.fat,
+            fiber: onlineData.fiber || parsed.fiber,
+            confidence: Math.max(parsed.confidence, onlineData.confidence / 100),
+            dataSource: 'ONLINE_DATABASE' as DataSource,
+            notes: `Valeurs trouvées via ${onlineData.source}. ${parsed.notes || ''}`.trim(),
+            isExactValue: true,
+            onlineSearchResult: onlineData,
+            explanation: `${parsed.explanation} [Données enrichies via ${onlineData.source}]`,
+          };
+        } else {
+          // Produit identifié mais non trouvé en ligne
+          return {
+            ...parsed,
+            searchAvailable: true,
+            notes: `Produit identifié mais non trouvé dans les bases de données. ${parsed.notes || ''}`.trim(),
+          };
+        }
+      }
+      
+      // Traitement normal si pas de recherche nécessaire
+      return {
+        ...parsed,
+        protein: parsed.calculatedTotal?.proteins || parsed.nutritionalValues?.proteins?.value || parsed.protein || 0,
+        calories: parsed.calculatedTotal?.calories || parsed.nutritionalValues?.calories?.value || parsed.calories || 0,
+        isExactValue: parsed.dataSource === 'OFFICIAL_LABEL',
+        searchAvailable: parsed.productType === 'PACKAGED_PRODUCT' && parsed.productName,
+      };
+      
+    } catch (error) {
+      console.error('❌ Erreur traitement réponse IA:', error);
+      // Fallback sur le traitement traditionnel
+      return this.parseTraditionalResponse(response);
+    }
+  }
+
+  // Fallback pour traitement traditionnel des réponses
+  private static parseTraditionalResponse(response: string): AIAnalysisResult {
+    try {
+      // Essayer d'extraire au moins les informations de base
+      const cleanedResponse = this.cleanJSONResponse(response);
+      const parsed = JSON.parse(cleanedResponse);
+      
+      return this.normalizeAIResponse(parsed);
+    } catch (error) {
+      console.error('❌ Impossible de parser la réponse:', error);
+      
+      // Retourner une réponse d'erreur structurée
+      return {
+        foods: [],
+        protein: 0,
+        calories: 0,
+        confidence: 0,
+        explanation: 'Erreur d\'analyse - réponse non parsable',
+        requiresManualReview: true,
+        dataSource: 'VISUAL_ESTIMATION' as DataSource,
+        productType: 'NATURAL_FOOD' as ProductType,
+      };
+    }
+  }
+
+  // Gérer les erreurs d'analyse avec suggestions contextuelles
+  static handleAnalysisError(result: AIAnalysisResult): AIAnalysisResult {
+    if (result.productType === 'PACKAGED_PRODUCT') {
+      if (result.dataSource === 'VISUAL_ESTIMATION') {
+        return {
+          ...result,
+          notes: 'Ce produit emballé peut être recherché en ligne pour obtenir des valeurs exactes. Voulez-vous que je recherche les données officielles ?',
+          searchAvailable: true,
+          suggestions: [
+            ...(result.suggestions || []),
+            'Rechercher les valeurs nutritionnelles officielles en ligne',
+            'Prendre une photo plus nette du tableau nutritionnel'
+          ],
+        };
+      }
+      
+      if (result.dataSource !== 'OFFICIAL_LABEL' && result.dataSource !== 'ONLINE_DATABASE') {
+        return {
+          ...result,
+          notes: 'Produit identifié mais données non lisibles. Je peux rechercher les valeurs officielles en ligne ou vous pouvez prendre une photo plus nette du tableau nutritionnel.',
+          searchAvailable: true,
+          requiresManualReview: true,
+        };
+      }
+    }
+    
+    return result;
   }
 }
