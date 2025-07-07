@@ -32,6 +32,7 @@ export interface AuthTokens {
   accessToken: string;
   refreshToken?: string;
   expiresIn: number;
+  rememberMe?: boolean;
 }
 
 // =====================================================
@@ -74,39 +75,91 @@ class TokenManager {
   private static readonly ACCESS_TOKEN_KEY = 'access_token';
   private static readonly REFRESH_TOKEN_KEY = 'refresh_token';
   private static readonly TOKEN_EXPIRES_KEY = 'token_expires';
+  private static readonly REMEMBER_ME_KEY = 'remember_me';
 
   static getAccessToken(): string | null {
-    return localStorage.getItem(this.ACCESS_TOKEN_KEY);
+    const rememberMe = this.getRememberMePreference();
+    const token = rememberMe 
+      ? localStorage.getItem(this.ACCESS_TOKEN_KEY)
+      : sessionStorage.getItem(this.ACCESS_TOKEN_KEY);
+    
+    return token;
   }
 
   static getRefreshToken(): string | null {
-    return localStorage.getItem(this.REFRESH_TOKEN_KEY);
+    const rememberMe = this.getRememberMePreference();
+    if (rememberMe) {
+      return localStorage.getItem(this.REFRESH_TOKEN_KEY);
+    } else {
+      return sessionStorage.getItem(this.REFRESH_TOKEN_KEY);
+    }
+  }
+
+  static getRememberMePreference(): boolean {
+    return localStorage.getItem(this.REMEMBER_ME_KEY) === 'true';
   }
 
   static setTokens(tokens: AuthTokens): void {
-    localStorage.setItem(this.ACCESS_TOKEN_KEY, tokens.accessToken);
+    const rememberMe = tokens.rememberMe || false;
+    
+    // Store remember me preference in localStorage (always persistent)
+    localStorage.setItem(this.REMEMBER_ME_KEY, rememberMe.toString());
+    
+    // Choose storage based on remember me preference
+    const storage = rememberMe ? localStorage : sessionStorage;
+    
+    // Store tokens
+    storage.setItem(this.ACCESS_TOKEN_KEY, tokens.accessToken);
     if (tokens.refreshToken) {
-      localStorage.setItem(this.REFRESH_TOKEN_KEY, tokens.refreshToken);
+      storage.setItem(this.REFRESH_TOKEN_KEY, tokens.refreshToken);
     }
+    
     const expiresAt = Date.now() + (tokens.expiresIn * 1000);
-    localStorage.setItem(this.TOKEN_EXPIRES_KEY, expiresAt.toString());
+    storage.setItem(this.TOKEN_EXPIRES_KEY, expiresAt.toString());
+    
+    // Clear tokens from the other storage to avoid conflicts
+    const otherStorage = rememberMe ? sessionStorage : localStorage;
+    otherStorage.removeItem(this.ACCESS_TOKEN_KEY);
+    otherStorage.removeItem(this.REFRESH_TOKEN_KEY);
+    otherStorage.removeItem(this.TOKEN_EXPIRES_KEY);
   }
 
   static clearTokens(): void {
+    // Clear from both storages to be safe
     localStorage.removeItem(this.ACCESS_TOKEN_KEY);
     localStorage.removeItem(this.REFRESH_TOKEN_KEY);
     localStorage.removeItem(this.TOKEN_EXPIRES_KEY);
+    localStorage.removeItem(this.REMEMBER_ME_KEY);
+    
+    sessionStorage.removeItem(this.ACCESS_TOKEN_KEY);
+    sessionStorage.removeItem(this.REFRESH_TOKEN_KEY);
+    sessionStorage.removeItem(this.TOKEN_EXPIRES_KEY);
+  }
+
+  static clearTokensKeepRememberMe(): void {
+    // Clear tokens but keep remember me preference
+    localStorage.removeItem(this.ACCESS_TOKEN_KEY);
+    localStorage.removeItem(this.REFRESH_TOKEN_KEY);
+    localStorage.removeItem(this.TOKEN_EXPIRES_KEY);
+    
+    sessionStorage.removeItem(this.ACCESS_TOKEN_KEY);
+    sessionStorage.removeItem(this.REFRESH_TOKEN_KEY);
+    sessionStorage.removeItem(this.TOKEN_EXPIRES_KEY);
   }
 
   static isTokenExpired(): boolean {
-    const expiresAt = localStorage.getItem(this.TOKEN_EXPIRES_KEY);
+    const rememberMe = this.getRememberMePreference();
+    const storage = rememberMe ? localStorage : sessionStorage;
+    const expiresAt = storage.getItem(this.TOKEN_EXPIRES_KEY);
     if (!expiresAt) return true;
     return Date.now() >= parseInt(expiresAt) - 60000; // 1 minute de marge
   }
 
   static isAuthenticated(): boolean {
     const token = this.getAccessToken();
-    return !!token && !this.isTokenExpired();
+    const expired = this.isTokenExpired();
+    
+    return !!token && !expired;
   }
 }
 
@@ -128,7 +181,7 @@ class ApiClient {
   private async refreshTokens(): Promise<void> {
     const refreshToken = TokenManager.getRefreshToken();
     if (!refreshToken) {
-      TokenManager.clearTokens();
+      TokenManager.clearTokensKeepRememberMe();
       throw new ApiError(401, 'Session expirée, veuillez vous reconnecter');
     }
 
@@ -142,19 +195,20 @@ class ApiClient {
       });
 
       if (!response.ok) {
-        TokenManager.clearTokens();
+        TokenManager.clearTokensKeepRememberMe();
         throw new ApiError(401, 'Session expirée, veuillez vous reconnecter');
       }
 
       const data: ApiResponse<{ tokens: AuthTokens }> = await response.json();
       if (data.success && data.data?.tokens) {
+        // Backend includes rememberMe in tokens now
         TokenManager.setTokens(data.data.tokens);
       } else {
-        TokenManager.clearTokens();
+        TokenManager.clearTokensKeepRememberMe();
         throw new ApiError(401, 'Impossible de renouveler la session');
       }
     } catch (error) {
-      TokenManager.clearTokens();
+      TokenManager.clearTokensKeepRememberMe();
       throw error;
     }
   }
@@ -218,7 +272,7 @@ class ApiClient {
       // Gérer les erreurs HTTP
       if (!response.ok) {
         if (response.status === 401 && requireAuth) {
-          TokenManager.clearTokens();
+          TokenManager.clearTokensKeepRememberMe();
           // Don't force redirect if already on login page
           if (window.location.pathname !== '/login') {
             window.location.href = '/login';

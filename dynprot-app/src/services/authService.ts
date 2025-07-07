@@ -21,7 +21,8 @@ export const authService = {
     try {
       const response = await AuthService.login({
         email: credentials.email,
-        password: credentials.password
+        password: credentials.password,
+        rememberMe: credentials.rememberMe
       });
       return {
         user: {
@@ -212,20 +213,8 @@ export const authService = {
       await AuthService.deleteAccount(data);
       
       // Account deletion successful - tokens are already cleared in AuthService
-      // Clear any remaining local data
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('user_data');
-      
-      // Clear all app data from localStorage
-      const keysToRemove = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && (key.startsWith('dynprot_') || key.includes('user') || key.includes('auth'))) {
-          keysToRemove.push(key);
-        }
-      }
-      keysToRemove.forEach(key => localStorage.removeItem(key));
+      // Clear any remaining local data using TokenManager
+      // (TokenManager.clearTokens() is already called in AuthService.deleteAccount)
       
     } catch (error) {
       ErrorHandler.handle(error, {

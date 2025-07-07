@@ -1,3 +1,4 @@
+# Version: 2025-01-07 - Analytics tracking and selective data deletion
 databases:
   - name: dynprot-db
     databaseName: dynprot_db
@@ -50,6 +51,8 @@ services:
       - key: JWT_EXPIRES_IN
         value: 7d
       - key: JWT_REFRESH_EXPIRES_IN
+        value: 30d
+      - key: JWT_REMEMBER_ME_EXPIRES_IN
         value: 30d
       - key: CORS_ORIGIN
         value: https://dynprot-frontend.onrender.com,http://localhost:5173

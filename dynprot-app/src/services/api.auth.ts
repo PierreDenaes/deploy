@@ -9,7 +9,8 @@ import { apiClient, ApiResponse, AuthTokens, TokenManager, validateWithSchema } 
 // Schémas de validation Zod
 const LoginSchema = z.object({
   email: z.string().email('Email invalide'),
-  password: z.string().min(1, 'Mot de passe requis')
+  password: z.string().min(1, 'Mot de passe requis'),
+  rememberMe: z.boolean().optional().default(false)
 });
 
 const RegisterSchema = z.object({
@@ -57,6 +58,7 @@ export interface AuthUser {
   created_at: Date | null;
   updated_at: Date | null;
   last_login_at: Date | null;
+  last_analytics_viewed: Date | null;
   profile?: UserProfile;
 }
 
@@ -125,7 +127,7 @@ export class AuthService {
     }> = await apiClient.post('/auth/login', validatedData, false);
 
     if (response.success && response.data) {
-      // Sauvegarder les tokens
+      // Sauvegarder les tokens (rememberMe est maintenant inclus par le backend)
       TokenManager.setTokens(response.data.tokens);
       return response.data;
     }
@@ -179,6 +181,7 @@ export class AuthService {
     );
 
     if (response.success && response.data) {
+      // Tokens incluent maintenant rememberMe du backend
       TokenManager.setTokens(response.data.tokens);
       return response.data.tokens;
     }
@@ -269,7 +272,7 @@ export const getCurrentUserSafe = async (): Promise<AuthUser | null> => {
 
 // Helper pour la déconnexion forcée en cas d'erreur
 export const forceLogout = (): void => {
-  TokenManager.clearTokens();
+  TokenManager.clearTokensKeepRememberMe();
   // Rediriger vers la page de connexion
   window.location.href = '/login';
 };

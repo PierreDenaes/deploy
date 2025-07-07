@@ -244,7 +244,7 @@ export async function login(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const { email, password } = validation.data;
+    const { email, password, rememberMe } = validation.data;
 
     // Find user with profile
     const user = await prisma.user.findUnique({
@@ -288,15 +288,16 @@ export async function login(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // Generate tokens
-    const accessToken = generateAccessToken(user.id, user.email);
-    const refreshToken = generateRefreshToken(user.id, user.email);
-    const expiresIn = getTokenExpirationTime();
+    // Generate tokens with remember me support
+    const accessToken = generateAccessToken(user.id, user.email, rememberMe);
+    const refreshToken = generateRefreshToken(user.id, user.email, rememberMe);
+    const expiresIn = getTokenExpirationTime(rememberMe);
 
     const tokens: AuthTokens = {
       accessToken,
       refreshToken,
-      expiresIn
+      expiresIn,
+      rememberMe
     };
 
     // Create auth user object (exclude password)
@@ -393,15 +394,19 @@ export async function refreshToken(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // Generate new tokens
-    const newAccessToken = generateAccessToken(user.id, user.email);
-    const newRefreshToken = generateRefreshToken(user.id, user.email);
-    const expiresIn = getTokenExpirationTime();
+    // Extract remember me setting from the original token
+    const rememberMe = (payload as any).rememberMe || false;
+    
+    // Generate new tokens with same remember me setting
+    const newAccessToken = generateAccessToken(user.id, user.email, rememberMe);
+    const newRefreshToken = generateRefreshToken(user.id, user.email, rememberMe);
+    const expiresIn = getTokenExpirationTime(rememberMe);
 
     const tokens: AuthTokens = {
       accessToken: newAccessToken,
       refreshToken: newRefreshToken,
-      expiresIn
+      expiresIn,
+      rememberMe
     };
 
     // Log token refresh

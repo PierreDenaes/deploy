@@ -33,6 +33,7 @@ export interface AuthTokens {
   accessToken: string;
   refreshToken?: string;
   expiresIn: number;
+  rememberMe?: boolean;
 }
 
 // =====================================================
@@ -50,7 +51,8 @@ const passwordSchema = z.string().min(8).max(100);
 
 export const LoginSchema = z.object({
   email: emailSchema,
-  password: z.string().min(1, 'Password is required')
+  password: z.string().min(1, 'Password is required'),
+  rememberMe: z.boolean().optional().default(false)
 });
 
 export const RegisterSchema = z.object({

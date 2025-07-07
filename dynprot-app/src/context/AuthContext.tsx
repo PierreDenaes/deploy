@@ -2,6 +2,7 @@ import React, { createContext, useContext, useReducer, useEffect, ReactNode } fr
 import { AuthState, AuthContextType, AuthUser, LoginCredentials, RegisterCredentials } from '@/types/auth';
 import { DeleteAccountRequest } from '@/services/api.auth';
 import { authService } from '@/services/authService';
+import { TokenManager } from '@/services/api.service';
 import { toast } from 'sonner';
 
 // Auth action types
@@ -77,9 +78,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         dispatch({ type: 'SET_LOADING', payload: true });
         
-        // Only check auth if there's a stored token
-        const hasStoredToken = localStorage.getItem('access_token');
-        if (!hasStoredToken) {
+        // Use TokenManager to check if user is authenticated
+        if (!TokenManager.isAuthenticated()) {
           dispatch({ type: 'SET_LOADING', payload: false });
           return;
         }

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import prisma from '../lib/prisma';
 import { AuthUser, RequestContext, ApiResponse } from '../types/api.types';
+import { config } from '../config/env';
 
 // JWT payload interface
 interface JWTPayload {
@@ -35,17 +36,19 @@ if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
   }
 }
 
-// Generate access token
-export function generateAccessToken(userId: string, email: string): string {
-  const payload = { userId, email };
-  const options: jwt.SignOptions = { expiresIn: JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'] };
+// Generate access token with optional remember me duration
+export function generateAccessToken(userId: string, email: string, rememberMe: boolean = false): string {
+  const expiresIn = rememberMe ? config.jwt.rememberMeExpiresIn : config.jwt.expiresIn;
+  const payload = { userId, email, rememberMe };
+  const options: jwt.SignOptions = { expiresIn: expiresIn as jwt.SignOptions['expiresIn'] };
   return jwt.sign(payload, JWT_SECRET, options);
 }
 
-// Generate refresh token
-export function generateRefreshToken(userId: string, email: string): string {
-  const payload = { userId, email };
-  const options: jwt.SignOptions = { expiresIn: JWT_REFRESH_EXPIRES_IN as jwt.SignOptions['expiresIn'] };
+// Generate refresh token with optional remember me duration
+export function generateRefreshToken(userId: string, email: string, rememberMe: boolean = false): string {
+  const expiresIn = rememberMe ? config.jwt.rememberMeExpiresIn : JWT_REFRESH_EXPIRES_IN;
+  const payload = { userId, email, rememberMe };
+  const options: jwt.SignOptions = { expiresIn: expiresIn as jwt.SignOptions['expiresIn'] };
   return jwt.sign(payload, JWT_REFRESH_SECRET, options);
 }
 
@@ -80,8 +83,8 @@ export function verifyRefreshToken(token: string): JWTPayload {
 }
 
 // Get token expiration time in seconds
-export function getTokenExpirationTime(): number {
-  const expiresIn = JWT_EXPIRES_IN;
+export function getTokenExpirationTime(rememberMe: boolean = false): number {
+  const expiresIn = rememberMe ? config.jwt.rememberMeExpiresIn : config.jwt.expiresIn;
   if (expiresIn.endsWith('m')) {
     return parseInt(expiresIn) * 60;
   } else if (expiresIn.endsWith('h')) {
