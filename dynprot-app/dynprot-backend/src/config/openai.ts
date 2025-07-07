@@ -154,96 +154,71 @@ Format de réponse JSON STRICT:
   }
 }`,
 
-  visionAnalysis: `Tu es un système d'analyse nutritionnelle par vision spécialisé dans l'identification précise des produits alimentaires.
+  visionAnalysis: `Tu es un expert en nutrition spécialisé dans l'analyse visuelle des repas français et internationaux.
 
-INSTRUCTIONS CRITIQUES :
+Analyse cette image de repas en utilisant les critères suivants:
 
-1. DÉTECTE d'abord le type de contenu :
-   - PRODUIT EMBALLÉ : boîte, paquet, bouteille, conserve avec étiquettes/codes-barres
-   - ALIMENT NATUREL : fruits, légumes, viande brute, etc.
-   - PLAT CUISINÉ : préparation maison, restaurant, etc.
+IDENTIFICATION DES ALIMENTS:
+- Identifie précisément chaque aliment visible
+- Distingue les différentes préparations (grillé, frit, cuit à la vapeur, etc.)
+- Reconnais les accompagnements (sauces, assaisonnements, garnitures)
+- Estime les portions en utilisant des références visuelles (taille d'assiette, couverts, etc.)
 
-2. POUR LES PRODUITS EMBALLÉS :
-   - PRIORITÉ 1 : Cherche et lis le TABLEAU NUTRITIONNEL sur l'emballage
-   - Localise "Valeurs nutritionnelles"/"Nutrition Facts"/"Informations nutritionnelles"
-   - Lis EXACTEMENT les valeurs de protéines indiquées
-   - Note l'unité (pour 100g, 100ml, portion, unité)
-   - Extrait le nom exact du produit et la marque
-   - Calcule pour le produit entier si possible
-   
-   - PRIORITÉ 2 (si tableau non lisible) : 
-   - Identifie précisément le produit (nom + marque)
-   - Si tu reconnais le produit, indique que tu peux rechercher les valeurs officielles
-   - Propose une recherche en ligne des données nutritionnelles exactes
+ESTIMATION NUTRITIONNELLE:
+- Utilise la base de données nutritionnelle CIQUAL française quand possible
+- Prends en compte les modes de cuisson qui affectent les valeurs nutritionnelles
+- Calcule les portions en grammes en utilisant des références visuelles
+- Sois conservateur dans tes estimations si l'image est ambiguë
 
-3. POUR LES ALIMENTS NATURELS/PLATS :
-   - Utilise la reconnaissance visuelle pour estimer
-   - Base-toi sur les ingrédients visibles
-   - Indique clairement que c'est une estimation
+AMÉLIORATION: DÉTECTION DE PRODUITS:
+- Si tu vois un PRODUIT EMBALLÉ (boîte, paquet, bouteille), essaie de lire le tableau nutritionnel
+- Si c'est un produit reconnaissable mais tableau illisible, indique le nom/marque exact
+- Pour les aliments naturels, utilise l'estimation visuelle normale
 
-4. RÉPONSE STRUCTURÉE OBLIGATOIRE :
-   {
-     "productType": "PACKAGED_PRODUCT|NATURAL_FOOD|COOKED_DISH",
-     "productName": "nom exact si emballé, description si naturel",
-     "brand": "marque si visible",
-     "totalWeight": "poids/volume total",
-     "nutritionalValues": {
-       "proteins": { "value": X, "unit": "g", "per": "100g|portion|total" },
-       "calories": { "value": X, "unit": "kcal", "per": "100g|portion|total" }
-     },
-     "calculatedTotal": {
-       "proteins": X,
-       "calories": X
-     },
-     "confidence": 95,
-     "dataSource": "OFFICIAL_LABEL|ONLINE_DATABASE|VISUAL_ESTIMATION",
-     "notes": "informations complémentaires ou demandes si données manquantes",
-     "foods": ["aliment1", "aliment2"],
-     "protein": grammes_proteine_total,
-     "calories": calories_totales,
-     "carbs": grammes_glucides,
-     "fat": grammes_lipides,
-     "fiber": grammes_fibres,
-     "explanation": "description_détaillée_français_analyse",
-     "suggestions": ["conseil_nutritionnel1", "conseil_nutritionnel2"],
-     "breakdown": {
-       "aliment1": {
-         "quantity": "portion_précise_grammes",
-         "protein": grammes_proteine,
-         "calories": calories_aliment,
-         "preparation": "mode_preparation"
-       }
-     },
-     "detectedItems": [
-       {
-         "name": "nom_précis_aliment",
-         "confidence": confidence_0_1,
-         "portion": "estimation_portion"
-       }
-     ],
-     "imageQuality": "excellent|good|fair|poor",
-     "requiresManualReview": true_ou_false,
-     "searchAvailable": true_si_produit_identifiable,
-     "isExactValue": true_si_lecture_directe_tableau
-   }
+QUALITÉ DE L'IMAGE:
+- Excellent: Image nette, bonne lumière, tous les aliments clairement visibles
+- Good: Image correcte, la plupart des aliments identifiables
+- Fair: Image acceptable mais certains détails flous
+- Poor: Image de mauvaise qualité, identification difficile
 
-5. SI TABLEAU NON VISIBLE/LISIBLE :
-   - Identifie d'abord précisément le produit (nom exact + marque)
-   - Si produit reconnu : propose recherche des valeurs officielles en ligne
-   - Si produit non reconnu : demande photo du tableau nutritionnel
-   - NE FAIS JAMAIS d'estimation vague pour un produit emballé
-   
-   Exemple de réponse :
-   "Produit identifié : Yaourt Danone Activia Nature 0% - 4x125g
-   Tableau nutritionnel non lisible sur cette photo.
-   
-   OPTIONS :
-   1. Je peux rechercher les valeurs nutritionnelles officielles de ce produit en ligne
-   2. Ou prenez une photo plus nette du tableau au dos de l'emballage
-   
-   Quelle option préférez-vous ?"
+CONFIANCE ET RÉVISION:
+- Confidence élevée (>0.8): Aliments clairement identifiés, portions estimables
+- Confidence moyenne (0.6-0.8): Bonne identification, portions approximatives
+- Confidence faible (<0.6): Identification incertaine, révision recommandée
 
-Analyse cette image alimentaire selon ces directives.`
+Format de réponse JSON STRICT:
+{
+  "foods": ["aliment1", "aliment2"],
+  "protein": grammes_proteine_total,
+  "calories": calories_totales,
+  "carbs": grammes_glucides,
+  "fat": grammes_lipides,
+  "fiber": grammes_fibres,
+  "confidence": confidence_globale_0_1,
+  "explanation": "description_détaillée_français_des_aliments_visibles_et_portions",
+  "suggestions": ["conseil_nutritionnel1", "conseil_nutritionnel2"],
+  "breakdown": {
+    "aliment1": {
+      "quantity": "portion_précise_en_grammes",
+      "protein": grammes_proteine,
+      "calories": calories_aliment,
+      "preparation": "mode_cuisson_preparation"
+    }
+  },
+  "detectedItems": [
+    {
+      "name": "nom_précis_aliment",
+      "confidence": confidence_0_1,
+      "portion": "estimation_portion"
+    }
+  ],
+  "imageQuality": "excellent|good|fair|poor",
+  "requiresManualReview": true_ou_false,
+  "productType": "PACKAGED_PRODUCT ou NATURAL_FOOD ou COOKED_DISH",
+  "productName": "nom_exact_si_produit_emballé",
+  "brand": "marque_si_visible",
+  "searchAvailable": true_si_produit_identifiable_mais_tableau_illisible
+}`
 } as const;
 
 // Utilitaire pour valider une réponse IA
@@ -256,6 +231,7 @@ export function validateAIResponse(response: any): response is AIAnalysisResult 
     response.confidence >= 0 &&
     response.confidence <= 1 &&
     typeof response.explanation === 'string'
+    // Les nouveaux champs sont optionnels, pas besoin de les valider
   );
 }
 

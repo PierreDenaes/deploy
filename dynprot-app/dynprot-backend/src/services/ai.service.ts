@@ -33,19 +33,23 @@ export class AIService {
           throw new AIError('Réponse vide de l\'IA', AI_ERROR_CODES.INVALID_RESPONSE, true);
         }
 
-        // Utiliser le nouveau système de traitement avec recherche automatique
+        // Parser la réponse JSON avec nettoyage intelligent
         let aiResponse: AIAnalysisResult;
         try {
-          aiResponse = await this.processAIResponseWithSearch(responseText);
+          // Nettoyer la réponse pour extraire uniquement le JSON
+          const cleanedResponse = this.cleanJSONResponse(responseText);
+          const parsed = JSON.parse(cleanedResponse);
+          aiResponse = this.normalizeAIResponse(parsed);
         } catch (parseError) {
           console.error('Erreur parsing JSON IA:', parseError);
           console.error('Réponse brute:', responseText);
           
-          // Fallback sur l'ancien système de parsing
+          // Tentative de récupération avec extraction de JSON plus agressive
           try {
-            const cleanedResponse = this.cleanJSONResponse(responseText);
-            const parsed = JSON.parse(cleanedResponse);
+            const extractedJSON = this.extractJSONFromText(responseText);
+            const parsed = JSON.parse(extractedJSON);
             aiResponse = this.normalizeAIResponse(parsed);
+            console.log('✅ Récupération JSON réussie');
           } catch (secondParseError) {
             throw new AIError('Réponse IA invalide (JSON malformé)', AI_ERROR_CODES.INVALID_RESPONSE, true);
           }
@@ -62,9 +66,6 @@ export class AIService {
           console.warn(`⚠️ Confiance IA faible: ${aiResponse.confidence}`);
           aiResponse.requiresManualReview = true;
         }
-
-        // Appliquer la gestion d'erreurs améliorée
-        aiResponse = this.handleAnalysisError(aiResponse);
 
         console.log(`✅ Analyse IA réussie (confiance: ${aiResponse.confidence}, type: ${aiResponse.productType || 'unknown'})`);
         return aiResponse;
@@ -157,19 +158,37 @@ export class AIService {
           throw new AIError('Réponse vide de l\'IA Vision', AI_ERROR_CODES.INVALID_RESPONSE, true);
         }
 
-        // Utiliser le nouveau système de traitement avec recherche automatique
+        // Parser la réponse JSON avec nettoyage intelligent
         let aiResponse: AIAnalysisResult;
         try {
-          aiResponse = await this.processAIResponseWithSearch(responseText);
+          // Nettoyer la réponse pour extraire uniquement le JSON
+          const cleanedResponse = this.cleanJSONResponse(responseText);
+          const parsed = JSON.parse(cleanedResponse);
+          aiResponse = this.normalizeAIResponse(parsed);
+          
+          // Tenter l'enrichissement si c'est un produit emballé
+          if (parsed.productType === 'PACKAGED_PRODUCT' && parsed.productName) {
+            console.log(`🔍 Tentative d'enrichissement: ${parsed.productName}`);
+            try {
+              const enriched = await this.processAIResponseWithSearch(responseText);
+              if (enriched.onlineSearchResult) {
+                aiResponse = enriched;
+                console.log('✅ Données enrichies via recherche en ligne');
+              }
+            } catch (enrichmentError) {
+              console.warn('⚠️ Enrichissement échoué, utilisation des données de base');
+            }
+          }
         } catch (parseError) {
           console.error('Erreur parsing JSON IA Vision:', parseError);
           console.error('Réponse brute:', responseText);
           
-          // Fallback sur l'ancien système de parsing
+          // Tentative de récupération avec extraction de JSON plus agressive
           try {
-            const cleanedResponse = this.cleanJSONResponse(responseText);
-            const parsed = JSON.parse(cleanedResponse);
+            const extractedJSON = this.extractJSONFromText(responseText);
+            const parsed = JSON.parse(extractedJSON);
             aiResponse = this.normalizeAIResponse(parsed);
+            console.log('✅ Récupération JSON Vision réussie');
           } catch (secondParseError) {
             throw new AIError('Réponse IA Vision invalide (JSON malformé)', AI_ERROR_CODES.INVALID_RESPONSE, true);
           }
@@ -192,9 +211,6 @@ export class AIService {
           console.warn(`⚠️ Confiance IA Vision faible: ${aiResponse.confidence}`);
           aiResponse.requiresManualReview = true;
         }
-
-        // Appliquer la gestion d'erreurs améliorée
-        aiResponse = this.handleAnalysisError(aiResponse);
 
         // Ensure detectedItems is present for AIVisionResult compatibility
         const visionResult: AIVisionResult = {
