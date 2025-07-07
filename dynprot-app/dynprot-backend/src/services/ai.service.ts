@@ -166,8 +166,30 @@ export class AIService {
           const parsed = JSON.parse(cleanedResponse);
           aiResponse = this.normalizeAIResponse(parsed);
           
-          // FORCER la recherche dès qu'une marque est identifiée ou produit emballé détecté
-          if (parsed.productType === 'PACKAGED_PRODUCT' && 
+          // PRIORITÉ 1: Utiliser les données du tableau nutritionnel si disponibles
+          if (parsed.officialNutritionData && parsed.officialNutritionData.isFromLabel && parsed.officialNutritionData.proteinsValue) {
+            console.log('📊 Tableau nutritionnel détecté sur emballage - utilisation valeurs officielles:', parsed.officialNutritionData);
+            
+            // Calculer les protéines selon l'unité du tableau
+            let finalProteins = parsed.officialNutritionData.proteinsValue;
+            if (parsed.officialNutritionData.proteinsUnit === 'pour_100g') {
+              // Estimer le poids de la portion et calculer
+              const estimatedWeight = this.estimatePortionWeight(aiResponse.foods, aiResponse.breakdown, parsed);
+              if (estimatedWeight > 0) {
+                finalProteins = (parsed.officialNutritionData.proteinsValue * estimatedWeight) / 100;
+                aiResponse.explanation = `Tableau nutritionnel lu sur emballage: ${parsed.officialNutritionData.proteinsValue}g protéines/100g. Portion estimée: ${estimatedWeight}g = ${finalProteins.toFixed(1)}g protéines.`;
+              }
+            }
+            
+            aiResponse.protein = finalProteins;
+            aiResponse.confidence = 0.95;
+            aiResponse.dataSource = 'OFFICIAL_LABEL';
+            aiResponse.isExactValue = true;
+            
+            console.log(`✅ Valeurs officielles utilisées: ${finalProteins}g protéines`);
+          }
+          // PRIORITÉ 2: Recherche OpenFoodFacts si pas de tableau nutritionnel
+          else if (parsed.productType === 'PACKAGED_PRODUCT' && 
               (parsed.brand && parsed.brand !== 'marque_non_visible') ||
               (parsed.productName && parsed.productName !== null)) {
             

@@ -93,6 +93,11 @@ export interface AIAnalysisResult {
     calories: number;
   };
   notes?: string;
+  officialNutritionData?: {
+    proteinsValue: number;
+    proteinsUnit: 'pour_100g' | 'par_portion' | 'par_tranche';
+    isFromLabel: boolean;
+  };
 }
 
 export interface AIVisionResult extends AIAnalysisResult {
@@ -164,27 +169,35 @@ IDENTIFICATION DES ALIMENTS:
 - Reconnais les accompagnements (sauces, assaisonnements, garnitures)
 - Estime les portions en utilisant des références visuelles (taille d'assiette, couverts, etc.)
 
-DÉTECTION OBLIGATOIRE DE MARQUES ET PRODUITS EMBALLÉS:
-- CHERCHE activement les MARQUES sur tous les emballages visibles
-- Lis attentivement les logos, noms de fabricants, textes en gros caractères
-- Marques françaises courantes: Danone, Nestlé, Lu, Président, Bel, Yoplait, Bonne Maman, Fleury Michon, etc.
-- Marques internationales: Coca-Cola, Pepsi, Kellogg's, Barilla, Heinz, etc.
-- Si marque visible: note-la EXACTEMENT comme écrite sur l'emballage
-- Si marque non trouvée: indique "marque_non_visible"
+ÉTAPE 1 - SCAN OBLIGATOIRE DES EMBALLAGES:
+Avant toute analyse, SCANNE méticuleusement l'image pour détecter:
+- TOUS les emballages, boîtes, paquets, bouteilles visibles
+- TOUS les textes, logos, marques sur ces emballages
+- TOUS les tableaux nutritionnels même partiellement visibles
 
-IDENTIFICATION PRÉCISE DES PRODUITS:
-- Pour produits emballés: lis le NOM COMPLET et EXACT du produit
-- Exemples corrects: "Activia Bifidus Vanille 4x125g", "Lu Petit Beurre 200g", "Président Camembert 250g"
-- Exemples incorrects: "yaourt", "biscuit", "fromage" (trop vague)
-- Inclus la variété, parfum, format si visible: "Nature", "Chocolat", "Bio", "0%", etc.
-- Note le poids/volume si affiché: "125g", "1L", "250ml", etc.
+ÉTAPE 2 - DÉTECTION FORCÉE DE MARQUES:
+Si tu vois UN SEUL emballage dans l'image:
+- LIS OBLIGATOIREMENT tous les textes visibles dessus
+- IDENTIFIE la marque même si elle est petite ou en arrière-plan
+- Marques connues: Danone, Nestlé, Lu, Président, Bel, Yoplait, Jacquet, Bonne Maman, Fleury Michon, Coca-Cola, Pepsi, Kellogg's, Barilla, Heinz, Haribo, Ferrero, etc.
+- TRANSCRIS la marque EXACTEMENT comme écrite
+- Si aucune marque trouvée après scan complet: "marque_non_visible"
+- productType DOIT être "PACKAGED_PRODUCT" si emballage détecté
 
-LECTURE TABLEAU NUTRITIONNEL (PRIORITÉ ABSOLUE si visible):
-- Cherche activement "Valeurs nutritionnelles", "Nutrition Facts", "Informations nutritionnelles"
-- Lis EXACTEMENT les valeurs de protéines indiquées sur l'emballage
-- Note l'unité de référence: "pour 100g", "par portion", "par tranche", "par unité"
-- SI TABLEAU LISIBLE: utilise CES valeurs exactes, pas d'estimation !
-- Indique dataSource: "OFFICIAL_LABEL" et confidence: 0.95
+ÉTAPE 3 - LECTURE IMPÉRATIVE DU TABLEAU NUTRITIONNEL:
+Si tableau nutritionnel visible (même flou):
+- FORCE la lecture des "Valeurs nutritionnelles" / "Nutrition Facts"
+- LIS les chiffres exacts des protéines affichés
+- NOTE l'unité: "pour 100g", "par portion", "par tranche"
+- UTILISE uniquement ces valeurs officielles
+- dataSource: "OFFICIAL_LABEL", confidence: 0.95
+- N'ESTIME PAS si tableau lisible !
+
+ÉTAPE 4 - IDENTIFICATION EXACTE DU PRODUIT:
+- NOM COMPLET du produit tel qu'écrit sur l'emballage
+- Inclus: variété, parfum, format, poids
+- Exemples: "Activia Bifidus Vanille 4x125g", "Jacquet Pain de Mie Complet", "Lu Petit Beurre 200g"
+- ÉVITE les termes génériques comme "yaourt", "pain", "biscuit"
 
 CALCUL DE PORTIONS CRITIQUE POUR TOUS PRODUITS:
 - RÈGLE D'OR: valeurs OpenFoodFacts sont TOUJOURS pour 100g/100ml
@@ -251,7 +264,13 @@ Format de réponse JSON STRICT (tous les champs obligatoires):
   "productType": "PACKAGED_PRODUCT|NATURAL_FOOD|COOKED_DISH",
   "productName": "nom_exact_complet_si_produit_emballé_ou_null",
   "brand": "marque_exacte_si_visible_ou_marque_non_visible",
-  "searchAvailable": true
+  "dataSource": "OFFICIAL_LABEL|ONLINE_DATABASE|VISUAL_ESTIMATION",
+  "searchAvailable": true,
+  "officialNutritionData": {
+    "proteinsValue": valeur_exacte_protéines_si_tableau_visible,
+    "proteinsUnit": "pour_100g|par_portion|par_tranche",
+    "isFromLabel": true_si_lu_sur_emballage
+  }
 }`
 } as const;
 
