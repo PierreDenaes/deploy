@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import GoalSetter, { type GoalSetterRef } from "@/components/GoalSetter";
 import ProteinGoalCalculator from "@/components/ProteinGoalCalculator";
 import DataExport from "@/components/DataExport";
+import DataDeletion from "@/components/DataDeletion";
 import { sanitizeName } from "@/utils/sanitize";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -260,15 +261,15 @@ export default function Profile() {
           <motion.div variants={itemVariants}>
             <Tabs defaultValue="profile" className="space-y-6">
               <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
-                <TabsTrigger value="profile" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary rounded-lg py-2">
+                <TabsTrigger value="profile" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:shadow-sm data-[state=active]:text-primary dark:data-[state=active]:text-white rounded-lg py-2">
                   <User className="h-4 w-4" />
                   Profil
                 </TabsTrigger>
-                <TabsTrigger value="goals" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary rounded-lg py-2">
+                <TabsTrigger value="goals" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:shadow-sm data-[state=active]:text-primary dark:data-[state=active]:text-white rounded-lg py-2">
                   <Target className="h-4 w-4" />
                   Objectifs
                 </TabsTrigger>
-                <TabsTrigger value="settings" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary rounded-lg py-2">
+                <TabsTrigger value="settings" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:shadow-sm data-[state=active]:text-primary dark:data-[state=active]:text-white rounded-lg py-2">
                   <Settings className="h-4 w-4" />
                   Paramètres
                 </TabsTrigger>
@@ -346,14 +347,21 @@ export default function Profile() {
                       </AlertDescription>
                     </Alert>
                   </CardContent>
-                  <CardFooter className="flex flex-col sm:flex-row w-full gap-2 border-t pt-4">
-                      <DataExport 
-                        variant="inline" 
-                        className="flex-1 h-12 text-base"
-                        buttonText="Exporter les données"
-                      />
-                      <Button variant="destructive" onClick={handleResetAppData} className="flex-1 h-12 text-base">
-                        Réinitialiser les données
+                  <CardFooter className="flex flex-col w-full gap-3 border-t pt-4">
+                      <div className="flex flex-col gap-2 w-full">
+                        <DataExport 
+                          variant="inline" 
+                          className="w-full h-12 text-sm sm:text-base px-2"
+                          buttonText="Exporter les données"
+                        />
+                        <DataDeletion 
+                          variant="inline" 
+                          className="w-full h-12 text-sm sm:text-base px-2"
+                          buttonText="Supprimer sélectivement"
+                        />
+                      </div>
+                      <Button variant="destructive" onClick={handleResetAppData} className="w-full h-12 text-sm sm:text-base px-2">
+                        Réinitialiser toutes les données (aujourd'hui)
                       </Button>
                     </CardFooter>
                     <div className="w-full flex flex-col items-center gap-3">

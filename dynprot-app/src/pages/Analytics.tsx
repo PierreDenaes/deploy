@@ -71,7 +71,7 @@ type SortField = "date" | "protein";
 export default function Analytics() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { state, deleteMeal, addFavoriteMeal } = useAppContext();
+  const { state, deleteMeal, addFavoriteMeal, markAnalyticsViewed } = useAppContext();
   
   // Get tab from URL params with legacy support, default to 'analytics'
   const rawTab = searchParams.get('tab');
@@ -93,6 +93,11 @@ export default function Analytics() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [mealToDelete, setMealToDelete] = useState<string | null>(null);
+
+  // Mark analytics as viewed when component mounts
+  React.useEffect(() => {
+    markAnalyticsViewed();
+  }, [markAnalyticsViewed]);
 
   // Handle tab changes and update URL
   const handleTabChange = (tab: string) => {

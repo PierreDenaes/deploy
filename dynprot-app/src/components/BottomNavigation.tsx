@@ -40,7 +40,16 @@ const BottomNavigation = () => {
       path: '/analytics', 
       icon: <BarChart3 className="h-6 w-6" />, 
       ariaLabel: 'Voir les statistiques et analyses',
-      badgeCount: state.meals.length > 0 ? state.meals.length : undefined
+      badgeCount: (() => {
+        if (!state.lastAnalyticsViewed) {
+          // Si jamais consulté, afficher le nombre total
+          return state.meals.length > 0 ? state.meals.length : undefined;
+        }
+        // Compter les repas ajoutés après la dernière consultation
+        const lastViewedDate = new Date(state.lastAnalyticsViewed);
+        const newMeals = state.meals.filter(meal => new Date(meal.timestamp) > lastViewedDate);
+        return newMeals.length > 0 ? newMeals.length : undefined;
+      })()
     },
     { 
       name: 'Profil', 

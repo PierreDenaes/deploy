@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useReducer, useEffect, useCallback, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { UnifiedAnalysisResult } from '../hooks/useAnalyzeMeal';
 import { MealService, FavoriteService, FavoriteMeal as ApiFavoriteMeal } from '../services/api.meals';
@@ -97,6 +97,7 @@ export interface AppState {
   isLoading: boolean;
   error: string | null;
   analysisResult: UnifiedAnalysisResult | null;
+  lastAnalyticsViewed: string | null;
   userSettings?: {
     proteinGoal: number;
     calorieGoal: number;
@@ -134,6 +135,8 @@ type ActionType =
   | { type: 'CLEAR_ANALYSIS_RESULT' }
   | { type: 'LOAD_STORED_STATE'; payload: AppState }
   | { type: 'UPDATE_USER_SETTINGS'; payload: Partial<AppState['userSettings']> }
+  | { type: 'MARK_ANALYTICS_VIEWED' }
+  | { type: 'SET_LAST_ANALYTICS_VIEWED'; payload: string | null }
   | { type: 'RESET_APP_DATA' };
 
 // Initial state  
@@ -189,6 +192,7 @@ const initialState: AppState = {
   isLoading: false,
   error: null,
   analysisResult: null,
+  lastAnalyticsViewed: null,
   userSettings: {
     proteinGoal: 120,
     calorieGoal: 2000,
@@ -218,6 +222,7 @@ const AppStateContext = createContext<{
   addMealFromFavorite: (favoriteId: string) => Promise<void>;
   setAnalysisResult: (result: UnifiedAnalysisResult | null) => void;
   clearAnalysisResult: () => void;
+  markAnalyticsViewed: () => void;
   resetAppData: () => Promise<void>;
   deleteUserAccount: (password: string, confirmation: string) => Promise<void>;
   userSettings?: AppState['userSettings'];
@@ -234,6 +239,7 @@ const AppStateContext = createContext<{
   addMealFromFavorite: async () => {},
   setAnalysisResult: () => {},
   clearAnalysisResult: () => {},
+  markAnalyticsViewed: () => {},
   resetAppData: async () => {},
   deleteUserAccount: async () => {},
   userSettings: initialState.userSettings,
@@ -346,6 +352,12 @@ const appReducer = (state: AppState, action: ActionType): AppState => {
     case 'CLEAR_ANALYSIS_RESULT':
       return { ...state, analysisResult: null };
 
+    case 'MARK_ANALYTICS_VIEWED':
+      return { ...state, lastAnalyticsViewed: new Date().toISOString() };
+
+    case 'SET_LAST_ANALYTICS_VIEWED':
+      return { ...state, lastAnalyticsViewed: action.payload };
+
     case 'UPDATE_USER_SETTINGS':
       newState = {
         ...state,
@@ -457,6 +469,17 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           };
           
           dispatch({ type: 'SET_USER', payload: userProfile });
+          
+          // Load last analytics viewed timestamp from auth user
+          if (authUser?.last_analytics_viewed) {
+            const lastAnalyticsViewed = typeof authUser.last_analytics_viewed === 'string' 
+              ? authUser.last_analytics_viewed 
+              : authUser.last_analytics_viewed.toISOString();
+            dispatch({ 
+              type: 'SET_LAST_ANALYTICS_VIEWED', 
+              payload: lastAnalyticsViewed 
+            });
+          }
           
           // Update user settings
           dispatch({ 
@@ -923,6 +946,32 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     dispatch({ type: 'CLEAR_ANALYSIS_RESULT' });
   };
 
+  const markAnalyticsViewed = useCallback(async () => {
+    try {
+      // Update server-side timestamp
+      const response = await fetch('/api/profile/analytics-viewed', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        }
+      });
+
+      if (response.ok) {
+        // Update local state only if server update was successful
+        dispatch({ type: 'MARK_ANALYTICS_VIEWED' });
+      } else {
+        console.error('Failed to update analytics viewed timestamp on server');
+        // Still update local state as fallback
+        dispatch({ type: 'MARK_ANALYTICS_VIEWED' });
+      }
+    } catch (error) {
+      console.error('Error updating analytics viewed timestamp:', error);
+      // Still update local state as fallback
+      dispatch({ type: 'MARK_ANALYTICS_VIEWED' });
+    }
+  }, []);
+
   // Reset app data function
   const resetAppData = async () => {
     try {
@@ -1017,6 +1066,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       addMealFromFavorite,
       setAnalysisResult,
       clearAnalysisResult,
+      markAnalyticsViewed,
       resetAppData,
       deleteUserAccount,
       userSettings: state.userSettings
