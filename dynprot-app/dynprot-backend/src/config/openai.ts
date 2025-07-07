@@ -164,16 +164,31 @@ IDENTIFICATION DES ALIMENTS:
 - Reconnais les accompagnements (sauces, assaisonnements, garnitures)
 - Estime les portions en utilisant des références visuelles (taille d'assiette, couverts, etc.)
 
+DÉTECTION OBLIGATOIRE DE MARQUES ET PRODUITS EMBALLÉS:
+- CHERCHE activement les MARQUES sur tous les emballages visibles
+- Lis attentivement les logos, noms de fabricants, textes en gros caractères
+- Marques françaises courantes: Danone, Nestlé, Lu, Président, Bel, Yoplait, Bonne Maman, Fleury Michon, etc.
+- Marques internationales: Coca-Cola, Pepsi, Kellogg's, Barilla, Heinz, etc.
+- Si marque visible: note-la EXACTEMENT comme écrite sur l'emballage
+- Si marque non trouvée: indique "marque_non_visible"
+
+IDENTIFICATION PRÉCISE DES PRODUITS:
+- Pour produits emballés: lis le NOM COMPLET et EXACT du produit
+- Exemples corrects: "Activia Bifidus Vanille 4x125g", "Lu Petit Beurre 200g", "Président Camembert 250g"
+- Exemples incorrects: "yaourt", "biscuit", "fromage" (trop vague)
+- Inclus la variété, parfum, format si visible: "Nature", "Chocolat", "Bio", "0%", etc.
+- Note le poids/volume si affiché: "125g", "1L", "250ml", etc.
+
+LECTURE TABLEAU NUTRITIONNEL (si visible):
+- Cherche "Valeurs nutritionnelles", "Nutrition Facts", "Informations nutritionnelles"
+- Lis EXACTEMENT les valeurs de protéines indiquées
+- Note l'unité de référence: "pour 100g", "par portion", "par unité"
+
 ESTIMATION NUTRITIONNELLE:
 - Utilise la base de données nutritionnelle CIQUAL française quand possible
 - Prends en compte les modes de cuisson qui affectent les valeurs nutritionnelles
 - Calcule les portions en grammes en utilisant des références visuelles
 - Sois conservateur dans tes estimations si l'image est ambiguë
-
-AMÉLIORATION: DÉTECTION DE PRODUITS:
-- Si tu vois un PRODUIT EMBALLÉ (boîte, paquet, bouteille), essaie de lire le tableau nutritionnel
-- Si c'est un produit reconnaissable mais tableau illisible, indique le nom/marque exact
-- Pour les aliments naturels, utilise l'estimation visuelle normale
 
 QUALITÉ DE L'IMAGE:
 - Excellent: Image nette, bonne lumière, tous les aliments clairement visibles
@@ -186,7 +201,7 @@ CONFIANCE ET RÉVISION:
 - Confidence moyenne (0.6-0.8): Bonne identification, portions approximatives
 - Confidence faible (<0.6): Identification incertaine, révision recommandée
 
-Format de réponse JSON STRICT:
+Format de réponse JSON STRICT (tous les champs obligatoires):
 {
   "foods": ["aliment1", "aliment2"],
   "protein": grammes_proteine_total,
@@ -214,10 +229,10 @@ Format de réponse JSON STRICT:
   ],
   "imageQuality": "excellent|good|fair|poor",
   "requiresManualReview": true_ou_false,
-  "productType": "PACKAGED_PRODUCT ou NATURAL_FOOD ou COOKED_DISH",
-  "productName": "nom_exact_si_produit_emballé",
-  "brand": "marque_si_visible",
-  "searchAvailable": true_si_produit_identifiable_mais_tableau_illisible
+  "productType": "PACKAGED_PRODUCT|NATURAL_FOOD|COOKED_DISH",
+  "productName": "nom_exact_complet_si_produit_emballé_ou_null",
+  "brand": "marque_exacte_si_visible_ou_marque_non_visible",
+  "searchAvailable": true
 }`
 } as const;
 

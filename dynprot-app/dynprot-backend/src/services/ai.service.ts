@@ -166,18 +166,57 @@ export class AIService {
           const parsed = JSON.parse(cleanedResponse);
           aiResponse = this.normalizeAIResponse(parsed);
           
-          // Tenter l'enrichissement si c'est un produit emballé
-          if (parsed.productType === 'PACKAGED_PRODUCT' && parsed.productName) {
-            console.log(`🔍 Tentative d'enrichissement: ${parsed.productName}`);
+          // Tenter l'enrichissement automatique pour tous les produits emballés identifiés
+          if (parsed.productType === 'PACKAGED_PRODUCT' && 
+              (parsed.productName || parsed.brand) &&
+              parsed.productName !== null &&
+              parsed.brand !== 'marque_non_visible') {
+            
+            console.log(`🔍 Produit emballé détecté - Tentative d'enrichissement:`, {
+              productName: parsed.productName,
+              brand: parsed.brand,
+              productType: parsed.productType
+            });
+            
             try {
-              const enriched = await this.processAIResponseWithSearch(responseText);
-              if (enriched.onlineSearchResult) {
-                aiResponse = enriched;
-                console.log('✅ Données enrichies via recherche en ligne');
+              const brand = parsed.brand === 'marque_non_visible' ? undefined : parsed.brand;
+              const onlineData = await this.searchProductNutrition(parsed.productName, brand);
+              
+              if (onlineData && onlineData.proteins !== null) {
+                console.log('✅ Données trouvées via OpenFoodFacts:', {
+                  productName: onlineData.productName,
+                  brand: onlineData.brand,
+                  proteins: onlineData.proteins,
+                  source: onlineData.source
+                });
+                
+                // Fusionner les données en gardant les meilleures valeurs
+                aiResponse.protein = onlineData.proteins;
+                aiResponse.calories = onlineData.calories || aiResponse.calories;
+                aiResponse.carbs = onlineData.carbs || aiResponse.carbs;
+                aiResponse.fat = onlineData.fat || aiResponse.fat;
+                aiResponse.fiber = onlineData.fiber || aiResponse.fiber;
+                aiResponse.confidence = Math.max(aiResponse.confidence, onlineData.confidence / 100);
+                aiResponse.dataSource = 'ONLINE_DATABASE';
+                aiResponse.isExactValue = true;
+                aiResponse.onlineSearchResult = onlineData;
+                aiResponse.explanation = `${aiResponse.explanation} [Données enrichies via ${onlineData.source}]`;
+              } else {
+                console.log('⚠️ Produit non trouvé dans OpenFoodFacts');
+                aiResponse.searchAvailable = true;
+                aiResponse.notes = `Produit identifié: ${parsed.brand || ''} ${parsed.productName}. Recherche automatique dans les bases de données nutritionnelles échouée.`;
               }
             } catch (enrichmentError) {
-              console.warn('⚠️ Enrichissement échoué, utilisation des données de base');
+              console.error('❌ Erreur enrichissement:', enrichmentError);
+              aiResponse.searchAvailable = true;
+              aiResponse.notes = `Produit identifié mais enrichissement échoué. Données basées sur l'estimation visuelle.`;
             }
+          } else {
+            console.log(`ℹ️ Pas d'enrichissement nécessaire:`, {
+              productType: parsed.productType,
+              productName: parsed.productName,
+              brand: parsed.brand
+            });
           }
         } catch (parseError) {
           console.error('Erreur parsing JSON IA Vision:', parseError);
@@ -420,35 +459,74 @@ export class AIService {
   // NOUVELLES FONCTIONS DE RECHERCHE NUTRITIONNELLE
   // =====================================================
 
-  // Rechercher les données nutritionnelles d'un produit en ligne
+  // Rechercher les données nutritionnelles d'un produit en ligne avec stratégies multiples
   static async searchProductNutrition(productName: string, brand?: string): Promise<NutritionalData | null> {
-    try {
-      console.log(`🔍 Recherche nutritionnelle: ${brand ? brand + ' ' : ''}${productName}`);
+    console.log(`🔍 Début recherche nutritionnelle:`, { productName, brand });
+    
+    const searchStrategies = [
+      // Stratégie 1: Marque + nom complet
+      brand ? `${brand} ${productName}` : null,
+      // Stratégie 2: Nom de produit seulement
+      productName,
+      // Stratégie 3: Marque seulement (si nom trop spécifique)
+      brand && productName.length > 20 ? brand : null,
+      // Stratégie 4: Mots-clés extraits (sans poids/volume)
+      this.extractProductKeywords(productName, brand),
+    ].filter(Boolean) as string[];
+    
+    console.log(`📝 Stratégies de recherche:`, searchStrategies);
+    
+    for (let i = 0; i < searchStrategies.length; i++) {
+      const query = searchStrategies[i];
+      console.log(`🎯 Tentative ${i + 1}/${searchStrategies.length}: "${query}"`);
       
-      // Option 1: OpenFoodFacts API (base de données ouverte française)
-      const openFoodFactsResult = await this.searchOpenFoodFacts(productName, brand);
-      if (openFoodFactsResult) {
-        console.log('✅ Données trouvées via OpenFoodFacts');
-        return openFoodFactsResult;
+      try {
+        const result = await this.searchOpenFoodFacts(query as string);
+        if (result) {
+          console.log(`✅ Succès avec stratégie ${i + 1}: ${result.productName}`);
+          return result;
+        }
+      } catch (error: any) {
+        console.warn(`⚠️ Stratégie ${i + 1} échouée:`, error?.message || error);
       }
       
-      // Option 2: Recherche alternative si OpenFoodFacts échoue
-      console.log('⚠️ Produit non trouvé dans OpenFoodFacts');
-      return null;
-      
-    } catch (error) {
-      console.error('❌ Erreur recherche produit:', error);
-      return null;
+      // Petite pause entre les requêtes pour éviter le rate limiting
+      if (i < searchStrategies.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
     }
+    
+    console.log('❌ Toutes les stratégies de recherche ont échoué');
+    return null;
   }
 
-  // Rechercher dans la base de données OpenFoodFacts
-  static async searchOpenFoodFacts(productName: string, brand?: string): Promise<NutritionalData | null> {
+  // Extraire les mots-clés pertinents d'un nom de produit
+  private static extractProductKeywords(productName: string, brand?: string): string {
+    // Supprimer les poids, volumes et formats
+    let keywords = productName
+      .replace(/\d+\s*(g|kg|ml|l|cl|oz|lb)\b/gi, '') // Poids/volumes
+      .replace(/\d+\s*x\s*\d+/gi, '') // Formats type "4x125g"
+      .replace(/\b(bio|biologique|organic)\b/gi, '') // Mots génériques
+      .replace(/\b(nature|naturel|plain)\b/gi, '')
+      .replace(/[(),\[\]]/g, ' ') // Parenthèses et crochets
+      .replace(/\s+/g, ' ') // Espaces multiples
+      .trim();
+    
+    // Ajouter la marque si elle n'est pas déjà dans le nom
+    if (brand && !keywords.toLowerCase().includes(brand.toLowerCase())) {
+      keywords = `${brand} ${keywords}`;
+    }
+    
+    console.log(`🔤 Mots-clés extraits: "${productName}" → "${keywords}"`);
+    return keywords;
+  }
+
+  // Rechercher dans la base de données OpenFoodFacts avec une requête simple
+  static async searchOpenFoodFacts(searchQuery: string): Promise<NutritionalData | null> {
     try {
-      const searchQuery = brand ? `${brand} ${productName}` : productName;
       const encodedQuery = encodeURIComponent(searchQuery);
       
-      console.log(`📡 Requête OpenFoodFacts: ${searchQuery}`);
+      console.log(`📡 Requête OpenFoodFacts: "${searchQuery}"`);
       
       const response = await fetch(
         `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodedQuery}&search_simple=1&action=process&json=1&page_size=5`,
@@ -477,8 +555,8 @@ export class AIService {
         }
         
         const nutritionalData: NutritionalData = {
-          productName: product.product_name || productName,
-          brand: product.brands || brand,
+          productName: product.product_name || searchQuery,
+          brand: product.brands,
           proteins: this.extractNutrientValue(product.nutriments, 'proteins'),
           calories: this.extractNutrientValue(product.nutriments, 'energy-kcal'),
           carbs: this.extractNutrientValue(product.nutriments, 'carbohydrates'),
