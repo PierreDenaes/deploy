@@ -3,10 +3,18 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import BottomNavigation from '../components/BottomNavigation';
 import { useAppContext } from '../context/AppContext';
+import { useScrollReset } from '../hooks/useScrollReset';
 
 const MainLayout = () => {
   const location = useLocation();
   const { state, dispatch } = useAppContext();
+  
+  // Reset scroll for main content area on route changes
+  useScrollReset({
+    selector: 'main',
+    behavior: 'instant',
+    resetOnRouteChange: true,
+  });
 
   // Update navigation state when route changes
   useEffect(() => {
@@ -21,6 +29,7 @@ const MainLayout = () => {
       });
     }
   }, [location.pathname, state.navigation.currentRoute, dispatch]);
+
 
   return (
     <div className={`min-h-screen flex flex-col ${state.preferences.darkMode ? 'dark' : ''}`}>

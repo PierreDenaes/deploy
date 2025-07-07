@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import ScrollToTop from '@/components/ScrollToTop';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider } from './context/AuthContext';
@@ -53,6 +54,7 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <BrowserRouter>
+            <ScrollToTop />
             <Suspense fallback={<LoadingSpinner />}>
               <Routes>
                 {/* Authentication Routes */}
