@@ -37,6 +37,9 @@ const ProfileSetup = lazy(() => import('./pages/onboarding/ProfileSetup'));
 const GoalSetting = lazy(() => import('./pages/onboarding/GoalSetting'));
 const AppTour = lazy(() => import('./pages/onboarding/AppTour'));
 
+// Lazy load information pages
+const ProteinCalculationExplanation = lazy(() => import('./pages/ProteinCalculationExplanation'));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -103,6 +106,7 @@ const App = () => (
                   <Route path="/add-meal" element={<AddMealForm />} />
                   <Route path="/analytics" element={<Analytics />} />
                   <Route path="/profile" element={<Profile />} />
+                  <Route path="/protein-calculation-explained" element={<ProteinCalculationExplanation />} />
                   {/* Redirect legacy routes to analytics with appropriate tabs */}
                   <Route path="/history" element={<Analytics />} />
                   <Route path="/summary" element={<Analytics />} />

@@ -74,10 +74,13 @@ export interface OnboardingData {
     units: 'metric' | 'imperial';
   };
   goals: {
-    primaryGoal: 'weight_loss' | 'muscle_gain' | 'maintenance' | 'general_health';
+    primaryGoal: 'weight_loss' | 'muscle_gain' | 'maintenance' | 'general_health' | 'endurance' | 'strength';
+    secondaryGoal?: 'weight_loss' | 'muscle_gain' | 'maintenance' | 'general_health' | 'endurance' | 'strength' | 'none';
+    goalPriority?: 'primary_only' | 'balanced' | 'secondary_focused';
     proteinGoal: number;
     calorieGoal: number;
     dietaryPreferences: string[];
+    useCalculatedRecommendations?: boolean;
   };
   preferences: {
     notifications: boolean;

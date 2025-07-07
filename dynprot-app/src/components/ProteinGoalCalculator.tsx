@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from "react";
+import React, { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle, useRef } from "react";
 import { 
   Card, 
   CardContent, 
@@ -89,8 +89,24 @@ const activityLevels = [
   { value: 'extremely_active', label: 'Extrêmement actif', multiplier: 1.4 },
 ];
 
+interface OnboardingData {
+  weight?: number;
+  height?: number;
+  age?: number;
+  gender?: string;
+  activityLevel?: string;
+  fitnessGoal?: string;
+  units?: 'metric' | 'imperial';
+  bodyFatPercentage?: number;
+  trainingDays?: number;
+}
+
 interface ProteinGoalCalculatorProps {
   goalSetterRef?: React.RefObject<GoalSetterRef>;
+  initialData?: OnboardingData;
+  autoCalculateOnMount?: boolean;
+  showFormFields?: boolean;
+  onRecommendationChange?: (recommendation: ProteinRecommendation) => void;
 }
 
 // Precise unit conversion functions
@@ -122,7 +138,13 @@ const calculateTDEE = (bmr: number, activityLevel: string): number => {
   return bmr * (multipliers[activityLevel as keyof typeof multipliers] || 1.55);
 };
 
-export default function ProteinGoalCalculator({ goalSetterRef }: ProteinGoalCalculatorProps = {}) {
+export default function ProteinGoalCalculator({ 
+  goalSetterRef,
+  initialData,
+  autoCalculateOnMount = false,
+  showFormFields = true,
+  onRecommendationChange
+}: ProteinGoalCalculatorProps = {}) {
   const { userSettings, updateNutritionGoals } = useAppContext();
   
   // Map API fitness goals to calculator fitness goals
@@ -137,21 +159,41 @@ export default function ProteinGoalCalculator({ goalSetterRef }: ProteinGoalCalc
     return mapping[apiGoal || ''] || 'general_health';
   };
   
-  const [weight, setWeight] = useState<number>(userSettings?.weightKg || 70);
-  const [height, setHeight] = useState<number>(userSettings?.heightCm || 175);
-  const [age, setAge] = useState<number>(userSettings?.age || 30);
-  const [gender, setGender] = useState<string>(userSettings?.gender || 'other');
-  const [activityLevel, setActivityLevel] = useState<string>(userSettings?.activityLevel || 'moderate');
-  const [fitnessGoal, setFitnessGoal] = useState<string>(mapApiFitnessGoalToCalculator(userSettings?.fitnessGoal) || 'general_health');
-  const [bodyFatPercentage, setBodyFatPercentage] = useState<number>(userSettings?.bodyFatPercentage || 20);
-  const [trainingDays, setTrainingDays] = useState<number>(userSettings?.trainingDays || 3);
-  const [unit, setUnit] = useState<'metric' | 'imperial'>(userSettings?.preferredUnits || 'metric');
+  const [weight, setWeight] = useState<number>(
+    initialData?.weight || userSettings?.weightKg || 70
+  );
+  const [height, setHeight] = useState<number>(
+    initialData?.height || userSettings?.heightCm || 175
+  );
+  const [age, setAge] = useState<number>(
+    initialData?.age || userSettings?.age || 30
+  );
+  const [gender, setGender] = useState<string>(
+    initialData?.gender || userSettings?.gender || 'other'
+  );
+  const [activityLevel, setActivityLevel] = useState<string>(
+    initialData?.activityLevel || userSettings?.activityLevel || 'moderate'
+  );
+  const [fitnessGoal, setFitnessGoal] = useState<string>(
+    initialData?.fitnessGoal || mapApiFitnessGoalToCalculator(userSettings?.fitnessGoal) || 'general_health'
+  );
+  const [bodyFatPercentage, setBodyFatPercentage] = useState<number>(
+    initialData?.bodyFatPercentage || userSettings?.bodyFatPercentage || 20
+  );
+  const [trainingDays, setTrainingDays] = useState<number>(
+    initialData?.trainingDays || userSettings?.trainingDays || 3
+  );
+  const [unit, setUnit] = useState<'metric' | 'imperial'>(
+    initialData?.units || userSettings?.preferredUnits || 'metric'
+  );
   const [recommendation, setRecommendation] = useState<ProteinRecommendation | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [autoCalculateEnabled, setAutoCalculateEnabled] = useState(false);
   const [lastCalculationParams, setLastCalculationParams] = useState<string>('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [showToastNotifications, setShowToastNotifications] = useState(true);
+  const hasCalculatedOnMount = useRef(false);
 
   // Debounced auto-calculation
   const debouncedCalculate = useCallback(
@@ -161,7 +203,7 @@ export default function ProteinGoalCalculator({ goalSetterRef }: ProteinGoalCalc
         clearTimeout(timeoutId);
         timeoutId = setTimeout(() => {
           if (autoCalculateEnabled && weight && height && age && !isCalculating) {
-            handleCalculate();
+            handleCalculate(false); // false = no toast notifications for auto-calculations
           }
         }, 1000); // 1 second delay
       };
@@ -185,9 +227,9 @@ export default function ProteinGoalCalculator({ goalSetterRef }: ProteinGoalCalc
     return JSON.stringify(params);
   }, [weight, height, age, gender, activityLevel, fitnessGoal, bodyFatPercentage, trainingDays, unit]);
 
-  // Update form when user settings change
+  // Update form when user settings change (only if no initial data provided)
   useEffect(() => {
-    if (userSettings) {
+    if (userSettings && !initialData) {
       setWeight(userSettings.weightKg || 70);
       setHeight(userSettings.heightCm || 175);
       setAge(userSettings.age || 30);
@@ -198,7 +240,22 @@ export default function ProteinGoalCalculator({ goalSetterRef }: ProteinGoalCalc
       setTrainingDays(userSettings.trainingDays || 3);
       setUnit(userSettings.preferredUnits || 'metric');
     }
-  }, [userSettings]);
+  }, [userSettings, initialData]);
+
+  // Auto-calculate on mount if requested and data is available
+  useEffect(() => {
+    if (autoCalculateOnMount && initialData && weight && height && age && !hasCalculatedOnMount.current) {
+      hasCalculatedOnMount.current = true;
+      handleCalculate(false); // false = no toast notifications for auto-calculations
+    }
+  }, [autoCalculateOnMount, initialData, weight, height, age]);
+
+  // Call recommendation change callback when recommendation updates
+  useEffect(() => {
+    if (recommendation && onRecommendationChange) {
+      onRecommendationChange(recommendation);
+    }
+  }, [recommendation, onRecommendationChange]);
 
   // Auto-calculate when parameters change (if enabled)
   useEffect(() => {
@@ -282,13 +339,26 @@ export default function ProteinGoalCalculator({ goalSetterRef }: ProteinGoalCalc
     }
   }, [userSettings, updateNutritionGoals]);
 
-  const calculateSmartProteinGoal = (): ProteinRecommendation => {
+  const calculateSmartProteinGoal = useCallback((): ProteinRecommendation => {
     let weightKg = weight;
     let heightCm = height;
     if (unit === 'imperial') {
       weightKg = convertWeight.lbToKg(weight);
       heightCm = convertHeight.inToCm(height);
     }
+
+    // Debug log to ensure consistency (temporary)
+    console.log('🧮 ProteinGoalCalculator params:', {
+      weightKg,
+      heightCm,
+      age,
+      gender,
+      activityLevel,
+      fitnessGoal,
+      bodyFatPercentage,
+      trainingDays,
+      source: initialData ? 'Onboarding' : 'Profile'
+    });
 
     // Calculate BMR and TDEE
     const bmr = calculateBMR(weightKg, heightCm, age, gender);
@@ -403,9 +473,9 @@ export default function ProteinGoalCalculator({ goalSetterRef }: ProteinGoalCalc
         explanation: calorieExplanation
       }
     };
-  };
+  }, [weight, height, age, gender, activityLevel, fitnessGoal, bodyFatPercentage, trainingDays, unit]);
 
-  const handleCalculate = async () => {
+  const handleCalculate = useCallback(async (showToast: boolean = true) => {
     if (isCalculating) return; // Prevent multiple simultaneous calculations
     
     setIsCalculating(true);
@@ -465,7 +535,9 @@ export default function ProteinGoalCalculator({ goalSetterRef }: ProteinGoalCalc
       
       if (Object.keys(newFieldErrors).length > 0) {
         const errorMessages = Object.values(newFieldErrors);
-        toast.error(`Veuillez corriger les erreurs de saisie (${errorMessages.length} erreur${errorMessages.length > 1 ? 's' : ''})`);
+        if (showToast) {
+          toast.error(`Veuillez corriger les erreurs de saisie (${errorMessages.length} erreur${errorMessages.length > 1 ? 's' : ''})`);
+        }
         return;
       }
       
@@ -510,7 +582,9 @@ export default function ProteinGoalCalculator({ goalSetterRef }: ProteinGoalCalc
           }
         };
         
-        toast.warning('Calcul simplifié utilisé. Pour des recommandations précises, vérifiez vos données.');
+        if (showToast) {
+          toast.warning('Calcul simplifié utilisé. Pour des recommandations précises, vérifiez vos données.');
+        }
       }
       
       // Simulate brief async operation for better UX
@@ -518,7 +592,9 @@ export default function ProteinGoalCalculator({ goalSetterRef }: ProteinGoalCalc
       
       setRecommendation(result);
       setFieldErrors({}); // Clear any previous errors on successful calculation
-      toast.success('Calcul effectué avec succès !');
+      if (showToast) {
+        toast.success('Calcul effectué avec succès !');
+      }
       
     } catch (error) {
       console.error('Erreur critique lors du calcul:', error);
@@ -543,12 +619,14 @@ export default function ProteinGoalCalculator({ goalSetterRef }: ProteinGoalCalc
       };
       
       setRecommendation(fallbackRecommendation);
-      toast.error('Erreur de calcul. Recommandations de base affichées. Vérifiez vos données.');
+      if (showToast) {
+        toast.error('Erreur de calcul. Recommandations de base affichées. Vérifiez vos données.');
+      }
       
     } finally {
       setIsCalculating(false);
     }
-  };
+  }, [weight, height, age, gender, activityLevel, fitnessGoal, bodyFatPercentage, trainingDays, unit]);
 
   // Map calculator fitness goals to API fitness goals
   const mapFitnessGoalToApi = (calculatorGoal: string): string => {
@@ -695,8 +773,17 @@ export default function ProteinGoalCalculator({ goalSetterRef }: ProteinGoalCalc
           <Calculator className="h-5 w-5 text-primary" />
           Calculateur intelligent de nutrition
         </CardTitle>
-        <CardDescription>
-          Obtenez des recommandations personnalisées de protéines et calories basées sur votre métabolisme et vos objectifs
+        <CardDescription className="flex items-center justify-between">
+          <span>Obtenez des recommandations personnalisées de protéines et calories basées sur votre métabolisme et vos objectifs</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.open('/protein-calculation-explained', '_blank')}
+            className="text-xs"
+          >
+            <HelpCircle className="h-3 w-3 mr-1" />
+            Comment ça marche ?
+          </Button>
         </CardDescription>
         
         {/* Progress Indicator */}
@@ -772,6 +859,8 @@ export default function ProteinGoalCalculator({ goalSetterRef }: ProteinGoalCalc
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {showFormFields && (
+          <>
         {/* Unit Selection & Auto-Calculate Toggle */}
         <div className="space-y-3">
           <div className="flex gap-2">
@@ -1051,17 +1140,19 @@ export default function ProteinGoalCalculator({ goalSetterRef }: ProteinGoalCalc
             </Select>
           </div>
         </div>
+          </>
+        )}
 
         <Button 
           onClick={handleCalculate} 
           className="w-full h-12"
-          disabled={!calculateProgress.isRequiredComplete || isCalculating}
+          disabled={showFormFields ? !calculateProgress.isRequiredComplete || isCalculating : isCalculating}
         >
           <Calculator className={`mr-2 h-5 w-5 ${isCalculating ? 'animate-spin' : ''}`} />
           {isCalculating ? 'Calcul en cours...' : 'Calculer mes besoins en protéines et calories'}
         </Button>
         
-        {!calculateProgress.isRequiredComplete && (
+        {showFormFields && !calculateProgress.isRequiredComplete && (
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription className="text-sm">

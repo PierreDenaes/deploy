@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, User, Activity, Target, Settings, CheckCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, User, Activity, Target, Settings, CheckCircle, Calculator, Brain, Star } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ import { useAuth } from '@/context/AuthContext';
 import { OnboardingData } from '@/types/auth';
 import { ProfileService } from '@/services/api.profile';
 import { toast } from 'sonner';
+import ProteinGoalCalculator from '@/components/ProteinGoalCalculator';
 
 // Validation schemas for each step
 const step1Schema = z.object({
@@ -36,10 +37,13 @@ const step2Schema = z.object({
 });
 
 const step3Schema = z.object({
-  primaryGoal: z.enum(['weight_loss', 'muscle_gain', 'maintenance', 'general_health']),
+  primaryGoal: z.enum(['weight_loss', 'muscle_gain', 'maintenance', 'general_health', 'endurance', 'strength']),
+  secondaryGoal: z.enum(['weight_loss', 'muscle_gain', 'maintenance', 'general_health', 'endurance', 'strength', 'none']).optional(),
+  goalPriority: z.enum(['primary_only', 'balanced', 'secondary_focused']).optional(),
   proteinGoal: z.number().min(20, 'Minimum 20g de protéines par jour').max(300, 'Maximum 300g de protéines par jour'),
   calorieGoal: z.number().min(800, 'Minimum 800 calories par jour').max(5000, 'Maximum 5000 calories par jour'),
   dietaryPreferences: z.array(z.string()),
+  useCalculatedRecommendations: z.boolean(),
 });
 
 const step4Schema = z.object({
@@ -62,10 +66,18 @@ const activityLevels = [
 ];
 
 const primaryGoals = [
-  { value: 'weight_loss', label: 'Perte de poids', description: 'Perdre du poids et réduire la graisse corporelle' },
-  { value: 'muscle_gain', label: 'Gain musculaire', description: 'Développer la masse musculaire et la force' },
-  { value: 'maintenance', label: 'Maintien', description: 'Maintenir le poids actuel et la santé' },
-  { value: 'general_health', label: 'Santé générale', description: 'Santé et bien-être général' },
+  { value: 'weight_loss', label: 'Perte de poids', description: 'Perdre du poids et réduire la graisse corporelle', emoji: '🎯' },
+  { value: 'muscle_gain', label: 'Gain musculaire', description: 'Développer la masse musculaire et la force', emoji: '💪' },
+  { value: 'maintenance', label: 'Maintien', description: 'Maintenir le poids actuel et la santé', emoji: '⚖️' },
+  { value: 'general_health', label: 'Santé générale', description: 'Santé et bien-être général', emoji: '🌟' },
+  { value: 'endurance', label: 'Endurance', description: 'Améliorer la performance cardiovasculaire', emoji: '🏃' },
+  { value: 'strength', label: 'Force', description: 'Développer la force et la puissance', emoji: '🏋️' },
+];
+
+const goalPriorityOptions = [
+  { value: 'primary_only', label: 'Objectif principal uniquement', description: 'Se concentrer entièrement sur l\'objectif principal' },
+  { value: 'balanced', label: 'Approche équilibrée', description: 'Combiner les deux objectifs de manière équilibrée' },
+  { value: 'secondary_focused', label: 'Priorité secondaire', description: 'Donner plus d\'importance à l\'objectif secondaire' },
 ];
 
 const dietaryOptions = [
@@ -119,11 +131,27 @@ export default function ProfileSetup() {
   const [formData, setFormData] = useState<Partial<OnboardingData>>({
     personalInfo: { name: user?.name || '', age: 25, gender: 'other' },
     physicalStats: { height: 170, weight: 70, activityLevel: 'moderate', units: 'metric' },
-    goals: { primaryGoal: 'general_health', proteinGoal: 120, calorieGoal: 2000, dietaryPreferences: [] },
+    goals: { 
+      primaryGoal: 'general_health', 
+      secondaryGoal: 'none',
+      goalPriority: 'primary_only',
+      proteinGoal: 120, 
+      calorieGoal: 2000, 
+      dietaryPreferences: [],
+      useCalculatedRecommendations: true
+    },
     preferences: { notifications: true, dataSharing: false, darkMode: false },
   });
-
-  const totalSteps = 4;
+  
+  const [calculatedRecommendations, setCalculatedRecommendations] = useState<{
+    protein: number;
+    calories: number;
+    explanation: string;
+  } | null>(null);
+  
+  const [autoCalculationDone, setAutoCalculationDone] = useState(false);
+  const [objectivesSelected, setObjectivesSelected] = useState(false);
+  const [canCalculate, setCanCalculate] = useState(false);
 
   // Form configurations for each step
   const step1Form = useForm<Step1Data>({
@@ -141,13 +169,82 @@ export default function ProfileSetup() {
 
   const step3Form = useForm<Step3Data>({
     resolver: zodResolver(step3Schema),
-    defaultValues: formData.goals,
+    defaultValues: {
+      ...formData.goals,
+      secondaryGoal: formData.goals?.secondaryGoal || 'none',
+      goalPriority: formData.goals?.goalPriority || 'primary_only',
+      useCalculatedRecommendations: formData.goals?.useCalculatedRecommendations ?? true,
+    },
   });
 
-  const step4Form = useForm<Step4Data>({
+  const step4Form = useForm<Step3Data>({
+    resolver: zodResolver(step3Schema),
+    defaultValues: {
+      ...formData.goals,
+      secondaryGoal: formData.goals?.secondaryGoal || 'none',
+      goalPriority: formData.goals?.goalPriority || 'primary_only',
+      useCalculatedRecommendations: formData.goals?.useCalculatedRecommendations ?? true,
+    },
+  });
+
+  const step5Form = useForm<Step4Data>({
     resolver: zodResolver(step4Schema),
     defaultValues: formData.preferences,
   });
+
+  // Handle recommendation changes from the calculator
+  const handleRecommendationChange = useCallback((recommendation: any) => {
+    setCalculatedRecommendations({
+      protein: recommendation.recommended,
+      calories: recommendation.calories?.recommended || 0,
+      explanation: recommendation.explanation
+    });
+    
+    // Update the form with calculated values
+    step4Form.setValue('proteinGoal', recommendation.recommended);
+    if (recommendation.calories?.recommended) {
+      step4Form.setValue('calorieGoal', recommendation.calories.recommended);
+    }
+    
+    // Mark calculation as done
+    setAutoCalculationDone(true);
+  }, [step4Form]);
+
+  // Handle manual calculation trigger
+  const handleCalculateNeeds = () => {
+    if (!canCalculate || !formData.personalInfo || !formData.physicalStats) {
+      toast.error('Veuillez d\'abord compléter vos informations personnelles et physiques.');
+      return;
+    }
+    
+    if (!objectivesSelected) {
+      toast.error('Veuillez d\'abord sélectionner vos objectifs.');
+      return;
+    }
+
+    // Update formData with current step3 form values before calculation
+    const currentGoals = step3Form.getValues();
+    setFormData(prev => ({
+      ...prev,
+      goals: {
+        primaryGoal: currentGoals.primaryGoal ?? prev.goals?.primaryGoal ?? 'general_health',
+        secondaryGoal: currentGoals.secondaryGoal ?? prev.goals?.secondaryGoal ?? 'none',
+        goalPriority: currentGoals.goalPriority ?? prev.goals?.goalPriority ?? 'primary_only',
+        proteinGoal: prev.goals?.proteinGoal ?? 120,
+        calorieGoal: prev.goals?.calorieGoal ?? 2000,
+        dietaryPreferences: currentGoals.dietaryPreferences ?? prev.goals?.dietaryPreferences ?? [],
+        useCalculatedRecommendations: prev.goals?.useCalculatedRecommendations ?? true,
+      }
+    }));
+
+    // Trigger calculation with current objectives
+    // The ProteinGoalCalculator will automatically calculate when autoCalculationDone is set to true
+    // and will call handleRecommendationChange with the results
+    setAutoCalculationDone(true);
+    toast.success('Calcul en cours avec vos objectifs personnalisés...');
+  };
+
+  const totalSteps = 5;
 
   const handleNext = async () => {
     let isValid = false;
@@ -171,33 +268,65 @@ export default function ProfileSetup() {
         isValid = await step2Form.trigger();
         if (isValid) {
           const data = step2Form.getValues();
-          setFormData(prev => ({
-            ...prev,
+          const updatedFormData = {
+            ...formData,
             physicalStats: {
-              height: data.height ?? prev.physicalStats?.height ?? 0,
-              weight: data.weight ?? prev.physicalStats?.weight ?? 0,
-              activityLevel: data.activityLevel ?? prev.physicalStats?.activityLevel ?? 'moderate',
-              units: data.units ?? prev.physicalStats?.units ?? 'metric',
+              height: data.height ?? formData.physicalStats?.height ?? 0,
+              weight: data.weight ?? formData.physicalStats?.weight ?? 0,
+              activityLevel: data.activityLevel ?? formData.physicalStats?.activityLevel ?? 'moderate',
+              units: data.units ?? formData.physicalStats?.units ?? 'metric',
             }
-          }));
+          };
+          setFormData(updatedFormData);
+          
+          // Enable calculation after step 2 is complete
+          if (updatedFormData.personalInfo && updatedFormData.physicalStats) {
+            setCanCalculate(true);
+          }
         }
         break;
       case 3:
-        isValid = await step3Form.trigger();
+        // Step 3a: Objectives selection - only validate objectives, not nutrition goals
+        isValid = await step3Form.trigger(['primaryGoal', 'secondaryGoal', 'goalPriority', 'dietaryPreferences']);
         if (isValid) {
           const data = step3Form.getValues();
           setFormData(prev => ({
             ...prev,
             goals: {
               primaryGoal: data.primaryGoal ?? prev.goals?.primaryGoal ?? 'general_health',
+              secondaryGoal: data.secondaryGoal ?? prev.goals?.secondaryGoal ?? 'none',
+              goalPriority: data.goalPriority ?? prev.goals?.goalPriority ?? 'primary_only',
+              proteinGoal: prev.goals?.proteinGoal ?? 120,
+              calorieGoal: prev.goals?.calorieGoal ?? 2000,
+              dietaryPreferences: data.dietaryPreferences ?? prev.goals?.dietaryPreferences ?? [],
+              useCalculatedRecommendations: prev.goals?.useCalculatedRecommendations ?? true,
+            }
+          }));
+          setObjectivesSelected(true);
+          setCanCalculate(true);
+        }
+        break;
+      case 4:
+        // Step 3b: Calculation validation - ensure calculation was done
+        if (!autoCalculationDone) {
+          toast.error('Veuillez calculer vos besoins nutritionnels avant de continuer.');
+          return;
+        }
+        isValid = await step4Form.trigger(['proteinGoal', 'calorieGoal']);
+        if (isValid) {
+          const data = step4Form.getValues();
+          setFormData(prev => ({
+            ...prev,
+            goals: {
+              ...prev.goals!,
               proteinGoal: data.proteinGoal ?? prev.goals?.proteinGoal ?? 120,
               calorieGoal: data.calorieGoal ?? prev.goals?.calorieGoal ?? 2000,
-              dietaryPreferences: data.dietaryPreferences ?? prev.goals?.dietaryPreferences ?? [],
+              useCalculatedRecommendations: data.useCalculatedRecommendations ?? prev.goals?.useCalculatedRecommendations ?? true,
             }
           }));
         }
         break;
-      case 4:
+      case 5:
         await handleComplete();
         return;
     }
@@ -216,8 +345,8 @@ export default function ProfileSetup() {
   };
 
   const handleComplete = async () => {
-    const step4Data = step4Form.getValues();
-    const finalData = { ...formData, preferences: step4Data };
+    const step5Data = step5Form.getValues();
+    const finalData = { ...formData, preferences: step5Data };
     
     try {
       // Map onboarding data to API format and save to backend
@@ -258,13 +387,13 @@ export default function ProfileSetup() {
 
         // Save preferences
         await ProfileService.updateAppPreferences({
-          dark_mode: step4Data.darkMode,
-          notifications_enabled: step4Data.notifications,
+          dark_mode: step5Data.darkMode,
+          notifications_enabled: step5Data.notifications,
         });
 
         await ProfileService.updatePrivacySettings({
-          share_data: step4Data.dataSharing,
-          allow_analytics: step4Data.dataSharing,
+          share_data: step5Data.dataSharing,
+          allow_analytics: step5Data.dataSharing,
         });
 
         // Save dietary preferences if any
@@ -441,98 +570,260 @@ export default function ProfileSetup() {
         );
 
       case 3:
+        // Step 3a: Objectives Selection Only
         return (
           <Card className="border-0 shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Target className="h-5 w-5 text-primary" />
-                Objectifs & Préférences
+                Objectifs de fitness
               </CardTitle>
               <CardDescription>
-                Définissez vos objectifs nutritionnels et vos préférences alimentaires.
+                Définissez vos objectifs pour personnaliser vos recommandations nutritionnelles.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-3">
-                <Label>Objectif principal</Label>
-                <RadioGroup
-                  value={step3Form.watch('primaryGoal')}
-                  onValueChange={(value) => step3Form.setValue('primaryGoal', value as any)}
-                  className="space-y-4"
-                >
-                  {primaryGoals.map((goal) => (
-                    <div key={goal.value} className="flex items-start space-x-3 p-3 border rounded-lg">
-                      <RadioGroupItem value={goal.value} id={goal.value} className="mt-1" />
-                      <div className="space-y-1">
-                        <Label htmlFor={goal.value} className="font-medium text-base">
-                          {goal.label}
+                <div className="space-y-3">
+                  <Label>Objectif principal</Label>
+                  <RadioGroup
+                    value={step3Form.watch('primaryGoal')}
+                    onValueChange={(value) => {
+                      step3Form.setValue('primaryGoal', value as any);
+                      // Trigger recalculation if we have the data
+                      if (autoCalculationDone && initialCalculatorData) {
+                        setAutoCalculationDone(true);
+                      }
+                    }}
+                    className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                  >
+                    {primaryGoals.map((goal) => (
+                      <div key={goal.value} className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-muted transition-colors">
+                        <RadioGroupItem value={goal.value} id={goal.value} className="mt-1" />
+                        <div className="space-y-1 flex-1">
+                          <Label htmlFor={goal.value} className="font-medium text-base flex items-center gap-2">
+                            <span>{goal.emoji}</span>
+                            {goal.label}
+                          </Label>
+                          <p className="text-sm text-muted-foreground">{goal.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+
+                <div className="space-y-3">
+                  <Label>Objectif secondaire (optionnel)</Label>
+                  <RadioGroup
+                    value={step3Form.watch('secondaryGoal') || 'none'}
+                    onValueChange={(value) => step3Form.setValue('secondaryGoal', value as any)}
+                    className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                  >
+                    <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-muted transition-colors">
+                      <RadioGroupItem value="none" id="none" className="mt-1" />
+                      <div className="space-y-1 flex-1">
+                        <Label htmlFor="none" className="font-medium text-base flex items-center gap-2">
+                          <span>❌</span>
+                          Aucun objectif secondaire
                         </Label>
-                        <p className="text-sm text-muted-foreground">{goal.description}</p>
+                        <p className="text-sm text-muted-foreground">Se concentrer uniquement sur l'objectif principal</p>
                       </div>
                     </div>
-                  ))}
-                </RadioGroup>
-              </div>
-
-              <Separator />
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="proteinGoal">Objectif protéines (g)</Label>
-                  <Input
-                    id="proteinGoal"
-                    type="number"
-                    placeholder="120"
-                    {...step3Form.register('proteinGoal', { valueAsNumber: true })}
-                    className="h-12 text-base"
-                  />
-                  {step3Form.formState.errors.proteinGoal && (
-                    <p className="text-sm text-destructive mt-1">{step3Form.formState.errors.proteinGoal.message}</p>
-                  )}
+                    {primaryGoals
+                      .filter(goal => goal.value !== step3Form.watch('primaryGoal'))
+                      .map((goal) => (
+                      <div key={goal.value} className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-muted transition-colors">
+                        <RadioGroupItem value={goal.value} id={`secondary-${goal.value}`} className="mt-1" />
+                        <div className="space-y-1 flex-1">
+                          <Label htmlFor={`secondary-${goal.value}`} className="font-medium text-base flex items-center gap-2">
+                            <span>{goal.emoji}</span>
+                            {goal.label}
+                          </Label>
+                          <p className="text-sm text-muted-foreground">{goal.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </RadioGroup>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="calorieGoal">Objectif calories</Label>
-                  <Input
-                    id="calorieGoal"
-                    type="number"
-                    placeholder="2000"
-                    {...step3Form.register('calorieGoal', { valueAsNumber: true })}
-                    className="h-12 text-base"
-                  />
-                  {step3Form.formState.errors.calorieGoal && (
-                    <p className="text-sm text-destructive mt-1">{step3Form.formState.errors.calorieGoal.message}</p>
-                  )}
-                </div>
-              </div>
 
-              <div className="space-y-3">
-                <Label>Préférences alimentaires (facultatif)</Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {dietaryOptions.map((option) => (
-                    <label key={option} className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-muted">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                        checked={step3Form.watch('dietaryPreferences')?.includes(option) || false}
-                        onChange={(e) => {
-                          const current = step3Form.getValues('dietaryPreferences') || [];
-                          if (e.target.checked) {
-                            step3Form.setValue('dietaryPreferences', [...current, option]);
-                          } else {
-                            step3Form.setValue('dietaryPreferences', current.filter(p => p !== option));
-                          }
-                        }}
-                      />
-                      <span className="text-base">{option}</span>
-                    </label>
-                  ))}
+                {step3Form.watch('secondaryGoal') && step3Form.watch('secondaryGoal') !== 'none' && (
+                  <div className="space-y-3">
+                    <Label>Priorité des objectifs</Label>
+                    <RadioGroup
+                      value={step3Form.watch('goalPriority') || 'primary_only'}
+                      onValueChange={(value) => step3Form.setValue('goalPriority', value as any)}
+                      className="space-y-3"
+                    >
+                      {goalPriorityOptions.map((option) => (
+                        <div key={option.value} className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted transition-colors">
+                          <RadioGroupItem value={option.value} id={option.value} className="mt-1" />
+                          <div className="space-y-1 flex-1">
+                            <Label htmlFor={option.value} className="font-medium text-base">
+                              {option.label}
+                            </Label>
+                            <p className="text-sm text-muted-foreground">{option.description}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <Label>Préférences alimentaires (optionnel)</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {dietaryOptions.map((option) => (
+                      <label key={option} className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-muted">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                          checked={step3Form.watch('dietaryPreferences')?.includes(option) || false}
+                          onChange={(e) => {
+                            const current = step3Form.getValues('dietaryPreferences') || [];
+                            if (e.target.checked) {
+                              step3Form.setValue('dietaryPreferences', [...current, option]);
+                            } else {
+                              step3Form.setValue('dietaryPreferences', current.filter(p => p !== option));
+                            }
+                          }}
+                        />
+                        <span className="text-base">{option}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        );
+              </CardContent>
+            </Card>
+          );
 
       case 4:
+        // Step 3b: Personalized Calculation
+        const initialCalculatorData = formData.personalInfo && formData.physicalStats ? {
+          weight: formData.physicalStats.weight,
+          height: formData.physicalStats.height,
+          age: formData.personalInfo.age,
+          gender: formData.personalInfo.gender,
+          activityLevel: formData.physicalStats.activityLevel,
+          fitnessGoal: formData.goals?.primaryGoal || step3Form.watch('primaryGoal') || 'general_health',
+          units: formData.physicalStats.units,
+          // Add reasonable defaults for advanced parameters
+          bodyFatPercentage: formData.personalInfo.gender === 'female' ? 25 : 15, // Typical healthy range
+          trainingDays: formData.physicalStats.activityLevel === 'extremely_active' ? 6 : 
+                        formData.physicalStats.activityLevel === 'very_active' ? 5 :
+                        formData.physicalStats.activityLevel === 'moderate' ? 3 :
+                        formData.physicalStats.activityLevel === 'light' ? 2 : 0
+        } : undefined;
+
+        return (
+          <div className="space-y-6">
+            {/* Call to Action for Calculation */}
+            {!autoCalculationDone && canCalculate && (
+              <Card className="border-0 shadow-lg bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
+                    <Calculator className="h-5 w-5" />
+                    Calculer mes besoins nutritionnels
+                  </CardTitle>
+                  <CardDescription className="text-blue-600 dark:text-blue-300">
+                    Nous allons calculer vos besoins personnalisés basés sur vos objectifs: {primaryGoals.find(g => g.value === step3Form.watch('primaryGoal'))?.label}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button 
+                    onClick={handleCalculateNeeds}
+                    className="w-full h-12 text-base"
+                    size="lg"
+                  >
+                    <Calculator className="mr-2 h-5 w-5" />
+                    Calculer mes besoins personnalisés
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Calculated Recommendations Display */}
+            {autoCalculationDone && (
+              <Card className="border-0 shadow-lg bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-green-800 dark:text-green-200">
+                    <Brain className="h-5 w-5" />
+                    Recommandations Calculées
+                  </CardTitle>
+                  <CardDescription className="text-green-600 dark:text-green-300">
+                    Basées sur vos objectifs: {primaryGoals.find(g => g.value === step3Form.watch('primaryGoal'))?.label}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ProteinGoalCalculator
+                    initialData={initialCalculatorData}
+                    autoCalculateOnMount={true}
+                    showFormFields={false}
+                    onRecommendationChange={handleRecommendationChange}
+                  />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Manual Override Section */}
+            {calculatedRecommendations && (
+              <Card className="border-0 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="h-5 w-5 text-primary" />
+                    Ajustements (optionnel)
+                  </CardTitle>
+                  <CardDescription>
+                    Vous pouvez ajuster les recommandations selon vos préférences.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-base font-medium">Objectifs nutritionnels</Label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (calculatedRecommendations) {
+                          step4Form.setValue('proteinGoal', calculatedRecommendations.protein);
+                          step4Form.setValue('calorieGoal', calculatedRecommendations.calories);
+                        }
+                      }}
+                    >
+                      Restaurer les recommandations
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="proteinGoal">Objectif protéines (g/jour)</Label>
+                      <Input
+                        id="proteinGoal"
+                        type="number"
+                        {...step4Form.register('proteinGoal', { valueAsNumber: true })}
+                        className="h-12 text-base"
+                      />
+                      {step4Form.formState.errors.proteinGoal && (
+                        <p className="text-sm text-destructive pt-1">{step4Form.formState.errors.proteinGoal.message}</p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="calorieGoal">Objectif calories (cal/jour)</Label>
+                      <Input
+                        id="calorieGoal"
+                        type="number"
+                        {...step4Form.register('calorieGoal', { valueAsNumber: true })}
+                        className="h-12 text-base"
+                      />
+                      {step4Form.formState.errors.calorieGoal && (
+                        <p className="text-sm text-destructive pt-1">{step4Form.formState.errors.calorieGoal.message}</p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        );
+
+      case 5:
         return (
           <Card className="border-0 shadow-lg">
             <CardHeader>
@@ -554,8 +845,8 @@ export default function ProfileSetup() {
                 </div>
                 <Switch
                   id="notifications"
-                  checked={step4Form.watch('notifications')}
-                  onCheckedChange={(checked) => step4Form.setValue('notifications', checked)}
+                  checked={step5Form.watch('notifications')}
+                  onCheckedChange={(checked) => step5Form.setValue('notifications', checked)}
                 />
               </div>
 
@@ -570,8 +861,8 @@ export default function ProfileSetup() {
                 </div>
                 <Switch
                   id="dataSharing"
-                  checked={step4Form.watch('dataSharing')}
-                  onCheckedChange={(checked) => step4Form.setValue('dataSharing', checked)}
+                  checked={step5Form.watch('dataSharing')}
+                  onCheckedChange={(checked) => step5Form.setValue('dataSharing', checked)}
                 />
               </div>
 
@@ -586,8 +877,8 @@ export default function ProfileSetup() {
                 </div>
                 <Switch
                   id="darkMode"
-                  checked={step4Form.watch('darkMode')}
-                  onCheckedChange={(checked) => step4Form.setValue('darkMode', checked)}
+                  checked={step5Form.watch('darkMode')}
+                  onCheckedChange={(checked) => step5Form.setValue('darkMode', checked)}
                 />
               </div>
             </CardContent>
