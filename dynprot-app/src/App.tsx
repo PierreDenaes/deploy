@@ -22,10 +22,13 @@ const Profile = lazy(() => import('./pages/Profile'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Lazy load auth pages
-const Login = lazy(() => import('./pages/auth/Login'));
-const Register = lazy(() => import('./pages/auth/Register'));
+const AuthTabs = lazy(() => import('./components/auth/AuthTabs'));
 const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword'));
 const ResetPassword = lazy(() => import('./pages/auth/ResetPassword'));
+
+// Keep old components for backward compatibility (temporary)
+const Login = lazy(() => import('./pages/auth/Login'));
+const Register = lazy(() => import('./pages/auth/Register'));
 
 // Lazy load onboarding pages
 const Welcome = lazy(() => import('./pages/onboarding/Welcome'));
@@ -54,8 +57,14 @@ const App = () => (
               <Routes>
                 {/* Authentication Routes */}
                 <Route element={<AuthLayout />}>
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
+                  {/* New unified auth component */}
+                  <Route path="/auth" element={<AuthTabs />} />
+                  
+                  {/* Redirect old routes to unified component */}
+                  <Route path="/login" element={<AuthTabs />} />
+                  <Route path="/register" element={<AuthTabs />} />
+                  
+                  {/* Password reset routes */}
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                 </Route>

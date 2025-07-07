@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import TermsAndConditionsModal from '@/components/TermsAndConditionsModal';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -281,9 +282,11 @@ const Register = () => {
                   className="text-sm font-normal cursor-pointer"
                 >
                   J'accepte les{' '}
-                  <Link to="/terms" className="font-semibold text-primary hover:underline">
-                    Termes et Conditions
-                  </Link>
+                  <TermsAndConditionsModal>
+                    <span className="font-semibold text-primary hover:underline cursor-pointer">
+                      Termes et Conditions
+                    </span>
+                  </TermsAndConditionsModal>
                 </Label>
                 {errors.acceptTerms && (
                   <p className="text-sm text-destructive">{errors.acceptTerms.message}</p>
