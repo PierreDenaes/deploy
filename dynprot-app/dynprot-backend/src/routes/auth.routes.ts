@@ -8,7 +8,8 @@ import {
   changePassword, 
   requestPasswordReset,
   resetPassword,
-  deleteAccount
+  deleteAccount,
+  verifyEmail
 } from '../controllers/auth.controller';
 import { authenticateToken } from '../middleware/auth.middleware';
 
@@ -20,6 +21,7 @@ router.post('/login', login);
 router.post('/refresh', refreshToken);
 router.post('/request-password-reset', requestPasswordReset);
 router.post('/reset-password', resetPassword);
+router.post('/verify-email', verifyEmail);
 
 // Protected auth routes
 router.post('/logout', authenticateToken, logout);

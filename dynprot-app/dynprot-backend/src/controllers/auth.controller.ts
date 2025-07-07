@@ -170,6 +170,40 @@ export async function register(req: Request, res: Response): Promise<void> {
       getClientContext(req)
     );
 
+    // Send email verification
+    try {
+      const { TokenService } = await import('../services/token.service');
+      const { EmailService } = await import('../services/email.service');
+      
+      // Create email verification token
+      const tokenData = TokenService.createEmailVerificationTokenPair(
+        result.user.id,
+        result.user.email
+      );
+
+      // Store token in database
+      await prisma.email_verification_tokens.create({
+        data: {
+          user_id: result.user.id,
+          token_id: tokenData.tokenId,
+          hashed_token: tokenData.hashedToken,
+          expires_at: new Date(Date.now() + (24 * 60 * 60 * 1000)) // 24 hours
+        }
+      });
+
+      // Send verification email
+      await EmailService.sendEmailVerification(
+        result.user.email,
+        tokenData.token,
+        result.user.first_name || undefined
+      );
+
+      console.log('✅ Email de vérification envoyé à:', result.user.email);
+    } catch (emailError) {
+      console.error('⚠️ Erreur envoi email de vérification:', emailError);
+      // Don't fail registration if email fails - user can request resend later
+    }
+
     res.status(201).json(createAuthResponse(authUser, tokens));
   } catch (error) {
     console.error('🚨 Registration error:', {
@@ -770,6 +804,128 @@ export async function resetPassword(req: Request, res: Response): Promise<void> 
 // =====================================================
 // ACCOUNT DELETION
 // =====================================================
+
+export async function verifyEmail(req: Request, res: Response): Promise<void> {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      res.status(400).json({
+        success: false,
+        error: 'Missing token',
+        message: 'Email verification token is required'
+      } as ApiResponse);
+      return;
+    }
+
+    // Validate token format and extract data
+    const { TokenService } = await import('../services/token.service');
+    const tokenData = TokenService.validateTokenWithId(token, 'email_verification');
+
+    if (!tokenData) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid token',
+        message: 'Email verification token is invalid or expired'
+      } as ApiResponse);
+      return;
+    }
+
+    // Check if token exists in database and hasn't been used
+    const tokenRecord = await prisma.email_verification_tokens.findFirst({
+      where: {
+        token_id: tokenData.tokenId,
+        user_id: tokenData.userId,
+        used_at: null,
+        expires_at: { gte: new Date() }
+      }
+    });
+
+    if (!tokenRecord) {
+      res.status(400).json({
+        success: false,
+        error: 'Token not found',
+        message: 'Email verification token not found, expired, or already used'
+      } as ApiResponse);
+      return;
+    }
+
+    // Get user
+    const user = await prisma.user.findUnique({
+      where: { id: tokenData.userId }
+    });
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        error: 'User not found',
+        message: 'User account not found'
+      } as ApiResponse);
+      return;
+    }
+
+    if (user.email_verified) {
+      res.status(400).json({
+        success: false,
+        error: 'Already verified',
+        message: 'Email address is already verified'
+      } as ApiResponse);
+      return;
+    }
+
+    // Verify email and mark token as used in transaction
+    await prisma.$transaction(async (tx) => {
+      // Mark email as verified
+      await tx.user.update({
+        where: { id: user.id },
+        data: { email_verified: true }
+      });
+
+      // Mark token as used
+      await tx.email_verification_tokens.update({
+        where: { id: tokenRecord.id },
+        data: { used_at: new Date() }
+      });
+    });
+
+    // Send welcome email
+    try {
+      const { EmailService } = await import('../services/email.service');
+      await EmailService.sendWelcomeEmail(
+        user.email,
+        user.first_name || undefined
+      );
+      console.log('✅ Email de bienvenue envoyé à:', user.email);
+    } catch (emailError) {
+      console.error('⚠️ Erreur envoi email de bienvenue:', emailError);
+      // Don't fail verification if welcome email fails
+    }
+
+    // Log verification activity
+    await logActivity(
+      user.id,
+      'EMAIL_VERIFIED',
+      'users',
+      user.id,
+      { email_verified: false },
+      { email_verified: true },
+      getClientContext(req)
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Email verified successfully'
+    } as ApiResponse);
+
+  } catch (error) {
+    console.error('Email verification error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Email verification failed',
+      message: 'An error occurred while verifying your email'
+    } as ApiResponse);
+  }
+}
 
 export async function deleteAccount(req: Request, res: Response): Promise<void> {
   try {
