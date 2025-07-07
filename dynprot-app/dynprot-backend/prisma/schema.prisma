@@ -21,6 +21,7 @@ model User {
   created_at               DateTime?                 @default(now()) @db.Timestamptz(6)
   updated_at               DateTime?                 @default(now()) @db.Timestamptz(6)
   last_login_at            DateTime?                 @db.Timestamptz(6)
+  last_analytics_viewed    DateTime?                 @db.Timestamptz(6)
   activity_logs            activity_logs[]
   daily_summaries          daily_summaries[]
   data_exports             data_exports[]

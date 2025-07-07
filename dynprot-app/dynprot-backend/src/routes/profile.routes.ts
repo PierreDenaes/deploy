@@ -5,7 +5,10 @@ import {
   calculateRecommendedGoals,
   getDietaryPreferences,
   getProfileStats,
-  completeOnboarding
+  completeOnboarding,
+  resetTodayData,
+  updateAnalyticsViewed,
+  deleteSelectiveData
 } from '../controllers/profiles.controller';
 
 const router: ExpressRouter = Router();
@@ -14,6 +17,9 @@ const router: ExpressRouter = Router();
 router.get('/', getUserProfile);
 router.put('/', updateUserProfile);
 router.post('/complete-onboarding', completeOnboarding);
+router.post('/reset-today', resetTodayData);
+router.post('/analytics-viewed', updateAnalyticsViewed);
+router.post('/delete-data', deleteSelectiveData);
 
 // Goal calculation and recommendations
 router.post('/calculate-goals', calculateRecommendedGoals);
