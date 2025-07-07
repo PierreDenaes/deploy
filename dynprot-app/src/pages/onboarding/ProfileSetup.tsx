@@ -333,12 +333,16 @@ export default function ProfileSetup() {
 
     if (isValid && currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
+      // Reset scroll position to top when moving to next step
+      window.scrollTo(0, 0);
     }
   };
 
   const handleBack = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
+      // Reset scroll position to top when moving to previous step
+      window.scrollTo(0, 0);
     } else {
       navigate('/onboarding');
     }
