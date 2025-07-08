@@ -36,6 +36,7 @@ function determineMealTimeCategory(timestamp: Date): string {
 
 import { AIService } from '../services/ai.service';
 import { ImageService } from '../config/cloudinary';
+import { PackagingAnalysisService } from '../services/packaging-analysis.service';
 
 // Real AI analysis function using OpenAI
 async function performAIAnalysis(input: any): Promise<any> {
@@ -62,10 +63,15 @@ async function performAIAnalysis(input: any): Promise<any> {
         throw new Error('Format d\'image non supporté');
       }
       
-      // Validate image before analysis
-      const isValidImage = await AIService.validateImageForAnalysis(imageUrl);
-      if (!isValidImage) {
-        throw new Error('Image ne contient pas de nourriture identifiable');
+      // Validate image before analysis (permissif pour emballages et tableaux nutritionnels)
+      try {
+        const isValidImage = await AIService.validateImageForAnalysis(imageUrl);
+        if (!isValidImage) {
+          console.warn('⚠️ Image possiblement non alimentaire, mais tentative d\'analyse quand même');
+        }
+      } catch (validationError) {
+        console.warn('⚠️ Erreur validation image, continuons l\'analyse:', validationError);
+        // Ne pas faire échouer l'analyse si la validation échoue
       }
       
       // Analyze with OpenAI Vision
@@ -765,6 +771,202 @@ export async function createMealFromAnalysis(req: Request, res: Response): Promi
       success: false,
       error: 'Failed to create meal from analysis',
       message: 'An error occurred while creating meal from analysis'
+    } as ApiResponse);
+  }
+}
+
+// =====================================================
+// PACKAGING ANALYSIS CONTROLLER
+// =====================================================
+
+export async function analyzePackaging(req: Request, res: Response): Promise<void> {
+  try {
+    const user = (req as any).user as AuthUser;
+    
+    // Validate request body
+    const validation = AnalyzeMealInputSchema.safeParse(req.body);
+    if (!validation.success) {
+      res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        message: 'Invalid packaging analysis input data',
+        details: validation.error.issues.map(issue => ({
+          field: issue.path.join('.'),
+          message: issue.message,
+          code: issue.code
+        }))
+      } as ApiResponse);
+      return;
+    }
+
+    const { input_text, photo_data } = validation.data;
+
+    if (!photo_data) {
+      res.status(400).json({
+        success: false,
+        error: 'Image required',
+        message: 'Photo data is required for packaging analysis'
+      } as ApiResponse);
+      return;
+    }
+
+    // Upload image to Cloudinary
+    const uploadResult = await ImageService.uploadBase64(photo_data, {
+      folder: 'meal-photos',
+      resource_type: 'image',
+      format: 'jpg',
+      transformation: [
+        { width: 1024, height: 1024, crop: 'limit', quality: 'auto' }
+      ]
+    });
+
+    const imageUrl = uploadResult.secure_url;
+
+    // Perform packaging analysis
+    const packagingResult = await PackagingAnalysisService.analyzePackaging(imageUrl, input_text);
+    
+    // Clean and validate result
+    const cleanResult = PackagingAnalysisService.validateAndCleanResult(packagingResult);
+
+    // Log activity
+    await logActivity(
+      user.id,
+      'PACKAGING_ANALYZED',
+      'meal_analyses',
+      undefined,
+      null,
+      { 
+        product_name: cleanResult.nom_produit,
+        brand: cleanResult.marque,
+        image_url: imageUrl
+      },
+      getClientContext(req)
+    );
+
+    res.status(200).json({
+      success: true,
+      data: { packaging: cleanResult },
+      message: 'Packaging analysis completed successfully'
+    } as ApiResponse);
+    
+  } catch (error) {
+    console.error('Packaging analysis error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to analyze packaging',
+      message: 'An error occurred while analyzing packaging'
+    } as ApiResponse);
+  }
+}
+
+// =====================================================
+// ENHANCED OCR PACKAGING ANALYSIS CONTROLLER
+// =====================================================
+
+export async function analyzePackagingOCR(req: Request, res: Response): Promise<void> {
+  try {
+    const user = (req as any).user as AuthUser;
+    
+    // Validate request body
+    const validation = AnalyzeMealInputSchema.safeParse(req.body);
+    if (!validation.success) {
+      res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        message: 'Invalid OCR packaging analysis input data',
+        details: validation.error.issues.map(issue => ({
+          field: issue.path.join('.'),
+          message: issue.message,
+          code: issue.code
+        }))
+      } as ApiResponse);
+      return;
+    }
+
+    const { input_text, photo_data } = validation.data;
+
+    if (!photo_data) {
+      res.status(400).json({
+        success: false,
+        error: 'Image required',
+        message: 'Photo data is required for OCR packaging analysis'
+      } as ApiResponse);
+      return;
+    }
+
+    // Upload image to Cloudinary
+    const uploadResult = await ImageService.uploadBase64(photo_data, {
+      folder: 'meal-photos',
+      resource_type: 'image',
+      format: 'jpg',
+      transformation: [
+        { width: 1024, height: 1024, crop: 'limit', quality: 'auto' }
+      ]
+    });
+
+    const imageUrl = uploadResult.secure_url;
+
+    // Perform enhanced OCR analysis in two steps
+    const enhancedResult = await AIService.analyzeTwoStepProduct(imageUrl, input_text);
+    
+    // Format for both packaging structure and nutritional data
+    const packagingResult = PackagingAnalysisService.validateAndCleanResult({
+      nom_produit: enhancedResult.nom_produit || "",
+      marque: enhancedResult.marque || "",
+      type: enhancedResult.type || "",
+      mentions_specifiques: enhancedResult.mentions_specifiques || [],
+      contenu_paquet: enhancedResult.contenu_paquet || "",
+      apparence_packaging: enhancedResult.apparence_packaging || "",
+      langue: enhancedResult.langue || "Français"
+    });
+
+    // Log activity
+    await logActivity(
+      user.id,
+      'OCR_PACKAGING_ANALYZED',
+      'meal_analyses',
+      undefined,
+      null,
+      { 
+        product_name: packagingResult.nom_produit,
+        brand: packagingResult.marque,
+        ocr_confidence: enhancedResult.confidence_ocr,
+        has_ocr_text: Boolean(enhancedResult.ocr_text),
+        image_url: imageUrl
+      },
+      getClientContext(req)
+    );
+
+    res.status(200).json({
+      success: true,
+      data: { 
+        packaging: packagingResult,
+        nutritional_data: {
+          protein: enhancedResult.protein,
+          calories: enhancedResult.calories,
+          carbs: enhancedResult.carbs,
+          fat: enhancedResult.fat,
+          fiber: enhancedResult.fiber,
+          enhanced_nutrition: enhancedResult.enhanced_nutrition,
+          data_source: enhancedResult.dataSource,
+          confidence: enhancedResult.confidence,
+          confidence_ocr: enhancedResult.confidence_ocr
+        },
+        ocr_data: {
+          extracted_text: enhancedResult.ocr_text,
+          ingredients: enhancedResult.ingredients,
+          interpretation_confidence: enhancedResult.confidence_ocr
+        }
+      },
+      message: 'Enhanced OCR packaging analysis completed successfully'
+    } as ApiResponse);
+    
+  } catch (error) {
+    console.error('Enhanced OCR packaging analysis error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to analyze packaging with OCR',
+      message: 'An error occurred while performing enhanced OCR packaging analysis'
     } as ApiResponse);
   }
 }

@@ -177,6 +177,20 @@ export class ImageService {
     }
   }
 
+  // Upload depuis une chaîne base64
+  static async uploadBase64(
+    base64Data: string,
+    options: any = {}
+  ): Promise<any> {
+    try {
+      const result = await cloudinary.uploader.upload(base64Data, options);
+      return result;
+    } catch (error) {
+      console.error('Erreur upload base64 Cloudinary:', error);
+      throw new Error('Échec de l\'upload de l\'image base64');
+    }
+  }
+
   // Supprimer une image
   static async deleteImage(publicId: string): Promise<void> {
     try {

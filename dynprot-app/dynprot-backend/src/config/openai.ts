@@ -45,6 +45,31 @@ export interface NutritionalData {
   confidence: number;
 }
 
+// Nouveaux types pour l'analyse OCR en deux étapes
+export interface OCRExtractionResult {
+  texte_detecte: string;
+}
+
+export interface ProductInterpretationResult {
+  nom_produit: string;
+  marque: string;
+  type: string;
+  mentions_specifiques: string[];
+  contenu_paquet: string;
+  informations_nutritionnelles: {
+    unite_reference: string;
+    proteines: number | null;
+    calories: number | null;
+    glucides: number | null;
+    lipides: number | null;
+    fibres: number | null;
+    sel: number | null;
+  };
+  ingredients: string;
+  langue: string;
+  confidence_ocr: number;
+}
+
 // Types pour les réponses IA
 export interface AIAnalysisResult {
   foods: string[];
@@ -97,6 +122,27 @@ export interface AIAnalysisResult {
     proteinsValue: number;
     proteinsUnit: 'pour_100g' | 'par_portion' | 'par_tranche';
     isFromLabel: boolean;
+  };
+  // Nouveaux champs pour l'analyse d'emballage structurée
+  nom_produit?: string;
+  marque?: string;
+  type?: string;
+  mentions_specifiques?: string[];
+  contenu_paquet?: string;
+  apparence_packaging?: string;
+  langue?: string;
+  // Nouveaux champs pour l'analyse OCR en deux étapes
+  ocr_text?: string;
+  ingredients?: string;
+  confidence_ocr?: number;
+  enhanced_nutrition?: {
+    unite_reference: string;
+    proteines: number | null;
+    calories: number | null;
+    glucides: number | null;
+    lipides: number | null;
+    fibres: number | null;
+    sel: number | null;
   };
 }
 
@@ -163,11 +209,13 @@ Format de réponse JSON STRICT:
 
 Analyse cette image de repas en utilisant les critères suivants:
 
-IDENTIFICATION DES ALIMENTS:
-- Identifie précisément chaque aliment visible
+IDENTIFICATION DES ALIMENTS ET EMBALLAGES:
+- Identifie précisément chaque aliment visible OU emballage alimentaire
+- Si seul l'EMBALLAGE/ÉTIQUETTE est visible sans produit: c'est ACCEPTABLE
 - Distingue les différentes préparations (grillé, frit, cuit à la vapeur, etc.)
 - Reconnais les accompagnements (sauces, assaisonnements, garnitures)
 - Estime les portions en utilisant des références visuelles (taille d'assiette, couverts, etc.)
+- Pour emballages: lis le nom du produit sur l'étiquette même si le produit n'est pas visible
 
 ÉTAPE 1 - SCAN OBLIGATOIRE DES EMBALLAGES:
 Avant toute analyse, SCANNE méticuleusement l'image pour détecter:
@@ -185,19 +233,52 @@ Si tu vois UN SEUL emballage dans l'image:
 - productType DOIT être "PACKAGED_PRODUCT" si emballage détecté
 
 ÉTAPE 3 - LECTURE IMPÉRATIVE DU TABLEAU NUTRITIONNEL:
-Si tableau nutritionnel visible (même flou):
-- FORCE la lecture des "Valeurs nutritionnelles" / "Nutrition Facts"
+MÊME SI aucune nourriture n'est directement visible dans l'image:
+- Si l'image montre UNIQUEMENT un tableau nutritionnel ou une étiquette d'emballage, c'est VALIDE
+- FORCE la lecture des "Valeurs nutritionnelles" / "Nutrition Facts" / "Informations nutritionnelles"
 - LIS les chiffres exacts des protéines affichés
 - NOTE l'unité: "pour 100g", "par portion", "par tranche"
 - UTILISE uniquement ces valeurs officielles
 - dataSource: "OFFICIAL_LABEL", confidence: 0.95
 - N'ESTIME PAS si tableau lisible !
+- Si tableau visible mais produit non visible, crée foods: ["produit sur étiquette"] et utilise les valeurs officielles
 
 ÉTAPE 4 - IDENTIFICATION EXACTE DU PRODUIT:
 - NOM COMPLET du produit tel qu'écrit sur l'emballage
 - Inclus: variété, parfum, format, poids
 - Exemples: "Activia Bifidus Vanille 4x125g", "Jacquet Pain de Mie Complet", "Lu Petit Beurre 200g"
 - ÉVITE les termes génériques comme "yaourt", "pain", "biscuit"
+
+ÉTAPE 5 - ANALYSE STRUCTURÉE DE L'EMBALLAGE (OBLIGATOIRE):
+Pour chaque produit emballé, extrais SYSTÉMATIQUEMENT:
+
+A) NOM_PRODUIT: Le type de produit sans la marque
+   - Exemples: "pain de mie", "yaourt", "biscuits", "fromage fondu"
+   - Évite les marques dans ce champ
+
+B) TYPE: Le sous-type ou variante spécifique
+   - Exemples: "tranches épaisses", "complet", "nature", "aux fruits"
+   - Inclus texture, saveur, format si visible
+
+C) MENTIONS_SPÉCIFIQUES: TOUS les labels/mentions visibles
+   - Marketing: "Crousti Moelleux", "Extra Fin", "Tradition"
+   - Santé: "Sans sucres ajoutés", "Riche en protéines", "0% MG"
+   - Certification: "Bio", "Label Rouge", "AOC"
+   - Format: liste TOUTES les mentions distinctes
+
+D) CONTENU_PAQUET: Quantité exacte visible sur l'emballage
+   - Exemples: "12 tranches", "4x125g", "500g", "1L", "6 unités"
+   - Cherche sur toutes les faces visibles
+
+E) APPARENCE_PACKAGING: Description visuelle complète
+   - Couleurs dominantes et design
+   - Éléments graphiques (photos, illustrations)
+   - Style d'emballage (plastique transparent, carton, etc.)
+   - Exemple: "Emballage transparent avec couleurs bleu et blanc, logo Jacquet en rouge, visuel de tranche grillée"
+
+F) LANGUE: Langue principale détectée sur l'emballage
+   - "Français", "Anglais", "Multilingue", "Autre" si non identifiable
+   - Base-toi sur les textes principaux visibles
 
 CALCUL DE PORTIONS CRITIQUE POUR TOUS PRODUITS:
 - RÈGLE D'OR: valeurs OpenFoodFacts sont TOUJOURS pour 100g/100ml
@@ -270,7 +351,84 @@ Format de réponse JSON STRICT (tous les champs obligatoires):
     "proteinsValue": valeur_exacte_protéines_si_tableau_visible,
     "proteinsUnit": "pour_100g|par_portion|par_tranche",
     "isFromLabel": true_si_lu_sur_emballage
-  }
+  },
+  "nom_produit": "nom_produit_sans_marque_ex_pain_de_mie",
+  "marque": "marque_exacte_ou_marque_non_visible",
+  "type": "type_detaille_ex_tranches_epaisses_nature_complet",
+  "mentions_specifiques": ["mention1_ex_sans_sucres_ajoutes", "mention2_ex_bio"],
+  "contenu_paquet": "contenu_exact_ex_12_tranches_ou_500g",
+  "apparence_packaging": "description_visuelle_emballage_couleurs_design_elements_visuels",
+  "langue": "langue_detectee_sur_emballage_francais_anglais_etc"
+}`,
+
+  // Nouveau prompt OCR - Étape 1 : Extraction de texte brut
+  ocrExtraction: `Tu es un expert OCR spécialisé dans l'analyse d'emballages alimentaires.
+
+À partir de l'image fournie d'un emballage alimentaire, détecte et retranscris **TOUS les textes visibles** sans les interpréter ni les analyser.
+
+INSTRUCTIONS OCR:
+- Lis TOUT le texte visible, même partiellement lisible
+- Inclus TOUS les éléments textuels présents
+- Conserve la mise en forme et la ponctuation originales
+- Ne fais AUCUNE interprétation ou analyse
+- Transcris fidèlement, même si certains mots semblent incomplets
+
+ÉLÉMENTS À INCLURE OBLIGATOIREMENT:
+✓ Nom du produit et variantes
+✓ Marque et logos textuels
+✓ Informations nutritionnelles complètes
+✓ Liste des ingrédients
+✓ Mentions commerciales et marketing
+✓ Mentions légales (bio, label, certifications)
+✓ Poids, contenances, formats
+✓ Dates de consommation si visibles
+✓ Codes-barres si lisibles en chiffres
+✓ Adresses et informations fabricant
+✓ Instructions de conservation
+✓ Allergènes et avertissements
+
+Format de réponse JSON STRICT:
+{
+  "texte_detecte": "transcription_complete_de_tous_les_textes_visibles_sur_l_emballage"
+}`,
+
+  // Nouveau prompt d'interprétation - Étape 2 : Analyse du produit
+  productInterpretation: `Tu es un expert en produits alimentaires et en analyse nutritionnelle.
+
+À partir du texte OCR extrait d'un emballage alimentaire, analyse et structure les informations pour identifier précisément le produit.
+
+RÈGLES D'ANALYSE:
+- Utilise UNIQUEMENT les informations présentes dans le texte OCR
+- N'invente RIEN, ne déduis que ce qui est explicitement mentionné
+- Priorise les informations nutritionnelles officielles si présentes
+- Identifie la marque, le type de produit et ses caractéristiques
+- Extrais les valeurs nutritionnelles exactes avec leurs unités
+
+PRIORITÉ DES DONNÉES:
+1. Tableau nutritionnel officiel
+2. Nom de produit exact sur l'emballage
+3. Marque clairement identifiée
+4. Mentions spécifiques marketing/santé
+
+Format de réponse JSON STRICT:
+{
+  "nom_produit": "type_de_produit_sans_marque",
+  "marque": "marque_exacte_ou_marque_non_visible",
+  "type": "variante_ou_sous_type_specifique",
+  "mentions_specifiques": ["mention1", "mention2"],
+  "contenu_paquet": "quantite_exacte_unites_ou_poids",
+  "informations_nutritionnelles": {
+    "unite_reference": "pour_100g_ou_par_portion",
+    "proteines": valeur_numerique_ou_null,
+    "calories": valeur_numerique_ou_null,
+    "glucides": valeur_numerique_ou_null,
+    "lipides": valeur_numerique_ou_null,
+    "fibres": valeur_numerique_ou_null,
+    "sel": valeur_numerique_ou_null
+  },
+  "ingredients": "liste_complete_si_presente",
+  "langue": "langue_principale_detectee",
+  "confidence_ocr": niveau_de_lisibilite_0_1
 }`
 } as const;
 

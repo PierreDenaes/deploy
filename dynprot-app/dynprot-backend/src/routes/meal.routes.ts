@@ -6,7 +6,9 @@ import {
   updateMealEntry,
   deleteMealEntry,
   analyzeMealInput,
-  createMealFromAnalysis
+  createMealFromAnalysis,
+  analyzePackaging,
+  analyzePackagingOCR
 } from '../controllers/meals.controller';
 import {
   createFavoriteMeal,
@@ -32,6 +34,8 @@ router.post('/favorites/:id/use', authenticateToken, useFavoriteMeal);
 
 // AI Analysis Routes (with rate limiting)
 router.post('/analyze', aiAnalysisRateLimit, visionAnalysisRateLimit, authenticateToken, analyzeMealInput);
+router.post('/analyze-packaging', aiAnalysisRateLimit, visionAnalysisRateLimit, authenticateToken, analyzePackaging);
+router.post('/analyze-packaging-ocr', aiAnalysisRateLimit, visionAnalysisRateLimit, authenticateToken, analyzePackagingOCR);
 router.post('/analysis/:analysisId/create-meal', authenticateToken, createMealFromAnalysis);
 
 // Meal Entries Routes (using authenticateToken for dev - TODO: change back to requireOnboarding)

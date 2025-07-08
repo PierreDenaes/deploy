@@ -1,5 +1,5 @@
 // Service d'intelligence artificielle avec OpenAI
-import { openai, AI_CONFIG, AI_PROMPTS, AIError, AI_ERROR_CODES, validateAIResponse, validateVisionResponse, AIAnalysisResult, AIVisionResult, NutritionalData, ProductType, DataSource } from '../config/openai';
+import { openai, AI_CONFIG, AI_PROMPTS, AIError, AI_ERROR_CODES, validateAIResponse, validateVisionResponse, AIAnalysisResult, AIVisionResult, NutritionalData, ProductType, DataSource, OCRExtractionResult, ProductInterpretationResult } from '../config/openai';
 
 export class AIService {
   // Analyser un texte de description de repas
@@ -109,6 +109,273 @@ export class AIService {
     }
 
     throw new AIError('Nombre maximum de tentatives atteint', AI_ERROR_CODES.API_ERROR, false);
+  }
+
+  // Analyser une image d'emballage/étiquette avec Vision API (sans validation préalable)
+  static async analyzePackagingImage(imageUrl: string, description?: string): Promise<AIVisionResult> {
+    console.log(`📦 Analyse spécifique emballage/étiquette:`, imageUrl.substring(0, 100));
+    return this.analyzeImageMeal(imageUrl, description);
+  }
+
+  // Nouvelle méthode : Analyse complète de produit en deux étapes (OCR + Interprétation)
+  static async analyzeTwoStepProduct(imageUrl: string, description?: string): Promise<AIVisionResult> {
+    console.log(`🔍 Début analyse produit en deux étapes:`, imageUrl.substring(0, 100));
+    
+    try {
+      // ÉTAPE 1: Extraction OCR du texte brut
+      const ocrResult = await this.extractOCRText(imageUrl);
+      console.log(`📄 OCR extrait: ${ocrResult.texte_detecte.substring(0, 200)}...`);
+      
+      // ÉTAPE 2: Interprétation du produit à partir du texte OCR
+      const interpretationResult = await this.interpretProductFromOCR(ocrResult.texte_detecte, description);
+      console.log(`🧠 Produit interprété: ${interpretationResult.nom_produit} (${interpretationResult.marque})`);
+      
+      // Convertir en format AIVisionResult compatible
+      const combinedResult = this.mergeOCRAndInterpretation(ocrResult, interpretationResult);
+      
+      console.log(`✅ Analyse deux étapes réussie: ${combinedResult.nom_produit} - ${combinedResult.protein}g protéines`);
+      return combinedResult;
+      
+    } catch (error) {
+      console.error('❌ Erreur analyse deux étapes:', error);
+      // Fallback vers l'analyse classique
+      console.log('🔄 Fallback vers analyse classique...');
+      return this.analyzePackagingImage(imageUrl, description);
+    }
+  }
+
+  // ÉTAPE 1: Extraction OCR du texte brut
+  private static async extractOCRText(imageUrl: string): Promise<OCRExtractionResult> {
+    let retries = 0;
+    
+    while (retries <= AI_CONFIG.maxRetries) {
+      try {
+        console.log(`📄 Extraction OCR (tentative ${retries + 1}):`, imageUrl.substring(0, 100));
+        
+        const completion = await openai.chat.completions.create({
+          model: AI_CONFIG.visionModel,
+          messages: [
+            {
+              role: 'system',
+              content: AI_PROMPTS.ocrExtraction
+            },
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: 'Extrais tout le texte visible sur cet emballage alimentaire:'
+                },
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: imageUrl,
+                    detail: 'high' // Haute résolution pour meilleur OCR
+                  }
+                }
+              ]
+            }
+          ],
+          max_tokens: AI_CONFIG.maxTokens,
+          temperature: 0.1, // Très faible pour OCR précis
+        }, {
+          timeout: AI_CONFIG.timeout,
+        });
+
+        const responseText = completion.choices[0]?.message?.content;
+        if (!responseText) {
+          throw new AIError('Réponse OCR vide', AI_ERROR_CODES.INVALID_RESPONSE, true);
+        }
+
+        // Parser la réponse JSON OCR
+        const cleanedResponse = this.cleanJSONResponse(responseText);
+        const ocrResult: OCRExtractionResult = JSON.parse(cleanedResponse);
+        
+        if (!ocrResult.texte_detecte || ocrResult.texte_detecte.trim().length < 10) {
+          throw new AIError('Texte OCR insuffisant', AI_ERROR_CODES.INVALID_RESPONSE, true);
+        }
+
+        console.log(`✅ OCR réussi: ${ocrResult.texte_detecte.length} caractères extraits`);
+        return ocrResult;
+
+      } catch (error: any) {
+        retries++;
+        
+        if (retries > AI_CONFIG.maxRetries) {
+          console.error('❌ Échec final extraction OCR:', error);
+          throw new AIError(`Échec OCR après ${AI_CONFIG.maxRetries} tentatives`, AI_ERROR_CODES.API_ERROR, false);
+        }
+
+        console.warn(`⚠️ Erreur OCR, retry ${retries}/${AI_CONFIG.maxRetries}:`, error.message);
+        await new Promise(resolve => setTimeout(resolve, 1000 * retries));
+      }
+    }
+
+    throw new AIError('Nombre maximum de tentatives OCR atteint', AI_ERROR_CODES.API_ERROR, false);
+  }
+
+  // ÉTAPE 2: Interprétation du produit à partir du texte OCR
+  private static async interpretProductFromOCR(ocrText: string, description?: string): Promise<ProductInterpretationResult> {
+    let retries = 0;
+    
+    while (retries <= AI_CONFIG.maxRetries) {
+      try {
+        console.log(`🧠 Interprétation produit (tentative ${retries + 1})`);
+        
+        const promptWithOCR = AI_PROMPTS.productInterpretation.replace(
+          'À partir du texte OCR extrait d\'un emballage alimentaire',
+          `À partir du texte OCR suivant extrait d'un emballage alimentaire:\n\n"${ocrText}"\n\n${description ? `\nInformation additionnelle: ${description}\n` : ''}`
+        );
+        
+        const completion = await openai.chat.completions.create({
+          model: AI_CONFIG.textModel, // Utiliser le modèle texte pour l'interprétation
+          messages: [
+            {
+              role: 'system',
+              content: promptWithOCR
+            },
+            {
+              role: 'user',
+              content: `Analyse ce texte OCR et identifie le produit alimentaire avec ses caractéristiques nutritionnelles.`
+            }
+          ],
+          max_tokens: AI_CONFIG.maxTokens,
+          temperature: 0.2, // Faible température pour analyse précise
+        }, {
+          timeout: AI_CONFIG.timeout,
+        });
+
+        const responseText = completion.choices[0]?.message?.content;
+        if (!responseText) {
+          throw new AIError('Réponse interprétation vide', AI_ERROR_CODES.INVALID_RESPONSE, true);
+        }
+
+        // Parser la réponse JSON d'interprétation
+        const cleanedResponse = this.cleanJSONResponse(responseText);
+        const interpretationResult: ProductInterpretationResult = JSON.parse(cleanedResponse);
+        
+        if (!interpretationResult.nom_produit || interpretationResult.nom_produit.trim().length === 0) {
+          throw new AIError('Produit non identifié dans l\'interprétation', AI_ERROR_CODES.INVALID_RESPONSE, true);
+        }
+
+        console.log(`✅ Interprétation réussie: ${interpretationResult.nom_produit} (${interpretationResult.marque})`);
+        return interpretationResult;
+
+      } catch (error: any) {
+        retries++;
+        
+        if (retries > AI_CONFIG.maxRetries) {
+          console.error('❌ Échec final interprétation:', error);
+          throw new AIError(`Échec interprétation après ${AI_CONFIG.maxRetries} tentatives`, AI_ERROR_CODES.API_ERROR, false);
+        }
+
+        console.warn(`⚠️ Erreur interprétation, retry ${retries}/${AI_CONFIG.maxRetries}:`, error.message);
+        await new Promise(resolve => setTimeout(resolve, 1000 * retries));
+      }
+    }
+
+    throw new AIError('Nombre maximum de tentatives interprétation atteint', AI_ERROR_CODES.API_ERROR, false);
+  }
+
+  // Fusionner les résultats OCR et interprétation en format AIVisionResult
+  private static mergeOCRAndInterpretation(ocrResult: OCRExtractionResult, interpretationResult: ProductInterpretationResult): AIVisionResult {
+    // Calculer les valeurs nutritionnelles pour la portion estimée
+    const nutrition = interpretationResult.informations_nutritionnelles;
+    const portionWeight = this.extractPortionWeightFromInterpretation(interpretationResult);
+    
+    // Déterminer si c'est pour 100g ou par portion
+    const isFor100g = nutrition.unite_reference.toLowerCase().includes('100g');
+    const baseProtein = nutrition.proteines || 0;
+    const baseCalories = nutrition.calories || 0;
+    
+    // Calculer pour la portion réelle si les valeurs sont pour 100g
+    let finalProtein = baseProtein;
+    let finalCalories = baseCalories;
+    
+    if (isFor100g && portionWeight > 0 && portionWeight !== 100) {
+      const ratio = portionWeight / 100;
+      finalProtein = Math.round(baseProtein * ratio * 10) / 10;
+      finalCalories = Math.round(baseCalories * ratio);
+    }
+
+    return {
+      // Informations de base
+      foods: [interpretationResult.nom_produit],
+      protein: finalProtein,
+      calories: finalCalories,
+      carbs: nutrition.glucides || 0,
+      fat: nutrition.lipides || 0,
+      fiber: nutrition.fibres || 0,
+      confidence: interpretationResult.confidence_ocr,
+      explanation: `Analyse en deux étapes: OCR puis interprétation. Produit: ${interpretationResult.marque} ${interpretationResult.nom_produit} (${interpretationResult.type}). Valeurs nutritionnelles ${nutrition.unite_reference}: ${baseProtein}g protéines.`,
+      
+      // Champs Vision
+      detectedItems: [{
+        name: `${interpretationResult.marque} ${interpretationResult.nom_produit}`,
+        confidence: interpretationResult.confidence_ocr,
+      }],
+      imageQuality: 'good',
+      requiresManualReview: interpretationResult.confidence_ocr < 0.7,
+      
+      // Métadonnées produit
+      productType: 'PACKAGED_PRODUCT' as ProductType,
+      dataSource: 'OFFICIAL_LABEL' as DataSource,
+      isExactValue: true,
+      productName: `${interpretationResult.marque} ${interpretationResult.nom_produit}`,
+      brand: interpretationResult.marque === 'marque_non_visible' ? undefined : interpretationResult.marque,
+      
+      // Nouveaux champs d'emballage
+      nom_produit: interpretationResult.nom_produit,
+      marque: interpretationResult.marque,
+      type: interpretationResult.type,
+      mentions_specifiques: interpretationResult.mentions_specifiques,
+      contenu_paquet: interpretationResult.contenu_paquet,
+      langue: interpretationResult.langue,
+      
+      // Données OCR enrichies
+      ocr_text: ocrResult.texte_detecte,
+      ingredients: interpretationResult.ingredients,
+      confidence_ocr: interpretationResult.confidence_ocr,
+      enhanced_nutrition: nutrition,
+      
+      // Données nutritionnelles officielles
+      officialNutritionData: nutrition.proteines ? {
+        proteinsValue: nutrition.proteines,
+        proteinsUnit: isFor100g ? 'pour_100g' : 'par_portion',
+        isFromLabel: true
+      } : undefined,
+    };
+  }
+
+  // Extraire le poids de portion à partir de l'interprétation
+  private static extractPortionWeightFromInterpretation(interpretation: ProductInterpretationResult): number {
+    const contenu = interpretation.contenu_paquet?.toLowerCase() || '';
+    
+    // Rechercher des patterns de poids
+    const weightPatterns = [
+      /(\d+)\s*g(?!\s*\/)/i,  // Ne pas matcher "g/100g"
+      /(\d+)\s*grammes?/i,
+      /(\d+)\s*ml/i,
+    ];
+    
+    for (const pattern of weightPatterns) {
+      const match = contenu.match(pattern);
+      if (match) {
+        const weightStr = match[1] ?? "";
+        const weight = parseInt(weightStr);
+        if (weight > 5 && weight < 2000) { // Valeurs raisonnables
+          return weight;
+        }
+      }
+    }
+    
+    // Valeurs par défaut selon le type de produit
+    const produit = interpretation.nom_produit.toLowerCase();
+    if (produit.includes('tranche')) return 25;
+    if (produit.includes('yaourt') || produit.includes('yogurt')) return 125;
+    if (produit.includes('biscuit') || produit.includes('cookie')) return 10;
+    
+    return 100; // Défaut 100g
   }
 
   // Analyser une image de repas avec Vision API
@@ -389,10 +656,10 @@ export class AIService {
     };
   }
 
-  // Valider qu'une image est analysable
+  // Valider qu'une image est analysable pour l'alimentation
   static async validateImageForAnalysis(imageUrl: string): Promise<boolean> {
     try {
-      // Test rapide avec un prompt minimal
+      // Test rapide avec un prompt élargi pour inclure emballages et tableaux nutritionnels
       const completion = await openai.chat.completions.create({
         model: AI_CONFIG.visionModel,
         messages: [
@@ -401,7 +668,7 @@ export class AIService {
             content: [
               {
                 type: 'text',
-                text: 'Cette image contient-elle de la nourriture visible ? Réponds juste par "oui" ou "non".'
+                text: 'Cette image contient-elle de la nourriture visible, un emballage alimentaire, un tableau nutritionnel, ou une étiquette de produit alimentaire ? Réponds juste par "oui" ou "non".'
               },
               {
                 type: 'image_url',
@@ -419,7 +686,7 @@ export class AIService {
       return response?.includes('oui') || response?.includes('yes') || false;
     } catch (error) {
       console.warn('⚠️ Impossible de valider l\'image:', error);
-      return false; // En cas d'erreur, considérer l'image comme non valide
+      return true; // En cas d'erreur, laisser passer l'analyse (plus permissif)
     }
   }
 
@@ -483,6 +750,19 @@ export class AIService {
       detectedItems: response.detectedItems || undefined,
       imageQuality: response.imageQuality || undefined,
       requiresManualReview: response.requiresManualReview || false,
+      // Nouveaux champs pour l'analyse d'emballage structurée
+      nom_produit: response.nom_produit || undefined,
+      marque: response.marque || undefined,
+      type: response.type || undefined,
+      mentions_specifiques: response.mentions_specifiques || undefined,
+      contenu_paquet: response.contenu_paquet || undefined,
+      apparence_packaging: response.apparence_packaging || undefined,
+      langue: response.langue || undefined,
+      // Nouveaux champs OCR
+      ocr_text: response.ocr_text || undefined,
+      ingredients: response.ingredients || undefined,
+      confidence_ocr: response.confidence_ocr || undefined,
+      enhanced_nutrition: response.enhanced_nutrition || undefined,
     };
   }
 
