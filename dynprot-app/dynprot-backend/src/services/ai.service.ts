@@ -1,5 +1,6 @@
 // Service d'intelligence artificielle avec OpenAI
 import { openai, AI_CONFIG, AI_PROMPTS, AIError, AI_ERROR_CODES, validateAIResponse, validateVisionResponse, AIAnalysisResult, AIVisionResult, NutritionalData, ProductType, DataSource, OCRExtractionResult, ProductInterpretationResult } from '../config/openai';
+import { QuantityParserService } from './quantity-parser.service';
 
 export class AIService {
   // Analyser un texte de description de repas
@@ -494,6 +495,7 @@ export class AIService {
                 aiResponse.isExactValue = true;
                 aiResponse.onlineSearchResult = onlineData;
                 aiResponse.explanation = portionData.explanation;
+                aiResponse.estimatedWeight = portionData.estimatedWeight;
                 
                 console.log(`🎯 Portion calculée: ${portionData.protein}g protéines pour ${portionData.estimatedWeight}g`);
               } else {
@@ -892,7 +894,15 @@ export class AIService {
     // Rechercher des indices dans les descriptions d'aliments
     const foodsLower = foods.join(' ').toLowerCase();
     
-    // Poids typiques pour différents produits
+    // Try new quantity parser first
+    const quantityParseResult = QuantityParserService.parseQuantity(foodsLower);
+    if (quantityParseResult.confidence > 0.7) {
+      const estimatedWeight = quantityParseResult.multiplier * 100; // Convert to grams
+      console.log(`📏 Poids calculé par parseur: ${estimatedWeight}g (confiance: ${Math.round(quantityParseResult.confidence * 100)}%)`);
+      return estimatedWeight;
+    }
+    
+    // Fallback to legacy hardcoded patterns
     if (foodsLower.includes('tranche') && (foodsLower.includes('pain') || foodsLower.includes('mie'))) {
       return 25; // 1 tranche de pain de mie
     }
@@ -917,7 +927,16 @@ export class AIService {
       for (const [, data] of Object.entries(breakdown)) {
         if (typeof data === 'object' && (data as any).quantity) {
           const quantity = (data as any).quantity.toLowerCase();
-          // Extraire les grammes de la description
+          
+          // Use quantity parser for breakdown analysis
+          const breakdownParseResult = QuantityParserService.parseQuantity(quantity);
+          if (breakdownParseResult.confidence > 0.6) {
+            const estimatedWeight = breakdownParseResult.multiplier * 100;
+            console.log(`📏 Poids extrait du breakdown avec parseur: ${estimatedWeight}g`);
+            return estimatedWeight;
+          }
+          
+          // Legacy regex fallback
           const gramsMatch = quantity.match(/(\d+)\s*g/);
           if (gramsMatch) {
             const grams = parseInt(gramsMatch[1]);
@@ -933,6 +952,16 @@ export class AIService {
     // Rechercher dans le nom du produit des indices de poids
     if (parsed.productName) {
       const productLower = parsed.productName.toLowerCase();
+      
+      // Use quantity parser for product name
+      const productParseResult = QuantityParserService.parseQuantity(productLower);
+      if (productParseResult.confidence > 0.5) {
+        const estimatedWeight = productParseResult.multiplier * 100;
+        console.log(`📦 Poids produit calculé: ${estimatedWeight}g`);
+        return Math.min(estimatedWeight, 500); // Max 500g for reasonable portion
+      }
+      
+      // Legacy regex fallback
       const weightMatch = productLower.match(/(\d+)\s*g/);
       if (weightMatch) {
         const weight = parseInt(weightMatch[1]);

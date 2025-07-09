@@ -18,6 +18,7 @@ import { TextAnalysisService, TextAnalysisResult } from "@/services/textAnalysis
 import { UnifiedAnalysisResult } from "@/hooks/useAnalyzeMeal";
 import { AnalysisService, useMealAnalysis } from "@/services/api.analysis";
 import { sanitizeMealDescription, sanitizeNumber, validateImageDataUrl } from "@/utils/sanitize";
+import { QuantityParser } from "@/utils/quantity-parser";
 
 // Types pour les modes d'entrée
 type InputMode = 'selection' | 'ai_text' | 'ai_photo' | 'manual';
@@ -44,7 +45,16 @@ interface MealFormState {
   capturedPhoto: string | null;
   showCamera: boolean;
   isAnalyzingPhoto: boolean;
-  photoAnalysisResult: { description: string; protein: number; calories: number } | null;
+  photoAnalysisResult: { 
+    description: string; 
+    protein: number; 
+    calories: number;
+    confidence?: number;
+    estimatedWeight?: number;
+    quantityParseResult?: any;
+    originalAnalysis?: any; // Store original analysis for reference
+    openFoodFactsData?: any; // Store OpenFoodFacts data
+  } | null;
   quantityInput: string;
   
   // Mode Manuel
@@ -307,7 +317,10 @@ export default function AddMealForm() {
           description: result.detected_foods.join(', ') || 'Aliments détectés',
           protein: result.estimated_protein || 0,
           calories: result.estimated_calories || 0,
-          confidence: result.confidence_score
+          confidence: result.confidence_score,
+          originalAnalysis: result, // Store full analysis result
+          openFoodFactsData: result.openFoodFactsData || null, // Store OpenFoodFacts data if available
+          estimatedWeight: result.estimated_weight || 10 // Default to 10g if not specified
         };
         
         dispatch({ type: 'SET_PHOTO_ANALYSIS_RESULT', payload: analysisResult });
@@ -339,35 +352,64 @@ export default function AddMealForm() {
     dispatch({ type: 'SET_IS_ANALYZING_PHOTO', payload: true });
     
     try {
-      // Re-analyser avec la quantité spécifiée
-      const description = `${state.photoAnalysisResult.description}. Quantité: ${state.quantityInput}`;
-      const result = await analyzeImage(state.capturedPhoto!, description);
+      // Use the current analysis result as base and calculate proportionally
+      // The current result (e.g., 0.6g protein) is for the current estimated weight (e.g., 10g)
+      const currentWeight = state.photoAnalysisResult.estimatedWeight || 10;
+      const currentProtein = state.photoAnalysisResult.protein;
+      const currentCalories = state.photoAnalysisResult.calories;
       
-      if (result) {
-        const updatedResult = {
-          description: `${result.detected_foods.join(', ')} (${state.quantityInput})`,
-          protein: result.estimated_protein || 0,
-          calories: result.estimated_calories || 0,
-          confidence: result.confidence_score
-        };
-        
-        dispatch({ type: 'SET_PHOTO_ANALYSIS_RESULT', payload: updatedResult });
-        dispatch({ type: 'SET_STEP', payload: 'validation' });
-        toast.success('Analyse mise à jour avec la quantité !');
-      } else {
-        // Garder l'analyse précédente mais passer à la validation
-        dispatch({ type: 'SET_STEP', payload: 'validation' });
-        toast.info('Quantité enregistrée, analyse précédente conservée');
-      }
-    } catch (error) {
-      console.error('Erreur re-analyse avec quantité:', error);
-      // En cas d'erreur, on continue avec l'analyse précédente
+      console.log('🧮 Current analysis:', {
+        protein: currentProtein,
+        calories: currentCalories,
+        weight: currentWeight
+      });
+      console.log('📏 User quantity input:', state.quantityInput);
+      
+      // Parse the new quantity to get the target weight
+      const quantityParseResult = QuantityParser.parseQuantity(state.quantityInput);
+      const targetWeight = quantityParseResult.multiplier * 100; // Convert multiplier to grams
+      
+      console.log('🎯 Target weight from quantity:', targetWeight);
+      
+      // Calculate ratio from current weight to target weight
+      const ratio = targetWeight / currentWeight;
+      
+      const adjustedNutrition = {
+        protein: currentProtein * ratio,
+        calories: currentCalories * ratio,
+        estimatedWeight: targetWeight,
+        quantityParseResult: quantityParseResult
+      };
+      
+      // Avoid duplicate quantity in description
+      const baseDescription = state.photoAnalysisResult.description.replace(/\s*\([^)]*\)\s*$/, '');
+      const updatedResult = {
+        description: `${baseDescription} (${state.quantityInput})`,
+        protein: Math.round(adjustedNutrition.protein * 10) / 10, // Round to 1 decimal
+        calories: Math.round(adjustedNutrition.calories),
+        confidence: state.photoAnalysisResult.confidence,
+        estimatedWeight: adjustedNutrition.estimatedWeight,
+        quantityParseResult: adjustedNutrition.quantityParseResult,
+        originalAnalysis: state.photoAnalysisResult.originalAnalysis, // Preserve original analysis
+        openFoodFactsData: state.photoAnalysisResult.openFoodFactsData // Preserve OpenFoodFacts data
+      };
+      
+      dispatch({ type: 'SET_PHOTO_ANALYSIS_RESULT', payload: updatedResult });
       dispatch({ type: 'SET_STEP', payload: 'validation' });
-      toast.info('Quantité enregistrée');
+      
+      // Show success message with parse confidence
+      const parseConfidence = Math.round(adjustedNutrition.quantityParseResult.confidence * 100);
+      toast.success(`Quantité calculée: ${Math.round(adjustedNutrition.estimatedWeight)}g (${parseConfidence}% confiance)`);
+      
+    } catch (error) {
+      console.error('Erreur calcul quantité:', error);
+      // Fallback: keep original analysis but proceed
+      dispatch({ type: 'SET_STEP', payload: 'validation' });
+      toast.info('Quantité enregistrée, calcul approximatif utilisé');
     } finally {
       dispatch({ type: 'SET_IS_ANALYZING_PHOTO', payload: false });
     }
-  }, [state.quantityInput, state.photoAnalysisResult, state.capturedPhoto, analyzeImage]);
+  }, [state.quantityInput, state.photoAnalysisResult]);
 
   // Retour depuis l'étape quantité
   const handleQuantityBack = useCallback(() => {
@@ -390,8 +432,8 @@ export default function AddMealForm() {
       protein = state.textAnalysisResult.protein;
       calories = state.textAnalysisResult.calories;
     } else if (state.currentMode === 'ai_photo' && state.photoAnalysisResult) {
-      // Inclure la quantité dans la description si elle a été précisée
-      const baseDescription = state.photoAnalysisResult.description;
+      // Remove any existing quantity from description to avoid duplicates
+      const baseDescription = state.photoAnalysisResult.description.replace(/\s*\([^)]*\)\s*$/, '');
       const quantityText = state.quantityInput.trim() ? ` (${state.quantityInput})` : '';
       description = baseDescription + quantityText;
       protein = state.photoAnalysisResult.protein;
@@ -793,10 +835,20 @@ export default function AddMealForm() {
               <div className="text-center p-4 bg-blue-50 rounded-lg">
                 <p className="text-2xl font-bold text-blue-600">{state.photoAnalysisResult.protein}g</p>
                 <p className="text-sm text-gray-600">Protéines</p>
+                {state.photoAnalysisResult.estimatedWeight && (
+                  <p className="text-xs text-gray-500">
+                    pour {Math.round(state.photoAnalysisResult.estimatedWeight)}g
+                  </p>
+                )}
               </div>
               <div className="text-center p-4 bg-green-50 rounded-lg">
                 <p className="text-2xl font-bold text-green-600">{state.photoAnalysisResult.calories}</p>
                 <p className="text-sm text-gray-600">Calories</p>
+                {state.photoAnalysisResult.estimatedWeight && (
+                  <p className="text-xs text-gray-500">
+                    pour {Math.round(state.photoAnalysisResult.estimatedWeight)}g
+                  </p>
+                )}
               </div>
             </div>
 

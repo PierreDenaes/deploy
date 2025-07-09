@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
 import { ArrowRight, Plus } from 'lucide-react';
+import { QuantityParser } from '@/utils/quantity-parser';
 
 interface QuantityInputProps {
   photoAnalysisResult: {
@@ -21,42 +22,45 @@ interface QuantityInputProps {
   isLoading?: boolean;
 }
 
-// Suggestions de quantités courantes
-const QUANTITY_SUGGESTIONS = [
-  { label: '1 portion', value: '1 portion' },
-  { label: '1 tranche', value: '1 tranche' },
-  { label: '100g', value: '100 grammes' },
-  { label: '1 assiette', value: '1 assiette' },
-  { label: '1/2 portion', value: 'une demi-portion' },
-  { label: 'Une grande portion', value: 'une grande portion' },
-];
-
-// Exemples contextuels selon le type d'aliment
-const getContextualSuggestions = (description: string): string[] => {
+// Get intelligent quantity suggestions based on detected food types
+const getSmartSuggestions = (description: string): Array<{label: string, value: string, weight: number}> => {
   const desc = description.toLowerCase();
   
-  if (desc.includes('tranche') || desc.includes('pain') || desc.includes('fromage')) {
-    return ['1 tranche', '2 tranches', '3 tranches'];
+  // Extract food type from description
+  let detectedFoodType: string | undefined;
+  
+  // Check for common food types
+  if (desc.includes('biscuit') || desc.includes('cookie')) {
+    detectedFoodType = 'biscuit';
+  } else if (desc.includes('tranche') || desc.includes('pain')) {
+    detectedFoodType = 'tranche';
+  } else if (desc.includes('yaourt') || desc.includes('yogurt')) {
+    detectedFoodType = 'yaourt';
+  } else if (desc.includes('pomme') || desc.includes('apple')) {
+    detectedFoodType = 'pomme';
+  } else if (desc.includes('banane') || desc.includes('banana')) {
+    detectedFoodType = 'banane';
+  } else if (desc.includes('orange')) {
+    detectedFoodType = 'orange';
+  } else if (desc.includes('fromage') || desc.includes('cheese')) {
+    detectedFoodType = 'fromage';
   }
   
-  if (desc.includes('fruit') || desc.includes('pomme') || desc.includes('banane')) {
-    return ['1 fruit', '2 fruits', '1/2 fruit'];
-  }
+  // Get suggestions from quantity parser
+  const suggestions = QuantityParser.getPortionSuggestions(detectedFoodType);
   
-  if (desc.includes('œuf') || desc.includes('oeuf')) {
-    return ['1 œuf', '2 œufs', '3 œufs'];
-  }
-  
-  if (desc.includes('verre') || desc.includes('lait') || desc.includes('jus')) {
-    return ['1 verre', '1 grand verre', '200ml'];
-  }
-  
-  if (desc.includes('cuillère') || desc.includes('yaourt') || desc.includes('miel')) {
-    return ['1 cuillère', '2 cuillères', '1 pot'];
-  }
-  
-  return ['1 portion', 'Une petite portion', 'Une grande portion'];
+  return suggestions;
 };
+
+// Fallback general suggestions
+const GENERAL_SUGGESTIONS = [
+  { label: '1 portion', value: '1 portion', weight: 100 },
+  { label: '1/2 portion', value: '1/2 portion', weight: 50 },
+  { label: '2 portions', value: '2 portions', weight: 200 },
+  { label: '50g', value: '50g', weight: 50 },
+  { label: '100g', value: '100g', weight: 100 },
+  { label: '150g', value: '150g', weight: 150 },
+];
 
 export const QuantityInput: React.FC<QuantityInputProps> = ({
   photoAnalysisResult,
@@ -68,8 +72,8 @@ export const QuantityInput: React.FC<QuantityInputProps> = ({
 }) => {
   const [customInput, setCustomInput] = useState(quantityInput);
   
-  // Obtenir les suggestions contextuelles
-  const contextualSuggestions = getContextualSuggestions(photoAnalysisResult.description);
+  // Get smart suggestions based on detected food types
+  const smartSuggestions = getSmartSuggestions(photoAnalysisResult.description);
   
   // Gérer la sélection d'une suggestion
   const handleSuggestionClick = useCallback((suggestion: string) => {
@@ -116,12 +120,18 @@ export const QuantityInput: React.FC<QuantityInputProps> = ({
                 {photoAnalysisResult.protein}g
               </p>
               <p className="text-gray-600">Protéines estimées</p>
+              <p className="text-xs text-gray-500">
+                pour {Math.round(photoAnalysisResult.estimatedWeight || 10)}g
+              </p>
             </div>
             <div className="text-center p-3 bg-green-50 rounded-lg">
               <p className="text-2xl font-bold text-green-600">
                 {photoAnalysisResult.calories}
               </p>
               <p className="text-gray-600">Calories estimées</p>
+              <p className="text-xs text-gray-500">
+                pour {Math.round(photoAnalysisResult.estimatedWeight || 10)}g
+              </p>
             </div>
           </div>
         </CardContent>
@@ -136,41 +146,47 @@ export const QuantityInput: React.FC<QuantityInputProps> = ({
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Suggestions contextuelles */}
+          {/* Smart suggestions based on detected food */}
           <div>
             <Label className="text-sm font-medium text-gray-700 mb-2 block">
-              Suggestions pour ce type d'aliment
+              Suggestions intelligentes
             </Label>
             <div className="flex flex-wrap gap-2">
-              {contextualSuggestions.map((suggestion, index) => (
-                <Button
-                  key={index}
-                  variant={customInput === suggestion ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handleSuggestionClick(suggestion)}
-                  className="text-xs"
-                >
-                  {suggestion}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {/* Suggestions générales */}
-          <div>
-            <Label className="text-sm font-medium text-gray-700 mb-2 block">
-              Quantités courantes
-            </Label>
-            <div className="flex flex-wrap gap-2">
-              {QUANTITY_SUGGESTIONS.map((suggestion, index) => (
+              {smartSuggestions.map((suggestion, index) => (
                 <Button
                   key={index}
                   variant={customInput === suggestion.value ? "default" : "outline"}
                   size="sm"
                   onClick={() => handleSuggestionClick(suggestion.value)}
-                  className="text-xs"
+                  className="text-xs flex items-center gap-1"
                 >
                   {suggestion.label}
+                  {!suggestion.label.includes('g') && (
+                    <span className="text-xs text-gray-500">({suggestion.weight}g)</span>
+                  )}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* General suggestions */}
+          <div>
+            <Label className="text-sm font-medium text-gray-700 mb-2 block">
+              Quantités courantes
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {GENERAL_SUGGESTIONS.map((suggestion, index) => (
+                <Button
+                  key={index}
+                  variant={customInput === suggestion.value ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleSuggestionClick(suggestion.value)}
+                  className="text-xs flex items-center gap-1"
+                >
+                  {suggestion.label}
+                  {!suggestion.label.includes('g') && (
+                    <span className="text-xs text-gray-500">({suggestion.weight}g)</span>
+                  )}
                 </Button>
               ))}
             </div>

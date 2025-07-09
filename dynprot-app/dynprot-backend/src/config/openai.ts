@@ -109,6 +109,7 @@ export interface AIAnalysisResult {
   productName?: string;
   brand?: string;
   totalWeight?: string;
+  estimatedWeight?: number; // Weight in grams for the calculated portion
   nutritionalValues?: {
     proteins?: NutritionalValue;
     calories?: NutritionalValue;

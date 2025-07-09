@@ -97,6 +97,7 @@ async function performAIAnalysis(input: any): Promise<any> {
       estimated_fat: analysisResult.fat || null,
       estimated_fiber: analysisResult.fiber || null,
       estimated_completeness: analysisResult.confidence, // Use confidence as completeness
+      estimated_weight: analysisResult.estimatedWeight || null, // Weight in grams for the calculated portion
       suggestions: analysisResult.suggestions || [],
       breakdown: analysisResult.breakdown || {},
       processing_time_ms: processingTime,
