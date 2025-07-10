@@ -95,3 +95,6 @@ uploads/
 # Database
 *.db
 *.sqlite
+
+# openfoodfacts
+en.openfoodfacts.org.products.csv
