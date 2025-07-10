@@ -1,17 +1,18 @@
 // Service de cache local pour éviter la ré-analyse de repas similaires
 import prisma from '../lib/prisma';
 import { NutritionalData } from '../config/openai';
+import { Decimal } from '@prisma/client/runtime/library';
 
 export interface LocalMealData {
   id: string;
   description: string;
-  protein_grams: number;
-  calories: number;
-  carbs_grams?: number;
-  fat_grams?: number;
-  fiber_grams?: number;
+  protein_grams: Decimal;
+  calories: number | null;
+  carbs_grams: Decimal | null;
+  fat_grams: Decimal | null;
+  fiber_grams: Decimal | null;
   user_id: string;
-  created_at: Date;
+  created_at: Date | null;
 }
 
 export class LocalMealCacheService {
@@ -56,7 +57,7 @@ export class LocalMealCacheService {
       });
 
       console.log(`📊 ${results.length} repas similaires trouvés`);
-      return results as LocalMealData[];
+      return results;
       
     } catch (error) {
       console.error('❌ Erreur recherche repas similaires:', error);
@@ -81,11 +82,11 @@ export class LocalMealCacheService {
   static convertToNutritionalData(meal: LocalMealData): NutritionalData {
     return {
       productName: meal.description,
-      proteins: Number(meal.protein_grams),
-      calories: meal.calories,
-      carbs: Number(meal.carbs_grams) || 0,
-      fat: Number(meal.fat_grams) || 0,
-      fiber: Number(meal.fiber_grams) || 0,
+      proteins: meal.protein_grams.toNumber(),
+      calories: meal.calories || 0,
+      carbs: meal.carbs_grams?.toNumber() || 0,
+      fat: meal.fat_grams?.toNumber() || 0,
+      fiber: meal.fiber_grams?.toNumber() || 0,
       source: 'Repas déjà analysé',
       confidence: 0.85 // Bonne confiance car basé sur nos propres analyses
     };
