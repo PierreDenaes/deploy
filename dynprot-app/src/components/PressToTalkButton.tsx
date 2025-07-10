@@ -1,0 +1,352 @@
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Mic, Send, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+// @ts-ignore
+const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+interface PressToTalkButtonProps {
+  onTranscript: (transcript: string) => void;
+  disabled?: boolean;
+  hasText?: boolean; // Si il y a du texte dans l'input
+  onSend?: () => void; // Pour envoyer le texte existant
+}
+
+export const PressToTalkButton: React.FC<PressToTalkButtonProps> = ({
+  onTranscript,
+  disabled = false,
+  hasText = false,
+  onSend
+}) => {
+  const [isRecording, setIsRecording] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [interimTranscript, setInterimTranscript] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
+
+  const recognitionRef = useRef<any>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const startPositionRef = useRef({ x: 0, y: 0 });
+  const isPressingRef = useRef(false);
+
+  // Check for browser support
+  const isSpeechSupported = useCallback(() => {
+    return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+  }, []);
+
+  const startRecording = useCallback(() => {
+    if (!isSpeechSupported() || disabled) return;
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'fr-FR';
+      recognition.maxAlternatives = 1;
+
+      recognitionRef.current = recognition;
+      setTranscript('');
+      setInterimTranscript('');
+
+      recognition.onstart = () => {
+        setIsRecording(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        setTranscript(prev => prev + finalTranscript);
+        setInterimTranscript(interimTranscript);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        stopRecording();
+      };
+
+      recognition.onend = () => {
+        if (isPressingRef.current) {
+          // Si on est encore en train de presser, redémarrer
+          recognition.start();
+        } else {
+          stopRecording();
+        }
+      };
+
+      recognition.start();
+    } catch (error) {
+      console.error('Error starting speech recognition:', error);
+    }
+  }, [disabled, isSpeechSupported]);
+
+  const stopRecording = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    setIsRecording(false);
+    isPressingRef.current = false;
+  }, []);
+
+  const handleComplete = useCallback(() => {
+    const finalTranscript = transcript.trim();
+    if (finalTranscript) {
+      onTranscript(finalTranscript);
+    }
+    setTranscript('');
+    setInterimTranscript('');
+  }, [transcript, onTranscript]);
+
+  // Mouse events
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (disabled) return;
+
+    if (hasText && onSend) {
+      onSend();
+      return;
+    }
+
+    e.preventDefault();
+    isPressingRef.current = true;
+    
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      startPositionRef.current = { 
+        x: rect.left + rect.width / 2, 
+        y: rect.top + rect.height / 2 
+      };
+    }
+    
+    startRecording();
+  }, [disabled, hasText, onSend, startRecording]);
+
+  const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    if (!isPressingRef.current) return;
+
+    isPressingRef.current = false;
+    
+    if (isRecording) {
+      stopRecording();
+      // Attendre un peu pour que la reconnaissance se termine
+      setTimeout(handleComplete, 100);
+    }
+    
+    setIsDragging(false);
+    setDragPosition({ x: 0, y: 0 });
+  }, [isRecording, stopRecording, handleComplete]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isPressingRef.current || !isRecording) return;
+
+    const currentX = e.clientX;
+    const currentY = e.clientY;
+    const deltaX = currentX - startPositionRef.current.x;
+    const deltaY = currentY - startPositionRef.current.y;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    setDragPosition({ x: deltaX, y: deltaY });
+
+    if (distance > 100) { // Seuil de 100px pour annuler
+      setIsDragging(true);
+    } else {
+      setIsDragging(false);
+    }
+  }, [isRecording]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (isPressingRef.current && isRecording && isDragging) {
+      // Annuler l'enregistrement si on sort en mode drag
+      isPressingRef.current = false;
+      stopRecording();
+      setTranscript('');
+      setInterimTranscript('');
+      setIsDragging(false);
+      setDragPosition({ x: 0, y: 0 });
+    }
+  }, [isRecording, isDragging, stopRecording]);
+
+  // Touch events for mobile
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (disabled) return;
+
+    if (hasText && onSend) {
+      onSend();
+      return;
+    }
+
+    e.preventDefault();
+    isPressingRef.current = true;
+    
+    const touch = e.touches[0];
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      startPositionRef.current = { 
+        x: rect.left + rect.width / 2, 
+        y: rect.top + rect.height / 2 
+      };
+    }
+    
+    startRecording();
+  }, [disabled, hasText, onSend, startRecording]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!isPressingRef.current) return;
+
+    isPressingRef.current = false;
+    
+    if (isRecording) {
+      stopRecording();
+      setTimeout(handleComplete, 100);
+    }
+    
+    setIsDragging(false);
+    setDragPosition({ x: 0, y: 0 });
+  }, [isRecording, stopRecording, handleComplete]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isPressingRef.current || !isRecording) return;
+
+    const touch = e.touches[0];
+    const currentX = touch.clientX;
+    const currentY = touch.clientY;
+    const deltaX = currentX - startPositionRef.current.x;
+    const deltaY = currentY - startPositionRef.current.y;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    setDragPosition({ x: deltaX, y: deltaY });
+
+    if (distance > 100) {
+      setIsDragging(true);
+    } else {
+      setIsDragging(false);
+    }
+  }, [isRecording]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  const getButtonContent = () => {
+    if (hasText) {
+      return <Send className="w-5 h-5" />;
+    }
+    
+    if (isRecording) {
+      return <Mic className="w-5 h-5" />;
+    }
+    
+    return <Mic className="w-5 h-5" />;
+  };
+
+  const getButtonColor = () => {
+    if (hasText) {
+      return "bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/25";
+    }
+    
+    if (isRecording) {
+      if (isDragging) {
+        return "bg-red-500 text-white shadow-lg shadow-red-500/25";
+      }
+      return "bg-green-500 text-white animate-pulse shadow-lg shadow-green-500/25";
+    }
+    
+    return "bg-gray-100/80 hover:bg-gray-200/80 text-gray-600 active:scale-95";
+  };
+
+  return (
+    <div className="relative">
+      {/* Recording overlay */}
+      <AnimatePresence>
+        {isRecording && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 pointer-events-none"
+          >
+            <div className="bg-white rounded-lg p-6 max-w-sm mx-4 text-center">
+              <div className="flex items-center justify-center mb-4">
+                <div className={cn(
+                  "w-16 h-16 rounded-full flex items-center justify-center",
+                  isDragging ? "bg-red-500" : "bg-green-500"
+                )}>
+                  {isDragging ? (
+                    <X className="w-8 h-8 text-white" />
+                  ) : (
+                    <Mic className="w-8 h-8 text-white" />
+                  )}
+                </div>
+              </div>
+              
+              {isDragging ? (
+                <p className="text-red-600 font-medium">Relâchez pour annuler</p>
+              ) : (
+                <>
+                  <p className="text-gray-800 font-medium mb-2">Enregistrement...</p>
+                  {(transcript || interimTranscript) && (
+                    <p className="text-sm text-gray-600 bg-gray-100 p-2 rounded">
+                      {transcript}
+                      <span className="text-gray-400 italic">{interimTranscript}</span>
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-2">Glissez vers le haut pour annuler</p>
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Button - iOS Style */}
+      <motion.button
+        ref={buttonRef}
+        className={cn(
+          "w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200",
+          "active:scale-95 select-none",
+          getButtonColor(),
+          disabled && "opacity-50 cursor-not-allowed"
+        )}
+        disabled={disabled}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchMove={handleTouchMove}
+        animate={{
+          x: dragPosition.x * 0.1, // Légère réaction au drag
+          y: dragPosition.y * 0.1,
+        }}
+        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      >
+        {getButtonContent()}
+      </motion.button>
+
+      {/* Instruction tooltip */}
+      {!hasText && !isRecording && (
+        <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+          Maintenez pour parler
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default PressToTalkButton;
