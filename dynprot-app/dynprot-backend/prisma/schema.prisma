@@ -165,6 +165,7 @@ model meal_analyses {
   confidence_level       String        @db.VarChar(20)
   estimated_protein      Decimal?      @db.Decimal(6, 2)
   estimated_calories     Int?
+  estimated_weight       Decimal?      @db.Decimal(6, 2)
   estimated_completeness Decimal?      @db.Decimal(3, 2)
   suggestions            String[]
   breakdown              Json?

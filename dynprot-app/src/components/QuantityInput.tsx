@@ -14,6 +14,7 @@ interface QuantityInputProps {
     protein: number;
     calories: number;
     confidence?: number;
+    estimatedWeight?: number;
   };
   quantityInput: string;
   onQuantityChange: (quantity: string) => void;
@@ -117,20 +118,28 @@ export const QuantityInput: React.FC<QuantityInputProps> = ({
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="text-center p-3 bg-blue-50 rounded-lg">
               <p className="text-2xl font-bold text-blue-600">
-                {photoAnalysisResult.protein}g
+                {(() => {
+                  const estimatedWeight = photoAnalysisResult.estimatedWeight || 10;
+                  const normalizedProtein = (photoAnalysisResult.protein * 10) / estimatedWeight;
+                  return Math.round(normalizedProtein * 10) / 10;
+                })()}g
               </p>
               <p className="text-gray-600">Protéines estimées</p>
               <p className="text-xs text-gray-500">
-                pour {Math.round(photoAnalysisResult.estimatedWeight || 10)}g
+                pour 10g
               </p>
             </div>
             <div className="text-center p-3 bg-green-50 rounded-lg">
               <p className="text-2xl font-bold text-green-600">
-                {photoAnalysisResult.calories}
+                {(() => {
+                  const estimatedWeight = photoAnalysisResult.estimatedWeight || 10;
+                  const normalizedCalories = (photoAnalysisResult.calories * 10) / estimatedWeight;
+                  return Math.round(normalizedCalories);
+                })()}
               </p>
               <p className="text-gray-600">Calories estimées</p>
               <p className="text-xs text-gray-500">
-                pour {Math.round(photoAnalysisResult.estimatedWeight || 10)}g
+                pour 10g
               </p>
             </div>
           </div>

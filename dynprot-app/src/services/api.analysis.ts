@@ -31,6 +31,7 @@ export interface MealAnalysisResult {
   confidence_level: 'low' | 'medium' | 'high';
   estimated_protein: number | null;
   estimated_calories: number | null;
+  estimated_weight: number | null;
   estimated_carbs: number | null;
   estimated_fat: number | null;
   estimated_fiber: number | null;

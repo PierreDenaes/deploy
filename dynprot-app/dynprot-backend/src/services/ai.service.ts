@@ -852,17 +852,22 @@ export class AIService {
     // Estimer le poids de la portion en analysant les foods et breakdown
     let estimatedWeight = this.estimatePortionWeight(aiResponse.foods, aiResponse.breakdown, parsed);
     
-    // Si pas d'estimation, utiliser les valeurs originales de l'IA (qui sont censées être pour la portion)
+    // Si pas d'estimation, utiliser un poids par défaut basé sur le type de produit
     if (estimatedWeight === 0) {
-      console.log('⚠️ Impossible d\'estimer le poids, utilisation valeurs IA originales');
+      console.log('⚠️ Impossible d\'estimer le poids, utilisation portion par défaut');
+      
+      // Utiliser une portion par défaut raisonnable (30g pour les chips/snacks)
+      const defaultWeight = 30;
+      const ratio = defaultWeight / 100;
+      
       return {
-        protein: aiResponse.protein,
-        calories: aiResponse.calories || 0,
-        carbs: aiResponse.carbs || 0,
-        fat: aiResponse.fat || 0,
-        fiber: aiResponse.fiber || 0,
-        explanation: `${openFoodData.productName} trouvé dans OpenFoodFacts. Portion estimée par IA utilisée.`,
-        estimatedWeight: 0
+        protein: Math.round((openFoodData.proteins || 0) * ratio * 10) / 10,
+        calories: Math.round((openFoodData.calories || 0) * ratio),
+        carbs: Math.round((openFoodData.carbs || 0) * ratio * 10) / 10,
+        fat: Math.round((openFoodData.fat || 0) * ratio * 10) / 10,
+        fiber: Math.round((openFoodData.fiber || 0) * ratio * 10) / 10,
+        explanation: `${openFoodData.productName} (OpenFoodFacts): portion estimée ${defaultWeight}g = ${Math.round((openFoodData.proteins || 0) * ratio * 10) / 10}g protéines (basé sur ${openFoodData.proteins}g/100g).`,
+        estimatedWeight: defaultWeight
       };
     }
     

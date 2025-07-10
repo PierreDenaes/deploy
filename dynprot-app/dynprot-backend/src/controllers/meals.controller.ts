@@ -611,6 +611,7 @@ export async function analyzeMealInput(req: Request, res: Response): Promise<voi
         confidence_level: analysisResult.confidence_level,
         estimated_protein: analysisResult.estimated_protein,
         estimated_calories: analysisResult.estimated_calories,
+        estimated_weight: analysisResult.estimated_weight,
         estimated_completeness: analysisResult.estimated_completeness,
         suggestions: analysisResult.suggestions,
         breakdown: analysisResult.breakdown,
