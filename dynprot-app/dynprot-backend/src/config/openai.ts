@@ -25,7 +25,7 @@ export const AI_CONFIG = {
 
 // Nouveaux types pour la détection de produits améliorée
 export type ProductType = 'PACKAGED_PRODUCT' | 'NATURAL_FOOD' | 'COOKED_DISH';
-export type DataSource = 'OFFICIAL_LABEL' | 'ONLINE_DATABASE' | 'VISUAL_ESTIMATION';
+export type DataSource = 'OFFICIAL_LABEL' | 'ONLINE_DATABASE' | 'VISUAL_ESTIMATION' | 'FALLBACK_DATABASE';
 
 export interface NutritionalValue {
   value: number;
@@ -297,12 +297,40 @@ ESTIMATION DU POIDS DE PORTION:
 - TOUJOURS indiquer l'unité utilisée dans explanation
 
 ESTIMATION NUTRITIONNELLE (uniquement si tableau non visible):
-- Pour pain de mie/brioche: 7-10g protéines/100g 
-- Pour yaourts nature: 3-5g protéines/100g
-- Pour fromages: 15-25g protéines/100g selon type
-- Utilise la base de données nutritionnelle CIQUAL française
-- SOIS TRÈS CONSERVATEUR: mieux sous-estimer que sur-estimer
-- Si incertain: baisse la confidence à 0.4-0.6
+VALEURS DE RÉFÉRENCE FRANÇAISES (Base CIQUAL):
+
+📋 BISCUITS ET GÂTEAUX:
+- Prince Chocolat: 6.3g protéines, 467 calories/100g
+- Petit Beurre LU: 7.2g protéines, 435 calories/100g
+- Oreo: 4.8g protéines, 468 calories/100g
+- Madeleine: 6.8g protéines, 465 calories/100g
+- Cookie: 5.8g protéines, 502 calories/100g
+
+🥛 PRODUITS LAITIERS:
+- Yaourt nature: 4.0g protéines, 58 calories/100g
+- Yaourt grec: 8.5g protéines, 97 calories/100g
+- Fromage blanc: 7.5g protéines, 75 calories/100g
+- Emmental: 28.5g protéines, 382 calories/100g
+- Camembert: 19.8g protéines, 264 calories/100g
+
+🍞 PAIN ET CÉRÉALES:
+- Pain de mie: 7.5g protéines, 280 calories/100g
+- Baguette: 8.8g protéines, 285 calories/100g
+- Cornflakes: 7.5g protéines, 357 calories/100g
+- Muesli: 10.1g protéines, 363 calories/100g
+
+🥩 VIANDES ET POISSONS:
+- Poulet: 23.0g protéines, 121 calories/100g
+- Bœuf: 26.0g protéines, 158 calories/100g
+- Saumon: 25.4g protéines, 184 calories/100g
+- Thon: 30.0g protéines, 144 calories/100g
+
+RÈGLES D'ESTIMATION:
+- Utilise ces valeurs de référence comme base
+- Ajuste selon la préparation et le contexte
+- JAMAIS de valeurs nulles: même si incertain, donne une estimation basée sur ces références
+- Si incertain sur le produit exact: utilise la valeur de la catégorie la plus proche
+- Confidence minimum: 0.4 (jamais en dessous)
 
 QUALITÉ DE L'IMAGE:
 - Excellent: Image nette, bonne lumière, tous les aliments clairement visibles

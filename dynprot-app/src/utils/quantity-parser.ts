@@ -47,7 +47,10 @@ export class QuantityParser {
     
     // Fruits et légumes
     ['pomme', 150], ['apple', 150], ['banane', 120], ['banana', 120],
-    ['orange', 180], ['tomate', 100], ['tomato', 100]
+    ['orange', 180], ['tomate', 100], ['tomato', 100],
+    
+    // Produits animaux  
+    ['oeuf dur', 50], ['hard boiled egg', 50], ['oeuf', 50], ['egg', 50]
   ]);
 
   private static readonly FRACTION_PATTERNS = new Map([
@@ -58,7 +61,7 @@ export class QuantityParser {
   ]);
 
   private static readonly WEIGHT_PATTERNS = [
-    /(\d+(?:[.,]\d+)?)\s*g(?:rammes?)?/i,
+    /(\d+(?:[.,]\d+)?)\s*gr?(?:ammes?)?/i,  // 150g, 150gr, 150grammes
     /(\d+(?:[.,]\d+)?)\s*kg(?:ilogrammes?)?/i,
     /(\d+(?:[.,]\d+)?)\s*ml(?:illilitres?)?/i,
     /(\d+(?:[.,]\d+)?)\s*l(?:itres?)?/i,

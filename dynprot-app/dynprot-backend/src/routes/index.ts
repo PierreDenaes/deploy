@@ -4,6 +4,7 @@ import mealRoutes from './meal.routes';
 import profileRoutes from './profile.routes';
 import summaryRoutes from './summary.routes';
 import uploadRoutes from './upload.routes';
+import productRoutes from './product.routes';
 import { authenticateToken } from '../middleware/auth.middleware';
 
 
@@ -24,6 +25,10 @@ console.log('🔧 Mounting auth routes at /auth');
 router.use('/auth', authRoutes);
 console.log('✅ Auth routes mounted');
 
+console.log('🔧 Mounting product routes at /products');
+router.use('/products', productRoutes);
+console.log('✅ Product routes mounted');
+
 // Protected routes (authentication required)
 console.log('🔧 Mounting protected routes...');
 router.use('/profile', authenticateToken, profileRoutes);
@@ -40,6 +45,7 @@ router.get('/', (req, res) => {
     documentation: '/api/docs',
     endpoints: {
       auth: '/api/auth',
+      products: '/api/products',
       profile: '/api/profile',
       meals: '/api/meals',
       summaries: '/api/summaries',

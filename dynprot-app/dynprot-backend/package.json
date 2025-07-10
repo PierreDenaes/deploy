@@ -10,7 +10,8 @@
     "migrate": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "import-csv": "ts-node src/scripts/import-openfoodfacts.ts"
   },
   "keywords": [],
   "author": "",
@@ -20,6 +21,7 @@
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.7.0",
     "cors": "^2.8.5",
+    "csv-parser": "^3.2.0",
     "dotenv": "^17.0.1",
     "express": "^5.1.0",
     "express-rate-limit": "^7.5.1",

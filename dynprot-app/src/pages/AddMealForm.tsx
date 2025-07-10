@@ -1,3 +1,16 @@
+/**
+ * ⚠️ DEPRECATED: This component has been replaced by UnifiedMealEntry/UnifiedMealChat
+ * 
+ * The new interface provides:
+ * - ChatGPT-like conversational experience
+ * - Unified photo, voice, and text input
+ * - Better quantity parsing and suggestions
+ * - Streamlined workflow
+ * 
+ * All routes now point to UnifiedMealEntry instead of AddMealForm.
+ * This file is kept for reference during transition period.
+ */
+
 import React, { useReducer, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";

@@ -17,7 +17,7 @@ const AuthLayout = lazy(() => import('./layouts/AuthLayout'));
 
 // Lazy load pages - Main app pages
 const Dashboard = lazy(() => import('./pages/Dashboard'));
-const AddMealForm = lazy(() => import('./pages/AddMealForm'));
+const UnifiedMealEntry = lazy(() => import('./pages/UnifiedMealEntry'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Profile = lazy(() => import('./pages/Profile'));
 const NotFound = lazy(() => import('./pages/NotFound'));
@@ -103,7 +103,7 @@ const App = () => (
                   </ProtectedRoute>
                 }>
                   <Route path="/" element={<Dashboard />} />
-                  <Route path="/add-meal" element={<AddMealForm />} />
+                  <Route path="/add-meal" element={<UnifiedMealEntry />} />
                   <Route path="/analytics" element={<Analytics />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/protein-calculation-explained" element={<ProteinCalculationExplanation />} />
@@ -111,7 +111,7 @@ const App = () => (
                   <Route path="/history" element={<Analytics />} />
                   <Route path="/summary" element={<Analytics />} />
                   {/* Redirect legacy scan route to add-meal */}
-                  <Route path="/scan" element={<AddMealForm />} />
+                  <Route path="/scan" element={<UnifiedMealEntry />} />
                 </Route>
 
                 {/* 404 Route */}

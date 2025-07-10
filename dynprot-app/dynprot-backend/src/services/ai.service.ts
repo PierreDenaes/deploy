@@ -1,6 +1,8 @@
 // Service d'intelligence artificielle avec OpenAI
 import { openai, AI_CONFIG, AI_PROMPTS, AIError, AI_ERROR_CODES, validateAIResponse, validateVisionResponse, AIAnalysisResult, AIVisionResult, NutritionalData, ProductType, DataSource, OCRExtractionResult, ProductInterpretationResult } from '../config/openai';
 import { QuantityParserService } from './quantity-parser.service';
+import { FallbackNutritionService } from './fallback-nutrition.service';
+// import { LocalOpenFoodFactsService } from './local-openfoodfacts.service';
 
 export class AIService {
   // Analyser un texte de description de repas
@@ -499,17 +501,37 @@ export class AIService {
                 
                 console.log(`🎯 Portion calculée: ${portionData.protein}g protéines pour ${portionData.estimatedWeight}g`);
               } else {
-                console.log('⚠️ Produit non trouvé dans OpenFoodFacts - utilisation estimation IA avec confiance réduite');
+                console.log('⚠️ Produit non trouvé dans OpenFoodFacts - tentative fallback base de données');
+                
+                // Appliquer le fallback intelligent
+                aiResponse = FallbackNutritionService.applyIntelligentFallback(
+                  aiResponse,
+                  parsed.productName,
+                  parsed.brand
+                );
+                
                 aiResponse.searchAvailable = true;
-                aiResponse.confidence = Math.min(aiResponse.confidence, 0.65); // Réduire confiance si pas de données officielles
-                aiResponse.dataSource = 'VISUAL_ESTIMATION';
-                aiResponse.notes = `Produit identifié: ${parsed.brand || ''} ${parsed.productName}. Données basées sur estimation visuelle - valeurs exactes non disponibles.`;
-                aiResponse.explanation = `${aiResponse.explanation} [Estimation visuelle - prenez une photo du tableau nutritionnel pour plus de précision]`;
+                aiResponse.confidence = Math.min(aiResponse.confidence, 0.75); // Confiance fallback
+                if (aiResponse.dataSource !== 'FALLBACK_DATABASE') {
+                  aiResponse.dataSource = 'VISUAL_ESTIMATION';
+                  aiResponse.notes = `Produit identifié: ${parsed.brand || ''} ${parsed.productName}. Données basées sur estimation visuelle - valeurs exactes non disponibles.`;
+                  aiResponse.explanation = `${aiResponse.explanation} [Estimation visuelle - prenez une photo du tableau nutritionnel pour plus de précision]`;
+                }
               }
             } catch (enrichmentError) {
               console.error('❌ Erreur enrichissement:', enrichmentError);
+              
+              // Même en cas d'erreur, essayer le fallback
+              aiResponse = FallbackNutritionService.applyIntelligentFallback(
+                aiResponse,
+                parsed.productName,
+                parsed.brand
+              );
+              
               aiResponse.searchAvailable = true;
-              aiResponse.notes = `Produit identifié mais enrichissement échoué. Données basées sur l'estimation visuelle.`;
+              if (aiResponse.dataSource !== 'FALLBACK_DATABASE') {
+                aiResponse.notes = `Produit identifié mais enrichissement échoué. Données basées sur l'estimation visuelle.`;
+              }
             }
           } else {
             console.log(`ℹ️ Pas d'enrichissement nécessaire:`, {
@@ -772,44 +794,79 @@ export class AIService {
   // NOUVELLES FONCTIONS DE RECHERCHE NUTRITIONNELLE
   // =====================================================
 
-  // Rechercher les données nutritionnelles d'un produit en ligne avec stratégies multiples
+  // Circuit breaker pour OpenFoodFacts
+  private static openFoodFactsCircuitBreaker = {
+    failures: 0,
+    lastFailureTime: 0,
+    isOpen: false,
+    
+    shouldSkip(): boolean {
+      // Si 1 échec dans les 10 dernières secondes, passer en circuit ouvert
+      if (this.failures >= 1 && (Date.now() - this.lastFailureTime) < 10000) {
+        if (!this.isOpen) {
+          console.log('🚨 Circuit breaker OpenFoodFacts activé - passage en estimation IA');
+          this.isOpen = true;
+        }
+        return true;
+      }
+      
+      // Reset après 10 secondes
+      if ((Date.now() - this.lastFailureTime) >= 10000) {
+        this.failures = 0;
+        this.isOpen = false;
+      }
+      
+      return false;
+    },
+    
+    recordFailure(): void {
+      this.failures++;
+      this.lastFailureTime = Date.now();
+    },
+    
+    recordSuccess(): void {
+      this.failures = 0;
+      this.isOpen = false;
+    }
+  };
+
+  // Rechercher les données nutritionnelles d'un produit avec base locale en priorité
   static async searchProductNutrition(productName: string, brand?: string): Promise<NutritionalData | null> {
     console.log(`🔍 Début recherche nutritionnelle:`, { productName, brand });
     
-    const searchStrategies = [
-      // Stratégie 1: Marque + nom complet
-      brand ? `${brand} ${productName}` : null,
-      // Stratégie 2: Nom de produit seulement
-      productName,
-      // Stratégie 3: Mots-clés extraits (sans poids/volume)
-      this.extractProductKeywords(productName, brand),
-      // Stratégie 4: Marque seulement
-      brand,
-    ].filter(Boolean) as string[];
-    
-    console.log(`📝 Stratégies de recherche:`, searchStrategies);
-    
-    for (let i = 0; i < searchStrategies.length; i++) {
-      const query = searchStrategies[i];
-      console.log(`🎯 Tentative ${i + 1}/${searchStrategies.length}: "${query}"`);
+    // ÉTAPE 1: Recherche dans la base locale OpenFoodFacts (priorité absolue) - DISABLED
+    // try {
+    //   console.log('📊 Recherche dans la base locale OpenFoodFacts...');
+    //   const localResult = await LocalOpenFoodFactsService.searchWithVariants(productName, brand);
+    //   if (localResult) {
+    //     console.log(`✅ Produit trouvé dans la base locale: ${localResult.productName}`);
+    //     return localResult;
+    //   }
+    // } catch (error) {
+    //   console.warn('⚠️ Erreur recherche locale:', error);
+    // }
+
+    // ÉTAPE 2: Recherche dans l'API OpenFoodFacts (si base locale vide)
+    // Vérifier le circuit breaker
+    if (this.openFoodFactsCircuitBreaker.shouldSkip()) {
+      console.log('⚡ Circuit breaker ouvert - passage direct au fallback');
+    } else {
+      console.log('🌐 Recherche dans l\'API OpenFoodFacts...');
       
       try {
-        const result = await this.searchOpenFoodFacts(query as string);
+        const result = await this.searchOpenFoodFacts(productName);
         if (result) {
-          console.log(`✅ Succès avec stratégie ${i + 1}: ${result.productName}`);
+          console.log(`✅ Succès API OpenFoodFacts: ${result.productName}`);
+          this.openFoodFactsCircuitBreaker.recordSuccess();
           return result;
         }
       } catch (error: any) {
-        console.warn(`⚠️ Stratégie ${i + 1} échouée:`, error?.message || error);
-      }
-      
-      // Petite pause entre les requêtes pour éviter le rate limiting
-      if (i < searchStrategies.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 200));
+        console.warn(`⚠️ API OpenFoodFacts échouée:`, error?.message || error);
+        this.openFoodFactsCircuitBreaker.recordFailure();
       }
     }
     
-    console.log('❌ Toutes les stratégies de recherche ont échoué');
+    console.log('❌ Aucune donnée trouvée dans les bases OpenFoodFacts');
     return null;
   }
 
@@ -999,15 +1056,21 @@ export class AIService {
       
       console.log(`📡 Requête OpenFoodFacts: "${searchQuery}"`);
       
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 secondes timeout
+      
       const response = await fetch(
-        `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodedQuery}&search_simple=1&action=process&json=1&page_size=5`,
+        `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodedQuery}&search_simple=1&action=process&json=1&page_size=1&fields=product_name,brands,nutriments`,
         {
           method: 'GET',
           headers: {
             'User-Agent': 'DynProt-App/1.0 (https://dynprot.app)',
           },
+          signal: controller.signal,
         }
       );
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -1044,9 +1107,17 @@ export class AIService {
       console.log('❌ Aucun produit trouvé dans OpenFoodFacts');
       return null;
       
-    } catch (error) {
-      console.error('❌ Erreur OpenFoodFacts:', error);
-      return null;
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.error('❌ Timeout OpenFoodFacts (8s dépassé)');
+      } else if (error.message?.includes('504')) {
+        console.error('❌ OpenFoodFacts temporairement indisponible (504)');
+      } else if (error.message?.includes('503')) {
+        console.error('❌ OpenFoodFacts en maintenance (503)');
+      } else {
+        console.error('❌ Erreur OpenFoodFacts:', error.message || error);
+      }
+      throw error; // Re-lancer l'erreur pour le circuit breaker
     }
   }
 

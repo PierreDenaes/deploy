@@ -24,19 +24,19 @@ export class TextAnalysisService {
    */
   private static readonly FOOD_DATABASE = {
     // Proteins
-    'chicken': { protein: 25, calories: 165, multiplier: 1.2 },
-    'beef': { protein: 26, calories: 250, multiplier: 1.1 },
+    'chicken': { protein: 23, calories: 165, multiplier: 1.0 },
+    'beef': { protein: 26, calories: 250, multiplier: 1.0 },
     'salmon': { protein: 28, calories: 200, multiplier: 1.0 },
     'tuna': { protein: 30, calories: 130, multiplier: 1.0 },
-    'turkey': { protein: 24, calories: 135, multiplier: 1.1 },
+    'turkey': { protein: 24, calories: 135, multiplier: 1.0 },
     'fish': { protein: 22, calories: 150, multiplier: 1.0 },
-    'eggs': { protein: 12, calories: 155, multiplier: 0.8 },
-    'tofu': { protein: 12, calories: 80, multiplier: 0.7 },
-    'beans': { protein: 8, calories: 120, multiplier: 0.6 },
-    'lentils': { protein: 9, calories: 115, multiplier: 0.6 },
-    'quinoa': { protein: 4, calories: 120, multiplier: 0.5 },
-    'yogurt': { protein: 17, calories: 100, multiplier: 0.8 },
-    'cheese': { protein: 14, calories: 200, multiplier: 0.7 },
+    'eggs': { protein: 12, calories: 155, multiplier: 1.0 },
+    'tofu': { protein: 12, calories: 80, multiplier: 1.0 },
+    'beans': { protein: 8, calories: 120, multiplier: 1.0 },
+    'lentils': { protein: 9, calories: 115, multiplier: 1.0 },
+    'quinoa': { protein: 4, calories: 120, multiplier: 1.0 },
+    'yogurt': { protein: 17, calories: 100, multiplier: 1.0 },
+    'cheese': { protein: 14, calories: 200, multiplier: 1.0 },
     'protein shake': { protein: 25, calories: 150, multiplier: 1.0 },
     'protein powder': { protein: 30, calories: 120, multiplier: 1.0 },
     
@@ -119,8 +119,8 @@ export class TextAnalysisService {
     foods.forEach(food => {
       const foodData = this.FOOD_DATABASE[food as keyof typeof this.FOOD_DATABASE];
       if (foodData) {
-        totalProtein += foodData.protein;
-        totalCalories += foodData.calories;
+        totalProtein += foodData.protein * foodData.multiplier;
+        totalCalories += foodData.calories * foodData.multiplier;
       }
     });
 
