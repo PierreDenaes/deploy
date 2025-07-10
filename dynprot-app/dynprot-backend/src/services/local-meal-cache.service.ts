@@ -3,14 +3,14 @@ import prisma from '../lib/prisma';
 import { NutritionalData } from '../config/openai';
 
 export interface LocalMealData {
-  id: number;
+  id: string;
   description: string;
-  protein: number;
+  protein_grams: number;
   calories: number;
-  carbs?: number;
-  fat?: number;
-  fiber?: number;
-  user_id: number;
+  carbs_grams?: number;
+  fat_grams?: number;
+  fiber_grams?: number;
+  user_id: string;
   created_at: Date;
 }
 
@@ -27,26 +27,29 @@ export class LocalMealCacheService {
       const cleanQuery = this.cleanSearchQuery(description);
       
       // Recherche par similarité de texte dans les descriptions de repas
-      const results = await prisma.meals.findMany({
+      const results = await prisma.meal_entries.findMany({
         where: {
           description: {
             contains: cleanQuery,
             mode: 'insensitive'
           },
           // Exclure les repas sans valeurs nutritionnelles
-          protein: { gt: 0 },
+          protein_grams: { gt: 0 },
           calories: { gt: 0 }
         },
         orderBy: [
-          { protein: 'desc' },
+          { protein_grams: 'desc' },
           { created_at: 'desc' }
         ],
         take: limit,
         select: {
           id: true,
           description: true,
-          protein: true,
+          protein_grams: true,
           calories: true,
+          carbs_grams: true,
+          fat_grams: true,
+          fiber_grams: true,
           user_id: true,
           created_at: true
         }
@@ -78,11 +81,11 @@ export class LocalMealCacheService {
   static convertToNutritionalData(meal: LocalMealData): NutritionalData {
     return {
       productName: meal.description,
-      proteins: meal.protein,
+      proteins: Number(meal.protein_grams),
       calories: meal.calories,
-      carbs: meal.carbs || 0,
-      fat: meal.fat || 0,
-      fiber: meal.fiber || 0,
+      carbs: Number(meal.carbs_grams) || 0,
+      fat: Number(meal.fat_grams) || 0,
+      fiber: Number(meal.fiber_grams) || 0,
       source: 'Repas déjà analysé',
       confidence: 0.85 // Bonne confiance car basé sur nos propres analyses
     };
@@ -147,17 +150,21 @@ export class LocalMealCacheService {
   static async cacheMealAnalysis(
     description: string, 
     nutritionalData: NutritionalData, 
-    userId: number
+    userId: string
   ): Promise<void> {
     try {
-      await prisma.meals.create({
+      await prisma.meal_entries.create({
         data: {
           description,
-          protein: nutritionalData.proteins || 0,
+          protein_grams: nutritionalData.proteins || 0,
           calories: nutritionalData.calories || 0,
+          carbs_grams: nutritionalData.carbs || 0,
+          fat_grams: nutritionalData.fat || 0,
+          fiber_grams: nutritionalData.fiber || 0,
           user_id: userId,
-          timestamp: new Date().toISOString(),
-          source: 'cache'
+          meal_timestamp: new Date(),
+          source_type: 'cache',
+          ai_estimated: true
         }
       });
       
