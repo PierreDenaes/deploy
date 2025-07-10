@@ -17,28 +17,24 @@ const BottomNavigation = () => {
   const { state } = useAppContext();
   const currentRoute = state.navigation.currentRoute;
 
-  // Primary navigation items
+  // Primary navigation items - iOS Style
   const navigationItems: NavigationItem[] = [
     { 
       name: 'Accueil', 
       path: '/', 
-      icon: <Home className="h-6 w-6" />, 
+      icon: <Home className="w-6 h-6" strokeWidth={2} />, 
       ariaLabel: 'Aller à l\'accueil'
     },
     { 
       name: 'Ajouter', 
       path: '/add-meal', 
-      icon: (
-        <div className="bg-primary rounded-full p-3 -mt-8 shadow-lg">
-          <Plus className="h-6 w-6 text-primary-foreground" />
-        </div>
-      ),
+      icon: <Plus className="w-6 h-6" strokeWidth={2} />,
       ariaLabel: 'Ajouter un repas par photo, scan ou saisie manuelle'
     },
     { 
       name: 'Statistiques', 
       path: '/analytics', 
-      icon: <BarChart3 className="h-6 w-6" />, 
+      icon: <BarChart3 className="w-6 h-6" strokeWidth={2} />, 
       ariaLabel: 'Voir les statistiques et analyses',
       badgeCount: (() => {
         if (!state.lastAnalyticsViewed) {
@@ -54,7 +50,7 @@ const BottomNavigation = () => {
     { 
       name: 'Profil', 
       path: '/profile', 
-      icon: <User className="h-6 w-6" />, 
+      icon: <User className="w-6 h-6" strokeWidth={2} />, 
       ariaLabel: 'Voir le profil'
     },
   ];
@@ -66,11 +62,11 @@ const BottomNavigation = () => {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border h-16 px-2"
+      className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-gray-200/60 h-20 pb-safe"
       aria-label="Main Navigation"
       role="navigation"
     >
-      <div className="h-full flex items-center justify-around max-w-md mx-auto">
+      <div className="h-full flex items-end justify-around max-w-md mx-auto px-4 pb-2">
         {navigationItems.map((item) => {
           const isActive = currentRoute === item.path;
           return (
@@ -78,33 +74,40 @@ const BottomNavigation = () => {
               key={item.path}
               onClick={() => handleNavigation(item.path)}
               className={cn(
-                'flex flex-col items-center justify-center relative py-1 flex-1',
-                isActive ? 'text-primary' : 'text-muted-foreground'
+                'flex flex-col items-center justify-center relative py-2 flex-1 transition-all duration-200',
+                'min-h-[56px]', // Hauteur minimum uniforme
+                isActive ? 'text-blue-600' : 'text-gray-500'
               )}
-              whileTap={{ scale: 0.9 }}
+              whileTap={{ scale: 0.95 }}
               aria-label={item.ariaLabel}
               aria-current={isActive ? 'page' : undefined}
             >
-              {item.icon}
+              {/* Icon Container */}
+              <div className={cn(
+                'relative flex items-center justify-center',
+                'w-8 h-8 mb-1', // Conteneur uniforme pour toutes les icônes
+                isActive && 'transform scale-110'
+              )}>
+                {item.icon}
+              </div>
               
-              <span className="text-xs mt-1 font-medium">{item.name}</span>
-              
-              {/* Active indicator */}
-              {isActive && (
-                <motion.div
-                  className="absolute -bottom-1 w-12 h-1 bg-primary rounded-t-full"
-                  layoutId="activeTab"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                />
-              )}
+              {/* Label */}
+              <span className={cn(
+                'text-[10px] font-medium tracking-tight leading-none',
+                isActive ? 'text-blue-600' : 'text-gray-500'
+              )}>
+                {item.name}
+              </span>
               
               {/* Badge for notifications or counts */}
               {item.badgeCount && (
-                <span className="absolute top-0 right-1/4 bg-destructive text-destructive-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {item.badgeCount}
-                </span>
+                <motion.span 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute -top-1 right-1/4 bg-red-500 text-white text-[10px] rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 font-semibold shadow-lg"
+                >
+                  {item.badgeCount > 99 ? '99+' : item.badgeCount}
+                </motion.span>
               )}
             </motion.button>
           );

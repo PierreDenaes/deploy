@@ -33,7 +33,7 @@ const MainLayout = () => {
 
   return (
     <div className={`min-h-screen flex flex-col ${state.preferences.darkMode ? 'dark' : ''}`}>
-      <main className="flex-1 container mx-auto px-4 pb-16">
+      <main className="flex-1 container mx-auto px-4 pb-20">
         <Outlet />
       </main>
       <BottomNavigation />

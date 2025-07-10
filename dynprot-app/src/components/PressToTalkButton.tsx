@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
 import { Mic, Send, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -278,9 +279,10 @@ export const PressToTalkButton: React.FC<PressToTalkButtonProps> = ({
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 pointer-events-none"
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 pointer-events-none flex items-center justify-center"
+            style={{ paddingBottom: '150px' }}
           >
-            <div className="bg-white rounded-lg p-6 max-w-sm mx-4 text-center">
+            <div className="bg-white rounded-lg p-6 max-w-sm mx-4 text-center" style={{ transform: 'translateY(-75px)' }}>
               <div className="flex items-center justify-center mb-4">
                 <div className={cn(
                   "w-16 h-16 rounded-full flex items-center justify-center",
