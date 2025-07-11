@@ -12,25 +12,25 @@ const features = [
     icon: Camera,
     title: 'Analyse photo IA',
     description: 'Prenez des photos de vos repas et obtenez des estimations instantanées de protéines grâce à notre IA avancée.',
-    color: 'bg-blue-500',
+    color: 'primary',
   },
   {
     icon: Target,
     title: 'Objectifs personnalisés',
     description: 'Définissez des objectifs de protéines personnalisés en fonction de votre niveau d\'activité et de vos objectifs de remise en forme.',
-    color: 'bg-green-500',
+    color: 'ios-green',
   },
   {
     icon: BarChart3,
     title: 'Suivi des progrès',
     description: 'Visualisez votre parcours nutritionnel avec de superbes graphiques et des analyses.',
-    color: 'bg-purple-500',
+    color: 'primary',
   },
   {
     icon: Zap,
     title: 'Recommandations intelligentes',
     description: 'Obtenez des suggestions de repas personnalisées pour vous aider à atteindre vos objectifs quotidiens.',
-    color: 'bg-orange-500',
+    color: 'ios-yellow',
   },
 ];
 
@@ -59,7 +59,7 @@ const Welcome = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
@@ -69,10 +69,10 @@ const Welcome = () => {
             transition={{ duration: 0.6 }}
             className="text-center mb-12 pt-8"
           >
-            <div className="mx-auto w-20 h-20 bg-primary rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+            <div className="mx-auto w-20 h-20 bg-primary rounded-2xl flex items-center justify-center mb-6 shadow-ios">
               <span className="text-4xl font-bold text-white">D</span>
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
               Bienvenue sur DynProt
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
@@ -94,14 +94,14 @@ const Welcome = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.3 + index * 0.1 }}
               >
-                <Card className="h-full border-0 shadow-lg hover:shadow-xl transition-shadow duration-300">
+                <Card className="h-full border-0 shadow-ios hover:shadow-ios-lg transition-shadow duration-300 bg-background border border-border/20">
                   <CardContent className="p-6">
                     <div className="flex items-start space-x-4">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary/10`}>
-                        <feature.icon className="w-6 h-6 text-primary" />
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 bg-${feature.color}/10`}>
+                        <feature.icon className={`w-6 h-6 text-${feature.color}`} />
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                        <h3 className="text-lg font-semibold text-foreground mb-2">
                           {feature.title}
                         </h3>
                         <p className="text-muted-foreground text-sm leading-relaxed">

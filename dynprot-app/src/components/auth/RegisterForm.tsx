@@ -108,8 +108,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <div className="space-y-8">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
         {error && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
@@ -123,51 +123,78 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           </motion.div>
         )}
 
-        <div className="space-y-2">
-          <Label htmlFor="name">Nom complet</Label>
+        <motion.div 
+          className="space-y-3"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Label htmlFor="name" className="text-lg font-semibold">Nom complet</Label>
           <div className="relative">
-            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <User className="absolute left-4 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground" strokeWidth={2} />
             <Input
               id="name"
               type="text"
               placeholder="Votre nom complet"
-              className="pl-12 h-12 text-base"
+              className="pl-14 h-14 text-lg font-medium shadow-ios"
               {...register('name')}
               autoComplete="name"
             />
           </div>
           {errors.name && (
-            <p className="text-sm text-destructive pt-1">{errors.name.message}</p>
+            <motion.p 
+              className="text-base text-destructive font-medium pt-1"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+            >
+              {errors.name.message}
+            </motion.p>
           )}
-        </div>
+        </motion.div>
 
-        <div className="space-y-2">
-          <Label htmlFor="email">Adresse e-mail</Label>
+        <motion.div 
+          className="space-y-3"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Label htmlFor="email" className="text-lg font-semibold">Adresse e-mail</Label>
           <div className="relative">
-            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground" strokeWidth={2} />
             <Input
               id="email"
               type="email"
               placeholder="votre@email.com"
-              className="pl-12 h-12 text-base"
+              className="pl-14 h-14 text-lg font-medium shadow-ios"
               {...register('email')}
               autoComplete="email"
             />
           </div>
           {errors.email && (
-            <p className="text-sm text-destructive pt-1">{errors.email.message}</p>
+            <motion.p 
+              className="text-base text-destructive font-medium pt-1"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+            >
+              {errors.email.message}
+            </motion.p>
           )}
-        </div>
+        </motion.div>
 
-        <div className="space-y-2">
-          <Label htmlFor="password">Mot de passe</Label>
+        <motion.div 
+          className="space-y-3"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <Label htmlFor="password" className="text-lg font-semibold">Mot de passe</Label>
           <div className="relative">
-            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground" strokeWidth={2} />
             <Input
               id="password"
               type={showPassword ? 'text' : 'password'}
               placeholder="Créer un mot de passe"
-              className="pl-12 pr-12 h-12 text-base"
+              className="pl-14 pr-14 h-14 text-lg font-medium shadow-ios"
               {...register('password')}
               autoComplete="new-password"
               onChange={async (e) => {
@@ -177,147 +204,224 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
                 }
               }}
             />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 hover:bg-transparent text-muted-foreground"
-              onClick={togglePasswordVisibility}
-              tabIndex={-1}
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              {showPassword ? (
-                <EyeOff className="h-5 w-5" />
-              ) : (
-                <Eye className="h-5 w-5" />
-              )}
-            </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-xl hover:bg-primary/10 text-muted-foreground"
+                onClick={togglePasswordVisibility}
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-6 w-6" strokeWidth={2} />
+                ) : (
+                  <Eye className="h-6 w-6" strokeWidth={2} />
+                )}
+              </Button>
+            </motion.div>
           </div>
           
           {/* Critères du mot de passe */}
           {password && (
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="bg-muted/50 rounded-lg p-3 space-y-2"
+              initial={{ opacity: 0, height: 0, scale: 0.95 }}
+              animate={{ opacity: 1, height: 'auto', scale: 1 }}
+              transition={{ type: "spring", stiffness: 200 }}
+              className="bg-muted/30 backdrop-blur-xl rounded-2xl p-5 space-y-3 border border-border/20 shadow-ios-sm"
             >
-              <p className="text-xs font-medium text-muted-foreground mb-2">Critères du mot de passe :</p>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className={cn("flex items-center gap-2", passwordCriteria.length ? "text-green-600" : "text-muted-foreground")}>
-                  {passwordCriteria.length ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+              <p className="text-base font-semibold text-muted-foreground mb-3">Critères du mot de passe :</p>
+              <div className="grid grid-cols-2 gap-3 text-base">
+                <motion.div 
+                  className={cn("flex items-center gap-3", passwordCriteria.length ? "text-ios-green" : "text-muted-foreground")}
+                  initial={{ scale: 0.9 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.1 }}
+                >
+                  {passwordCriteria.length ? <Check className="h-5 w-5" strokeWidth={2.5} /> : <X className="h-5 w-5" strokeWidth={2.5} />}
                   8 caractères min.
-                </div>
-                <div className={cn("flex items-center gap-2", passwordCriteria.uppercase ? "text-green-600" : "text-muted-foreground")}>
-                  {passwordCriteria.uppercase ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                </motion.div>
+                <motion.div 
+                  className={cn("flex items-center gap-3", passwordCriteria.uppercase ? "text-ios-green" : "text-muted-foreground")}
+                  initial={{ scale: 0.9 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  {passwordCriteria.uppercase ? <Check className="h-5 w-5" strokeWidth={2.5} /> : <X className="h-5 w-5" strokeWidth={2.5} />}
                   1 majuscule
-                </div>
-                <div className={cn("flex items-center gap-2", passwordCriteria.lowercase ? "text-green-600" : "text-muted-foreground")}>
-                  {passwordCriteria.lowercase ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                </motion.div>
+                <motion.div 
+                  className={cn("flex items-center gap-3", passwordCriteria.lowercase ? "text-ios-green" : "text-muted-foreground")}
+                  initial={{ scale: 0.9 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  {passwordCriteria.lowercase ? <Check className="h-5 w-5" strokeWidth={2.5} /> : <X className="h-5 w-5" strokeWidth={2.5} />}
                   1 minuscule
-                </div>
-                <div className={cn("flex items-center gap-2", passwordCriteria.number ? "text-green-600" : "text-muted-foreground")}>
-                  {passwordCriteria.number ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                </motion.div>
+                <motion.div 
+                  className={cn("flex items-center gap-3", passwordCriteria.number ? "text-ios-green" : "text-muted-foreground")}
+                  initial={{ scale: 0.9 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  {passwordCriteria.number ? <Check className="h-5 w-5" strokeWidth={2.5} /> : <X className="h-5 w-5" strokeWidth={2.5} />}
                   1 chiffre
-                </div>
+                </motion.div>
               </div>
             </motion.div>
           )}
           
           {errors.password && (
-            <p className="text-sm text-destructive pt-1">{errors.password.message}</p>
+            <motion.p 
+              className="text-base text-destructive font-medium pt-1"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+            >
+              {errors.password.message}
+            </motion.p>
           )}
-        </div>
+        </motion.div>
 
-        <div className="space-y-2">
-          <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
+        <motion.div 
+          className="space-y-3"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <Label htmlFor="confirmPassword" className="text-lg font-semibold">Confirmer le mot de passe</Label>
           <div className="relative">
-            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground" strokeWidth={2} />
             <Input
               id="confirmPassword"
               type={showConfirmPassword ? 'text' : 'password'}
               placeholder="Confirmer votre mot de passe"
-              className="pl-12 pr-12 h-12 text-base"
+              className="pl-14 pr-14 h-14 text-lg font-medium shadow-ios"
               {...register('confirmPassword')}
               autoComplete="new-password"
             />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 hover:bg-transparent text-muted-foreground"
-              onClick={toggleConfirmPasswordVisibility}
-              tabIndex={-1}
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              {showConfirmPassword ? (
-                <EyeOff className="h-5 w-5" />
-              ) : (
-                <Eye className="h-5 w-5" />
-              )}
-            </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-xl hover:bg-primary/10 text-muted-foreground"
+                onClick={toggleConfirmPasswordVisibility}
+                tabIndex={-1}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="h-6 w-6" strokeWidth={2} />
+                ) : (
+                  <Eye className="h-6 w-6" strokeWidth={2} />
+                )}
+              </Button>
+            </motion.div>
           </div>
           {errors.confirmPassword && (
-            <p className="text-sm text-destructive pt-1">{errors.confirmPassword.message}</p>
+            <motion.p 
+              className="text-base text-destructive font-medium pt-1"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+            >
+              {errors.confirmPassword.message}
+            </motion.p>
           )}
-        </div>
+        </motion.div>
 
-        <div className="space-y-4">
-          <div className="flex items-start space-x-3">
+        <motion.div 
+          className="space-y-6"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          <div className="flex items-start space-x-4 p-4 rounded-2xl bg-muted/30 backdrop-blur-xl border border-border/20">
             <Checkbox
               id="acceptTerms"
               checked={acceptTerms}
               onCheckedChange={(checked) => setValue('acceptTerms', !!checked, { shouldValidate: true })}
-              className="mt-0.5"
+              className="mt-1 scale-125"
             />
-            <div className="grid gap-1.5 leading-none">
+            <div className="grid gap-2 leading-relaxed">
               <Label
                 htmlFor="acceptTerms"
-                className="text-sm font-normal cursor-pointer"
+                className="text-base font-medium cursor-pointer"
               >
                 J'accepte les{' '}
                 <TermsAndConditionsModal>
-                  <span className="font-semibold text-primary hover:underline cursor-pointer">
+                  <motion.span 
+                    className="font-bold text-primary hover:underline cursor-pointer"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
                     Termes et Conditions
-                  </span>
+                  </motion.span>
                 </TermsAndConditionsModal>
               </Label>
               {errors.acceptTerms && (
-                <p className="text-sm text-destructive">{errors.acceptTerms.message}</p>
+                <motion.p 
+                  className="text-base text-destructive font-medium"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                >
+                  {errors.acceptTerms.message}
+                </motion.p>
               )}
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        <Button
-          type="submit"
-          className="w-full h-12 text-base group"
-          disabled={isSubmitting}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
         >
-          {isSubmitting ? (
-            <span className="flex items-center">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Création du compte...
-            </span>
-          ) : (
-            <>
-              Créer mon compte
-              <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-            </>
-          )}
-        </Button>
+          <Button
+            type="submit"
+            variant="ios"
+            className="w-full h-16 text-xl font-bold shadow-ios-lg group"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <span className="flex items-center">
+                <Loader2 className="mr-3 h-6 w-6 animate-spin" />
+                Création du compte...
+              </span>
+            ) : (
+              <>
+                Créer mon compte
+                <ArrowRight className="ml-3 h-6 w-6 transition-transform group-hover:translate-x-1" strokeWidth={2.5} />
+              </>
+            )}
+          </Button>
+        </motion.div>
       </form>
 
       {showSwitchLink && (
-        <div className="text-center">
-          <p className="text-sm text-muted-foreground">
+        <motion.div 
+          className="text-center"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+        >
+          <p className="text-lg text-muted-foreground font-medium">
             Vous avez déjà un compte ?{' '}
-            <Button
-              variant="link"
-              className="font-semibold text-primary hover:underline p-0 h-auto"
-              onClick={onSwitchToLogin}
-            >
-              Connectez-vous
-            </Button>
+            <motion.span whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button
+                variant="link"
+                className="font-bold text-primary hover:underline p-0 h-auto text-lg"
+                onClick={onSwitchToLogin}
+              >
+                Connectez-vous
+              </Button>
+            </motion.span>
           </p>
-        </div>
+        </motion.div>
       )}
     </div>
   );

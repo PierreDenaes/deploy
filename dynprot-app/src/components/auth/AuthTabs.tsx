@@ -62,54 +62,61 @@ const AuthTabs = () => {
       transition={{ duration: 0.5 }}
       className="w-full"
     >
-      <Card className="shadow-2xl border-0 rounded-2xl overflow-hidden">
+      <Card className="shadow-ios-xl border-0 rounded-3xl overflow-hidden backdrop-blur-xl bg-card/95">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <CardHeader className="space-y-1 text-center p-8 bg-gray-50 dark:bg-gray-800/50">
+          <CardHeader className="space-y-6 text-center p-10 bg-gradient-to-br from-primary/5 via-background to-accent/5">
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-              className="mx-auto w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-4 shadow-lg"
+              className="mx-auto w-20 h-20 bg-gradient-to-br from-primary to-accent rounded-2xl flex items-center justify-center mb-6 shadow-ios-lg"
             >
-              <span className="text-3xl font-bold text-white">D</span>
+              <span className="text-4xl font-bold text-white tracking-tight">D</span>
             </motion.div>
             
-            <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsList className="grid w-full grid-cols-2 mb-8">
               <TabsTrigger 
                 value="login" 
-                className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-primary"
+                className="flex items-center gap-3"
               >
-                <LogIn className="w-4 h-4" />
+                <LogIn className="w-5 h-5" strokeWidth={2.5} />
                 Connexion
               </TabsTrigger>
               <TabsTrigger 
                 value="register"
-                className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-primary"
+                className="flex items-center gap-3"
               >
-                <UserPlus className="w-4 h-4" />
+                <UserPlus className="w-5 h-5" strokeWidth={2.5} />
                 Inscription
               </TabsTrigger>
             </TabsList>
 
-            <CardTitle className="text-3xl font-bold">
-              {activeTab === 'login' ? 'Bon retour !' : 'Rejoignez-nous !'}
-            </CardTitle>
-            <CardDescription className="text-base text-muted-foreground">
-              {activeTab === 'login' 
-                ? 'Connectez-vous pour continuer votre suivi'
-                : 'Créez votre compte pour commencer'
-              }
-            </CardDescription>
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <CardTitle className="text-4xl font-bold mb-3 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                {activeTab === 'login' ? 'Bon retour !' : 'Rejoignez-nous !'}
+              </CardTitle>
+              <CardDescription className="text-xl text-muted-foreground font-medium">
+                {activeTab === 'login' 
+                  ? 'Connectez-vous pour continuer votre suivi'
+                  : 'Créez votre compte pour commencer'
+                }
+              </CardDescription>
+            </motion.div>
           </CardHeader>
           
-          <CardContent className="p-8">
+          <CardContent className="p-10">
             <TabsContent value="login" className="mt-0">
               <motion.div
                 key="login"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.3 }}
+                initial={{ opacity: 0, x: -30, scale: 0.95 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: 30, scale: 0.95 }}
+                transition={{ duration: 0.4, type: "spring", stiffness: 100 }}
               >
                 <LoginForm 
                   onSuccess={handleAuthSuccess}
@@ -122,10 +129,10 @@ const AuthTabs = () => {
             <TabsContent value="register" className="mt-0">
               <motion.div
                 key="register"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
+                initial={{ opacity: 0, x: 30, scale: 0.95 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: -30, scale: 0.95 }}
+                transition={{ duration: 0.4, type: "spring", stiffness: 100 }}
               >
                 <RegisterForm 
                   onSuccess={handleAuthSuccess}

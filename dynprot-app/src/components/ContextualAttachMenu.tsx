@@ -45,8 +45,8 @@ const attachmentActions: AttachmentAction[] = [
     icon: Scan,
     label: 'Scanner',
     description: 'Scanner un code-barres',
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-50 hover:bg-purple-100'
+    color: 'text-primary',
+    bgColor: 'bg-primary/10 hover:bg-primary/20'
   }
 ];
 

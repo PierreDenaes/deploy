@@ -73,128 +73,178 @@ const LoginForm: React.FC<LoginFormProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <div className="space-y-8">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
         {error && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
+            initial={{ opacity: 0, height: 0, scale: 0.95 }}
+            animate={{ opacity: 1, height: 'auto', scale: 1 }}
+            exit={{ opacity: 0, height: 0, scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 200 }}
           >
-            <Alert variant="destructive">
-              <AlertTitle>Erreur de connexion</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
+            <Alert variant="destructive" className="rounded-2xl border-destructive/20 bg-destructive/5 p-4">
+              <AlertTitle className="text-lg font-bold">Erreur de connexion</AlertTitle>
+              <AlertDescription className="text-base font-medium">{error}</AlertDescription>
             </Alert>
           </motion.div>
         )}
 
-        <div className="space-y-2">
-          <Label htmlFor="email">Adresse e-mail</Label>
+        <motion.div 
+          className="space-y-3"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Label htmlFor="email" className="text-lg font-semibold">Adresse e-mail</Label>
           <div className="relative">
-            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground" strokeWidth={2} />
             <Input
               id="email"
               type="email"
               placeholder="votre@email.com"
-              className="pl-12 h-12 text-base"
+              className="pl-14 h-14 text-lg font-medium shadow-ios"
               {...register('email')}
               autoComplete="email"
             />
           </div>
           {errors.email && (
-            <p className="text-sm text-destructive pt-1">{errors.email.message}</p>
+            <motion.p 
+              className="text-base text-destructive font-medium pt-1"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+            >
+              {errors.email.message}
+            </motion.p>
           )}
-        </div>
+        </motion.div>
 
-        <div className="space-y-2">
-          <Label htmlFor="password">Mot de passe</Label>
+        <motion.div 
+          className="space-y-3"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Label htmlFor="password" className="text-lg font-semibold">Mot de passe</Label>
           <div className="relative">
-            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground" strokeWidth={2} />
             <Input
               id="password"
               type={showPassword ? 'text' : 'password'}
               placeholder="Votre mot de passe"
-              className="pl-12 pr-12 h-12 text-base"
+              className="pl-14 pr-14 h-14 text-lg font-medium shadow-ios"
               {...register('password')}
               autoComplete="current-password"
             />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 hover:bg-transparent text-muted-foreground"
-              onClick={togglePasswordVisibility}
-              tabIndex={-1}
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              {showPassword ? (
-                <EyeOff className="h-5 w-5" />
-              ) : (
-                <Eye className="h-5 w-5" />
-              )}
-            </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-xl hover:bg-primary/10 text-muted-foreground"
+                onClick={togglePasswordVisibility}
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-6 w-6" strokeWidth={2} />
+                ) : (
+                  <Eye className="h-6 w-6" strokeWidth={2} />
+                )}
+              </Button>
+            </motion.div>
           </div>
           {errors.password && (
-            <p className="text-sm text-destructive pt-1">{errors.password.message}</p>
+            <motion.p 
+              className="text-base text-destructive font-medium pt-1"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+            >
+              {errors.password.message}
+            </motion.p>
           )}
-        </div>
+        </motion.div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
+        <motion.div 
+          className="flex items-center justify-between"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <div className="flex items-center space-x-3">
             <Checkbox
               id="rememberMe"
               checked={rememberMe}
               onCheckedChange={(checked) => setValue('rememberMe', !!checked)}
+              className="scale-125"
             />
             <Label
               htmlFor="rememberMe"
-              className="text-sm font-normal cursor-pointer"
+              className="text-base font-medium cursor-pointer"
             >
               Se souvenir de moi
             </Label>
           </div>
-          <Button
-            variant="link"
-            className="text-sm text-primary hover:underline p-0 h-auto"
-            type="button"
-            onClick={() => {
-              // In a tabs context, this would be handled by parent
-              // For now, we'll use window.location for forgot password
-              window.location.href = '/forgot-password';
-            }}
-          >
-            Mot de passe oublié ?
-          </Button>
-        </div>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button
+              variant="link"
+              className="text-base text-primary hover:underline p-0 h-auto font-semibold"
+              type="button"
+              onClick={() => {
+                // In a tabs context, this would be handled by parent
+                // For now, we'll use window.location for forgot password
+                window.location.href = '/forgot-password';
+              }}
+            >
+              Mot de passe oublié ?
+            </Button>
+          </motion.div>
+        </motion.div>
 
-        <Button
-          type="submit"
-          className="w-full h-12 text-base"
-          disabled={isSubmitting}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
         >
-          {isSubmitting ? (
-            <span className="flex items-center">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Connexion...
-            </span>
-          ) : (
-            'Se connecter'
-          )}
-        </Button>
+          <Button
+            type="submit"
+            variant="ios"
+            className="w-full h-16 text-xl font-bold shadow-ios-lg"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <span className="flex items-center">
+                <Loader2 className="mr-3 h-6 w-6 animate-spin" />
+                Connexion...
+              </span>
+            ) : (
+              'Se connecter'
+            )}
+          </Button>
+        </motion.div>
       </form>
 
       {showSwitchLink && (
-        <div className="text-center">
-          <p className="text-sm text-muted-foreground">
+        <motion.div 
+          className="text-center"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          <p className="text-lg text-muted-foreground font-medium">
             Pas encore de compte ?{' '}
-            <Button
-              variant="link"
-              className="font-semibold text-primary hover:underline p-0 h-auto"
-              onClick={onSwitchToRegister}
-            >
-              Inscrivez-vous
-            </Button>
+            <motion.span whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button
+                variant="link"
+                className="font-bold text-primary hover:underline p-0 h-auto text-lg"
+                onClick={onSwitchToRegister}
+              >
+                Inscrivez-vous
+              </Button>
+            </motion.span>
           </p>
-        </div>
+        </motion.div>
       )}
     </div>
   );

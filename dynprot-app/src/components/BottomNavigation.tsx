@@ -62,7 +62,7 @@ const BottomNavigation = () => {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-gray-200/60 h-20 pb-safe"
+      className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-xl border-t border-border/60 h-20 pb-safe shadow-ios-lg"
       aria-label="Main Navigation"
       role="navigation"
     >
@@ -76,7 +76,7 @@ const BottomNavigation = () => {
               className={cn(
                 'flex flex-col items-center justify-center relative py-2 flex-1 transition-all duration-200',
                 'min-h-[56px]', // Hauteur minimum uniforme
-                isActive ? 'text-blue-600' : 'text-gray-500'
+                isActive ? 'text-primary' : 'text-muted-foreground'
               )}
               whileTap={{ scale: 0.95 }}
               aria-label={item.ariaLabel}
@@ -94,7 +94,7 @@ const BottomNavigation = () => {
               {/* Label */}
               <span className={cn(
                 'text-[10px] font-medium tracking-tight leading-none',
-                isActive ? 'text-blue-600' : 'text-gray-500'
+                isActive ? 'text-primary' : 'text-muted-foreground'
               )}>
                 {item.name}
               </span>
@@ -104,7 +104,7 @@ const BottomNavigation = () => {
                 <motion.span 
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="absolute -top-1 right-1/4 bg-red-500 text-white text-[10px] rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 font-semibold shadow-lg"
+                  className="absolute -top-1 right-1/4 bg-ios-red text-white text-[10px] rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 font-semibold shadow-ios"
                 >
                   {item.badgeCount > 99 ? '99+' : item.badgeCount}
                 </motion.span>

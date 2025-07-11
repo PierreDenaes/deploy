@@ -94,7 +94,7 @@ const GoalSetter = forwardRef<GoalSetterRef, GoalSetterProps>(({ onGoalsChange }
             <div className="flex items-center gap-2">
               <motion.span 
                 className="text-3xl font-bold text-primary"
-                animate={isUpdating ? { scale: [1, 1.1, 1], color: ["#3b82f6", "#10b981", "#3b82f6"] } : {}}
+                animate={isUpdating ? { scale: [1, 1.1, 1], color: ["#007aff", "#34c759", "#007aff"] } : {}}
                 transition={{ duration: 0.6 }}
               >
                 {proteinGoal}g
@@ -124,7 +124,7 @@ const GoalSetter = forwardRef<GoalSetterRef, GoalSetterProps>(({ onGoalsChange }
             <div className="flex items-center gap-2">
               <motion.span 
                 className="text-3xl font-bold text-primary"
-                animate={isUpdating ? { scale: [1, 1.1, 1], color: ["#3b82f6", "#10b981", "#3b82f6"] } : {}}
+                animate={isUpdating ? { scale: [1, 1.1, 1], color: ["#007aff", "#34c759", "#007aff"] } : {}}
                 transition={{ duration: 0.6, delay: 0.1 }}
               >
                 {calorieGoal} cal

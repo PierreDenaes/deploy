@@ -24,6 +24,7 @@ import GoalSetter, { type GoalSetterRef } from "@/components/GoalSetter";
 import ProteinGoalCalculator from "@/components/ProteinGoalCalculator";
 import DataExport from "@/components/DataExport";
 import DataDeletion from "@/components/DataDeletion";
+import ThemeToggle from "@/components/ThemeToggle";
 import { sanitizeName } from "@/utils/sanitize";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -116,14 +117,6 @@ export default function Profile() {
     }
   };
 
-  const toggleDarkMode = () => {
-    dispatch({
-      type: "SET_PREFERENCES",
-      payload: {
-        darkMode: !state.preferences.darkMode
-      }
-    });
-  };
 
   const toggleAccessibility = (setting: "reducedMotion" | "highContrast" | "largeText") => {
     dispatch({
@@ -234,8 +227,8 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <div className="container max-w-lg mx-auto p-4 pb-32">
+    <div className="min-h-screen bg-gradient-to-br from-background via-secondary/20 to-accent/10">
+      <div className="container max-w-lg mx-auto p-4 pb-40">
         <motion.div
           className="space-y-8"
           initial="hidden"
@@ -244,144 +237,174 @@ export default function Profile() {
         >
           <motion.header 
             variants={itemVariants} 
-            className="flex items-center mb-6 sticky top-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm z-10 -mx-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800"
+            className="flex items-center mb-8 sticky top-0 glass z-20 -mx-4 px-6 py-4 border-b border-border/30"
           >
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate(-1)}
-              aria-label="Retour"
-              className="mr-3"
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Profil & Paramètres</h1>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate(-1)}
+                aria-label="Retour"
+                className="mr-4 rounded-2xl h-12 w-12 hover:bg-primary/10"
+              >
+                <ArrowLeft className="h-6 w-6" strokeWidth={2.5} />
+              </Button>
+            </motion.div>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-accent/20 rounded-2xl flex items-center justify-center shadow-ios">
+                <User className="h-7 w-7 text-primary" strokeWidth={2.5} />
+              </div>
+              <h1 className="text-3xl font-bold text-foreground tracking-tight">Profil & Paramètres</h1>
+            </div>
           </motion.header>
 
           <motion.div variants={itemVariants}>
-            <Tabs defaultValue="profile" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
-                <TabsTrigger value="profile" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:shadow-sm data-[state=active]:text-primary dark:data-[state=active]:text-white rounded-lg py-2">
-                  <User className="h-4 w-4" />
+            <Tabs defaultValue="profile" className="space-y-8">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="profile" className="flex items-center gap-2">
+                  <User className="h-5 w-5" strokeWidth={2.5} />
                   Profil
                 </TabsTrigger>
-                <TabsTrigger value="goals" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:shadow-sm data-[state=active]:text-primary dark:data-[state=active]:text-white rounded-lg py-2">
-                  <Target className="h-4 w-4" />
+                <TabsTrigger value="goals" className="flex items-center gap-2">
+                  <Target className="h-5 w-5" strokeWidth={2.5} />
                   Objectifs
                 </TabsTrigger>
-                <TabsTrigger value="settings" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:shadow-sm data-[state=active]:text-primary dark:data-[state=active]:text-white rounded-lg py-2">
-                  <Settings className="h-4 w-4" />
+                <TabsTrigger value="settings" className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" strokeWidth={2.5} />
                   Paramètres
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="profile" className="space-y-6">
-                <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <User className="h-5 w-5 text-primary" />
-                      Informations personnelles
-                    </CardTitle>
-                    <CardDescription>
-                      Mettez à jour vos informations de profil.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Nom</Label>
-                      <Input
-                        id="name"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Votre nom"
-                        className="h-12 text-base"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={authUser?.email || "utilisateur@exemple.com"}
-                        disabled
-                        placeholder="Votre email"
-                        className="h-12 text-base bg-gray-100 dark:bg-gray-800"
-                      />
-                      <div className="flex items-center justify-between text-sm">
-                        <p className="text-muted-foreground">
-                          {authUser?.emailVerified ? "Email vérifié" : "Email en attente de vérification"}
-                        </p>
-                        {authUser?.emailVerified && (
-                          <Badge variant="secondary" className="text-xs">
-                            <Shield className="w-3 h-3 mr-1" />
-                            Vérifié
-                          </Badge>
-                        )}
+              <TabsContent value="profile" className="space-y-8">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                >
+                  <Card className="border-0 shadow-ios backdrop-blur-xl hover:shadow-ios-lg transition-shadow">
+                    <CardHeader className="pb-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-primary/20 rounded-2xl flex items-center justify-center shadow-ios-sm">
+                          <User className="h-6 w-6 text-primary" strokeWidth={2.5} />
+                        </div>
+                        <div>
+                          <CardTitle className="text-2xl font-bold">Informations personnelles</CardTitle>
+                          <CardDescription className="text-base font-medium">
+                            Mettez à jour vos informations de profil.
+                          </CardDescription>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="border-t pt-4">
-                    <Button onClick={saveProfile} className="w-full h-12 text-base">
-                      <Save className="mr-2 h-4 w-4" />
-                      Enregistrer le profil
-                    </Button>
-                  </CardFooter>
-                </Card>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-6">
+                      <div className="space-y-3">
+                        <Label htmlFor="name" className="text-lg font-semibold">Nom</Label>
+                        <Input
+                          id="name"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder="Votre nom"
+                          className="h-14 text-lg font-medium shadow-ios"
+                        />
+                      </div>
 
-                <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <LogOut className="h-5 w-5 text-primary" />
-                      Gestion du compte
-                    </CardTitle>
-                    <CardDescription>
-                      Gérez vos données et votre session.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Alert>
-                      <AlertTitle>Attention !</AlertTitle>
-                      <AlertDescription>
-                        La suppression des données est irréversible. Soyez prudent.
-                      </AlertDescription>
-                    </Alert>
-                  </CardContent>
-                  <CardFooter className="flex flex-col w-full gap-3 border-t pt-4">
-                      <div className="flex flex-col gap-2 w-full">
+                      <div className="space-y-3">
+                        <Label htmlFor="email" className="text-lg font-semibold">Email</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={authUser?.email || "utilisateur@exemple.com"}
+                          disabled
+                          placeholder="Votre email"
+                          className="h-14 text-lg font-medium bg-muted/50 shadow-ios"
+                        />
+                        <div className="flex items-center justify-between">
+                          <p className="text-base text-muted-foreground font-medium">
+                            {authUser?.emailVerified ? "Email vérifié" : "Email en attente de vérification"}
+                          </p>
+                          {authUser?.emailVerified && (
+                            <Badge variant="secondary" className="text-sm px-3 py-1 rounded-xl bg-ios-green/10 text-ios-green border-ios-green/20">
+                              <Shield className="w-4 h-4 mr-1" strokeWidth={2} />
+                              Vérifié
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="border-t border-border/30 pt-6">
+                      <Button onClick={saveProfile} variant="ios" className="w-full h-14 text-lg font-semibold shadow-ios">
+                        <Save className="mr-3 h-5 w-5" strokeWidth={2.5} />
+                        Enregistrer le profil
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <Card className="border-0 shadow-ios backdrop-blur-xl hover:shadow-ios-lg transition-shadow">
+                    <CardHeader className="pb-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-destructive/20 rounded-2xl flex items-center justify-center shadow-ios-sm">
+                          <LogOut className="h-6 w-6 text-destructive" strokeWidth={2.5} />
+                        </div>
+                        <div>
+                          <CardTitle className="text-2xl font-bold">Gestion du compte</CardTitle>
+                          <CardDescription className="text-base font-medium">
+                            Gérez vos données et votre session.
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-6">
+                      <Alert className="border-destructive/20 bg-destructive/5 rounded-2xl p-4">
+                        <AlertTriangle className="h-5 w-5 text-destructive" strokeWidth={2} />
+                        <AlertTitle className="text-lg font-bold">Attention !</AlertTitle>
+                        <AlertDescription className="text-base font-medium leading-relaxed">
+                          La suppression des données est irréversible. Soyez prudent.
+                        </AlertDescription>
+                      </Alert>
+                    </CardContent>
+                    <CardFooter className="flex flex-col w-full gap-4 border-t border-border/30 pt-6">
+                      <div className="flex flex-col gap-3 w-full">
                         <DataExport 
                           variant="inline" 
-                          className="w-full h-12 text-sm sm:text-base px-2"
+                          className="w-full h-14 text-lg font-semibold shadow-ios rounded-2xl"
                           buttonText="Exporter les données"
                         />
                         <DataDeletion 
                           variant="inline" 
-                          className="w-full h-12 text-sm sm:text-base px-2"
+                          className="w-full h-14 text-lg font-semibold shadow-ios rounded-2xl"
                           buttonText="Supprimer sélectivement"
                         />
                       </div>
-                      <Button variant="destructive" onClick={handleResetAppData} className="w-full h-12 text-sm sm:text-base px-2">
+                      <Button variant="destructive" onClick={handleResetAppData} className="w-full h-14 text-lg font-semibold shadow-ios rounded-2xl">
                         Réinitialiser toutes les données (aujourd'hui)
                       </Button>
                     </CardFooter>
-                    <div className="w-full flex flex-col items-center gap-3">
+                    <div className="w-full flex flex-col items-center gap-4 p-6">
                       <Button 
                         variant="destructive" 
                         onClick={handleLogout}
-                        className="w-full sm:w-auto h-12 text-base"
+                        className="w-full h-14 text-lg font-semibold shadow-ios rounded-2xl"
                       >
-                        <LogOut className="mr-2 h-4 w-4" />
+                        <LogOut className="mr-3 h-5 w-5" strokeWidth={2.5} />
                         Se déconnecter
                       </Button>
 
                       {/* Separation for danger zone */}
-                      <div className="my-6 w-full">
+                      <div className="my-8 w-full">
                         <div className="relative">
                           <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t border-red-300" />
+                            <span className="w-full border-t border-destructive/30" />
                           </div>
-                          <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-red-50 px-2 text-red-600 dark:bg-red-900/20 dark:text-red-400">
+                          <div className="relative flex justify-center text-sm uppercase font-bold">
+                            <span className="bg-destructive/10 px-4 py-2 text-destructive rounded-xl border border-destructive/20">
                               Zone de danger
                             </span>
                           </div>
@@ -391,97 +414,119 @@ export default function Profile() {
                       <Button 
                         variant="destructive" 
                         onClick={handleDeleteAccount}
-                        className="w-full sm:w-auto h-12 text-base bg-red-600 hover:bg-red-700 border-red-600 mb-8"
+                        className="w-full h-14 text-lg font-semibold bg-destructive hover:bg-destructive/90 text-destructive-foreground border-destructive shadow-ios rounded-2xl mb-8"
                       >
-                        <Trash2 className="mr-2 h-4 w-4" />
+                        <Trash2 className="mr-3 h-5 w-5" strokeWidth={2.5} />
                         Supprimer définitivement mon compte
                       </Button>
                     </div>
-                </Card>
+                  </Card>
+                </motion.div>
               </TabsContent>
 
-              <TabsContent value="goals" className="space-y-6">
-                <ProteinGoalCalculator goalSetterRef={goalSetterRef} />
+              <TabsContent value="goals" className="space-y-8">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                >
+                  <ProteinGoalCalculator goalSetterRef={goalSetterRef} />
+                </motion.div>
                 
-                <GoalSetter ref={goalSetterRef} />
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <GoalSetter ref={goalSetterRef} />
+                </motion.div>
 
-                <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Zap className="h-5 w-5 text-primary" />
-                      Fonctionnalités IA
-                    </CardTitle>
-                    <CardDescription>
-                      Gérez les fonctionnalités alimentées par l'IA.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label htmlFor="protein-estimation">Estimation des protéines</Label>
-                          <p className="text-sm text-muted-foreground">
-                            Utilisez l'IA pour estimer les protéines à partir de photos.
-                          </p>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <Card className="border-0 shadow-ios backdrop-blur-xl hover:shadow-ios-lg transition-shadow">
+                    <CardHeader className="pb-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-primary/20 rounded-2xl flex items-center justify-center shadow-ios-sm">
+                          <Zap className="h-6 w-6 text-primary" strokeWidth={2.5} />
                         </div>
-                        <Switch id="protein-estimation" checked={state.ai.features.proteinEstimation} />
-                      </div>
-                      <Separator />
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label htmlFor="meal-recommendations">Recommandations de repas</Label>
-                          <p className="text-sm text-muted-foreground">
-                            Obtenez des suggestions de repas basées sur vos objectifs.
-                          </p>
+                        <div>
+                          <CardTitle className="text-2xl font-bold">Fonctionnalités IA</CardTitle>
+                          <CardDescription className="text-base font-medium">
+                            Gérez les fonctionnalités alimentées par l'IA.
+                          </CardDescription>
                         </div>
-                        <Switch id="meal-recommendations" checked={state.ai.features.mealRecommendation} />
                       </div>
-                      <Separator />
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label htmlFor="nutrition-analysis">Analyse nutritionnelle</Label>
-                          <p className="text-sm text-muted-foreground">
-                            Obtenez des analyses nutritionnelles détaillées de vos repas.
-                          </p>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-6">
+                      <div className="space-y-6">
+                        <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/30 border border-border/20">
+                          <div className="space-y-1">
+                            <Label htmlFor="protein-estimation" className="text-lg font-semibold">Estimation des protéines</Label>
+                            <p className="text-base text-muted-foreground font-medium">
+                              Utilisez l'IA pour estimer les protéines à partir de photos.
+                            </p>
+                          </div>
+                          <Switch id="protein-estimation" checked={state.ai.features.proteinEstimation} className="scale-125" />
                         </div>
-                        <Switch id="nutrition-analysis" checked={state.ai.features.nutritionAnalysis} />
+                        <Separator className="border-border/30" />
+                        <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/30 border border-border/20">
+                          <div className="space-y-1">
+                            <Label htmlFor="meal-recommendations" className="text-lg font-semibold">Recommandations de repas</Label>
+                            <p className="text-base text-muted-foreground font-medium">
+                              Obtenez des suggestions de repas basées sur vos objectifs.
+                            </p>
+                          </div>
+                          <Switch id="meal-recommendations" checked={state.ai.features.mealRecommendation} className="scale-125" />
+                        </div>
+                        <Separator className="border-border/30" />
+                        <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/30 border border-border/20">
+                          <div className="space-y-1">
+                            <Label htmlFor="nutrition-analysis" className="text-lg font-semibold">Analyse nutritionnelle</Label>
+                            <p className="text-base text-muted-foreground font-medium">
+                              Obtenez des analyses nutritionnelles détaillées de vos repas.
+                            </p>
+                          </div>
+                          <Switch id="nutrition-analysis" checked={state.ai.features.nutritionAnalysis} className="scale-125" />
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="border-t pt-4">
-                    <div className="text-sm text-muted-foreground w-full flex justify-between items-center">
-                      <span>Utilisation IA aujourd'hui</span>
-                      <span>{state.ai.usageToday} / {state.ai.usageLimit}</span>
-                    </div>
-                  </CardFooter>
-                </Card>
+                    </CardContent>
+                    <CardFooter className="border-t border-border/30 pt-6">
+                      <div className="text-lg font-semibold text-foreground w-full flex justify-between items-center p-4 rounded-2xl bg-primary/5 border border-primary/20">
+                        <span>Utilisation IA aujourd'hui</span>
+                        <Badge variant="secondary" className="text-lg font-bold px-4 py-2 rounded-xl bg-primary/10 text-primary border-primary/20">
+                          {state.ai.usageToday} / {state.ai.usageLimit}
+                        </Badge>
+                      </div>
+                    </CardFooter>
+                  </Card>
+                </motion.div>
               </TabsContent>
 
-              <TabsContent value="settings" className="space-y-6">
-                <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Palette className="h-5 w-5 text-primary" />
-                      Apparence
-                    </CardTitle>
-                    <CardDescription>
-                      Personnalisez l'apparence de l'application.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="dark-mode">Mode Sombre</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Activez ou désactivez le thème sombre.
-                        </p>
+              <TabsContent value="settings" className="space-y-8">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                >
+                  <Card className="border-0 shadow-ios backdrop-blur-xl hover:shadow-ios-lg transition-shadow">
+                    <CardHeader className="pb-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-accent/20 rounded-2xl flex items-center justify-center shadow-ios-sm">
+                          <Palette className="h-6 w-6 text-accent" strokeWidth={2.5} />
+                        </div>
+                        <div>
+                          <CardTitle className="text-2xl font-bold">Apparence</CardTitle>
+                          <CardDescription className="text-base font-medium">
+                            Personnalisez l'apparence de l'application.
+                          </CardDescription>
+                        </div>
                       </div>
-                      <Switch
-                        id="dark-mode"
-                        checked={state.preferences.darkMode}
-                        onCheckedChange={toggleDarkMode}
-                      />
-                    </div>
+                    </CardHeader>
+                  <CardContent className="space-y-6">
+                    <ThemeToggle />
                     <Separator />
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
@@ -518,8 +563,15 @@ export default function Profile() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="reduced-motion">Animations réduites</Label>
+                      <div className="space-y-0.5 flex-1">
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="reduced-motion">Animations réduites</Label>
+                          {state.preferences.accessibility.reducedMotion && (
+                            <Badge variant="secondary" className="text-xs bg-ios-green/10 text-ios-green border-ios-green/20">
+                              Actif
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           Minimisez les animations dans toute l'application.
                         </p>
@@ -532,8 +584,15 @@ export default function Profile() {
                     </div>
                     <Separator />
                     <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="high-contrast">Contraste élevé</Label>
+                      <div className="space-y-0.5 flex-1">
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="high-contrast">Contraste élevé</Label>
+                          {state.preferences.accessibility.highContrast && (
+                            <Badge variant="secondary" className="text-xs bg-ios-yellow/10 text-ios-yellow border-ios-yellow/20">
+                              Actif
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           Augmentez le contraste pour une meilleure visibilité.
                         </p>
@@ -546,8 +605,15 @@ export default function Profile() {
                     </div>
                     <Separator />
                     <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="large-text">Texte agrandi</Label>
+                      <div className="space-y-0.5 flex-1">
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="large-text">Texte agrandi</Label>
+                          {state.preferences.accessibility.largeText && (
+                            <Badge variant="secondary" className="text-xs bg-primary/10 text-primary border-primary/20">
+                              Actif
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           Augmentez la taille du texte dans toute l'application.
                         </p>
@@ -601,24 +667,36 @@ export default function Profile() {
                     </div>
                   </CardContent>
                 </Card>
+                </motion.div>
               </TabsContent>
             </Tabs>
           </motion.div>
         </motion.div>
 
         <Dialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Confirmer la déconnexion</DialogTitle>
-              <DialogDescription>
+          <DialogContent className="rounded-3xl border-0 shadow-ios-xl backdrop-blur-xl">
+            <DialogHeader className="text-center">
+              <div className="w-16 h-16 bg-destructive/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <LogOut className="h-8 w-8 text-destructive" strokeWidth={2} />
+              </div>
+              <DialogTitle className="text-2xl font-bold">Confirmer la déconnexion</DialogTitle>
+              <DialogDescription className="text-lg leading-relaxed mt-2">
                 Êtes-vous sûr de vouloir vous déconnecter ?
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowLogoutConfirm(false)}>
+            <DialogFooter className="flex gap-3 mt-6">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 h-12 rounded-2xl text-base font-semibold shadow-ios"
+              >
                 Annuler
               </Button>
-              <Button variant="destructive" onClick={confirmLogout}>
+              <Button 
+                variant="destructive" 
+                onClick={confirmLogout}
+                className="flex-1 h-12 rounded-2xl text-base font-semibold shadow-ios"
+              >
                 Déconnexion
               </Button>
             </DialogFooter>

@@ -37,7 +37,7 @@ const getActionColor = (actionType: ChatInputType) => {
   switch (actionType) {
     case 'photo': return 'text-blue-500';
     case 'voice': return 'text-green-500';
-    case 'scan': return 'text-purple-500';
+    case 'scan': return 'text-primary';
     default: return 'text-gray-500';
   }
 };

@@ -43,13 +43,13 @@ const attachmentActions: AttachmentAction[] = [
     type: 'photo', 
     icon: Camera, 
     label: 'Photo', 
-    color: 'text-blue-600 hover:bg-blue-100 hover:text-blue-700' 
+    color: 'text-primary hover:bg-primary/10 hover:text-primary' 
   },
   { 
     type: 'scan', 
     icon: Scan, 
     label: 'Scanner', 
-    color: 'text-purple-600 hover:bg-purple-100 hover:text-purple-700' 
+    color: 'text-primary hover:bg-primary/10 hover:text-primary' 
   }
 ];
 
@@ -146,8 +146,8 @@ export const ChatGPTInput: React.FC<ChatGPTInputProps> = ({
 
       {/* Main Input Container - iOS Style */}
       <div className={cn(
-        "flex items-end gap-3 p-4 bg-white/95 backdrop-blur-xl rounded-3xl border border-gray-200/80 transition-all duration-300 shadow-lg shadow-black/5",
-        isFocused && "border-blue-400/60 shadow-blue-500/20 shadow-xl bg-white",
+        "flex items-end gap-3 p-4 bg-background/95 backdrop-blur-xl rounded-3xl border border-border/80 transition-all duration-300 shadow-ios",
+        isFocused && "border-primary/60 shadow-ios-lg bg-background",
         activeAttachment && "border-t-0 rounded-t-none",
         disabled && "opacity-50"
       )}>
@@ -162,9 +162,9 @@ export const ChatGPTInput: React.FC<ChatGPTInputProps> = ({
                 disabled={disabled || !!activeAttachment}
                 className={cn(
                   "w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200",
-                  "bg-gray-100/80 hover:bg-gray-200/80 active:scale-95 active:bg-gray-300/80",
-                  action.type === 'photo' && "text-blue-600",
-                  action.type === 'scan' && "text-purple-600",
+                  "bg-muted/80 hover:bg-muted/100 active:scale-95 active:bg-muted",
+                  action.type === 'photo' && "text-primary",
+                  action.type === 'scan' && "text-primary",
                   (disabled || activeAttachment) && "opacity-40 cursor-not-allowed"
                 )}
                 title={action.label}
@@ -188,8 +188,8 @@ export const ChatGPTInput: React.FC<ChatGPTInputProps> = ({
             disabled={disabled || !!activeAttachment}
             className={cn(
               "min-h-[20px] max-h-[120px] resize-none border-0 bg-transparent p-0 text-[16px] leading-5",
-              "focus:ring-0 focus:border-0 placeholder:text-gray-400/80 text-gray-900",
-              "scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent",
+              "focus:ring-0 focus:border-0 placeholder:text-muted-foreground text-foreground",
+              "scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent",
               "font-medium tracking-tight",
               (disabled || activeAttachment) && "cursor-not-allowed"
             )}
@@ -210,7 +210,7 @@ export const ChatGPTInput: React.FC<ChatGPTInputProps> = ({
 
       {/* Character count for longer messages - iOS Style */}
       {value.length > 100 && (
-        <div className="absolute bottom-3 right-14 text-xs text-gray-400/70 pointer-events-none font-medium">
+        <div className="absolute bottom-3 right-14 text-xs text-muted-foreground/70 pointer-events-none font-medium">
           {value.length}/500
         </div>
       )}

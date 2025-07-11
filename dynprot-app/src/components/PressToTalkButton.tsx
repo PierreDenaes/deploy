@@ -257,7 +257,7 @@ export const PressToTalkButton: React.FC<PressToTalkButtonProps> = ({
 
   const getButtonColor = () => {
     if (hasText) {
-      return "bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/25";
+      return "bg-primary hover:bg-primary/90 text-primary-foreground shadow-ios-lg";
     }
     
     if (isRecording) {
@@ -267,7 +267,7 @@ export const PressToTalkButton: React.FC<PressToTalkButtonProps> = ({
       return "bg-green-500 text-white animate-pulse shadow-lg shadow-green-500/25";
     }
     
-    return "bg-gray-100/80 hover:bg-gray-200/80 text-gray-600 active:scale-95";
+    return "bg-muted/80 hover:bg-muted text-muted-foreground active:scale-95";
   };
 
   return (
@@ -300,14 +300,14 @@ export const PressToTalkButton: React.FC<PressToTalkButtonProps> = ({
                 <p className="text-red-600 font-medium">Relâchez pour annuler</p>
               ) : (
                 <>
-                  <p className="text-gray-800 font-medium mb-2">Enregistrement...</p>
+                  <p className="text-foreground font-medium mb-2">Enregistrement...</p>
                   {(transcript || interimTranscript) && (
-                    <p className="text-sm text-gray-600 bg-gray-100 p-2 rounded">
+                    <p className="text-sm text-muted-foreground bg-muted p-2 rounded">
                       {transcript}
-                      <span className="text-gray-400 italic">{interimTranscript}</span>
+                      <span className="text-muted-foreground/70 italic">{interimTranscript}</span>
                     </p>
                   )}
-                  <p className="text-xs text-gray-500 mt-2">Glissez vers le haut pour annuler</p>
+                  <p className="text-xs text-muted-foreground mt-2">Glissez vers le haut pour annuler</p>
                 </>
               )}
             </div>
@@ -343,7 +343,7 @@ export const PressToTalkButton: React.FC<PressToTalkButtonProps> = ({
 
       {/* Instruction tooltip */}
       {!hasText && !isRecording && (
-        <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+        <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-popover text-popover-foreground text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap border border-border shadow-ios">
           Maintenez pour parler
         </div>
       )}

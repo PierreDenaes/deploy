@@ -10,6 +10,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider } from './context/AuthContext';
 import { GlobalLoadingProvider } from './hooks/useLoadingState';
+import { ThemeProvider } from './context/ThemeContext';
 
 // Lazy load layouts
 const MainLayout = lazy(() => import('./layouts/MainLayout'));
@@ -51,10 +52,11 @@ const queryClient = new QueryClient({
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <GlobalLoadingProvider>
-        <AppProvider>
-        <TooltipProvider>
+    <ThemeProvider defaultTheme="system" storageKey="dynprot-theme">
+      <AuthProvider>
+        <GlobalLoadingProvider>
+          <AppProvider>
+          <TooltipProvider>
           <Toaster />
           <BrowserRouter>
             <ScrollToTop />
@@ -119,10 +121,11 @@ const App = () => (
               </Routes>
             </Suspense>
           </BrowserRouter>
-        </TooltipProvider>
-        </AppProvider>
-      </GlobalLoadingProvider>
-    </AuthProvider>
+          </TooltipProvider>
+          </AppProvider>
+        </GlobalLoadingProvider>
+      </AuthProvider>
+    </ThemeProvider>
     <ReactQueryDevtools initialIsOpen={false} />
   </QueryClientProvider>
 );

@@ -59,8 +59,8 @@ export function WeeklyTrendChart({
   const isDarkMode = state?.preferences?.darkMode ?? false;
   const axisColor = isDarkMode ? "#A0A0A0" : "#6B7280"; // Gray-400 / Gray-500
   const gridColor = isDarkMode ? "#4B5563" : "#E5E7EB"; // Gray-600 / Gray-200
-  const proteinColor = isDarkMode ? "#93C5FD" : "#8884d8"; // Blue-300 / Original
-  const caloriesColor = isDarkMode ? "#6EE7B7" : "#82ca9d"; // Teal-300 / Original
+  const proteinColor = isDarkMode ? "#0a84ff" : "#007aff"; // iOS Blue Dark / iOS Blue
+  const caloriesColor = isDarkMode ? "#30d158" : "#34c759"; // iOS Green Dark / iOS Green
 
   return (
     <Card className={cn("w-full", className)}>

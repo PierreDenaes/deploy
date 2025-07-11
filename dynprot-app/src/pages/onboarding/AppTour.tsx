@@ -113,7 +113,7 @@ const AppTour = () => {
   const IconComponent = currentTour.icon;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
@@ -123,10 +123,10 @@ const AppTour = () => {
             transition={{ duration: 0.6 }}
             className="text-center mb-8 pt-8"
           >
-            <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mb-4 shadow-lg">
+            <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mb-4 shadow-ios">
               <Smartphone className="h-8 w-8 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-3xl font-bold text-foreground mb-2">
               Visite rapide de l'application
             </h1>
             <p className="text-muted-foreground mb-4">
@@ -141,7 +141,7 @@ const AppTour = () => {
 
           {/* Progress Bar */}
           <div className="mb-8">
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+            <div className="w-full bg-muted/30 rounded-full h-2">
               <motion.div
                 className="bg-primary h-2 rounded-full"
                 initial={{ width: 0 }}
@@ -160,16 +160,16 @@ const AppTour = () => {
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.4 }}
             >
-              <Card className="overflow-hidden border-0 shadow-lg">
+              <Card className="overflow-hidden border-0 shadow-ios bg-background border border-border/20">
                 <CardContent className="p-0">
                   <div className="grid md:grid-cols-2 gap-0">
                     {/* Content Side */}
                     <div className="p-8">
                       <div className="flex items-center mb-4">
-                        <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mr-4">
+                        <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mr-4">
                           <IconComponent className="h-6 w-6 text-primary" />
                         </div>
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                        <h2 className="text-2xl font-bold text-foreground">
                           {currentTour.title}
                         </h2>
                       </div>
@@ -179,7 +179,7 @@ const AppTour = () => {
                       </p>
 
                       <div className="space-y-3">
-                        <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
+                        <h3 className="font-semibold text-foreground mb-3">
                           Fonctionnalités clés :
                         </h3>
                         {currentTour.tips.map((tip, index) => (
@@ -190,7 +190,7 @@ const AppTour = () => {
                             transition={{ duration: 0.3, delay: index * 0.1 }}
                             className="flex items-start space-x-3"
                           >
-                            <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                            <CheckCircle className="h-5 w-5 text-ios-green mt-0.5 flex-shrink-0" />
                             <span className="text-muted-foreground">{tip}</span>
                           </motion.div>
                         ))}
@@ -198,7 +198,7 @@ const AppTour = () => {
                     </div>
 
                     {/* Image/Visual Side */}
-                    <div className="bg-gradient-to-br from-primary/5 to-primary/10 p-8 flex items-center justify-center">
+                    <div className="bg-gradient-to-br from-primary/5 to-primary/10 p-8 flex items-center justify-center rounded-r-2xl">
                       <div className="w-full max-w-sm">
                         {/* Mock Phone Interface */}
                         <div className="bg-gray-900 rounded-3xl p-2 shadow-2xl">
@@ -216,7 +216,7 @@ const AppTour = () => {
                             </div>
                             
                             {/* Phone Content */}
-                            <div className="h-64 bg-gray-50 dark:bg-gray-700 flex items-center justify-center p-4">
+                            <div className="h-64 bg-muted/20 flex items-center justify-center p-4">
                               <div className="text-center">
                                 <IconComponent className="h-16 w-16 text-primary mx-auto mb-4" />
                                 <p className="text-sm text-muted-foreground">
@@ -289,7 +289,7 @@ const AppTour = () => {
                     ? 'bg-primary' 
                     : index < currentStep 
                       ? 'bg-primary/50' 
-                      : 'bg-gray-300 dark:bg-gray-600'
+                      : 'bg-muted/50'
                 )}
               />
             ))}

@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import BottomNavigation from '../components/BottomNavigation';
 import { useAppContext } from '../context/AppContext';
 import { useScrollReset } from '../hooks/useScrollReset';
+import { useAccessibility } from '../hooks/useAccessibility';
 
 const MainLayout = () => {
   const location = useLocation();
@@ -15,6 +16,9 @@ const MainLayout = () => {
     behavior: 'instant',
     resetOnRouteChange: true,
   });
+
+  // Apply accessibility preferences
+  useAccessibility(state.preferences.accessibility);
 
   // Update navigation state when route changes
   useEffect(() => {
@@ -32,7 +36,7 @@ const MainLayout = () => {
 
 
   return (
-    <div className={`min-h-screen flex flex-col ${state.preferences.darkMode ? 'dark' : ''}`}>
+    <div className="min-h-screen flex flex-col">
       <main className="flex-1 container mx-auto px-4 pb-20">
         <Outlet />
       </main>

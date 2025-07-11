@@ -236,11 +236,11 @@ function generatePDFContent(data: ExportData, options: ExportOptions): string {
         .header { 
           text-align: center; 
           margin-bottom: 30px; 
-          border-bottom: 2px solid #3b82f6;
+          border-bottom: 2px solid #007aff;
           padding-bottom: 20px;
         }
         .header h1 { 
-          color: #3b82f6; 
+          color: #007aff; 
           margin-bottom: 10px; 
         }
         .section { 

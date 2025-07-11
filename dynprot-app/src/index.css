@@ -4,35 +4,51 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Context7 Authentic Color System */
+    --background: 0 0% 100%; /* Pure white background */
+    --foreground: 0 0% 0%; /* Pure black text */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%; /* Pure white cards */
+    --card-foreground: 0 0% 0%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 0 0% 0%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 211 100% 50%; /* iOS Blue #007aff */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 0 0% 97%; /* iOS Gray 6 */
+    --secondary-foreground: 240 3% 25%; /* iOS Secondary Label */
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 240 5% 96%; /* iOS Gray 6 */
+    --muted-foreground: 240 4% 46%; /* iOS Tertiary Label */
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 211 100% 50%; /* Same as primary for consistency */
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 3 91% 60%; /* iOS Red #ff3b30 */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 210 3% 80%; /* iOS Separator */
+    --input: 240 5% 96%; /* iOS Fill */
+    --ring: 211 100% 50%; /* iOS Blue */
 
-    --radius: 0.5rem;
+    --radius: 0.75rem; /* iOS standard 12px */
+
+    /* Context7 Authentic Palette */
+    --ios-blue: 0 122 255; /* #007aff - iOS Blue */
+    --ios-red: 255 59 48; /* #ff3b30 - iOS Red */
+    --ios-orange: 255 149 0; /* #ff9500 - iOS Orange */
+    --ios-yellow: 255 204 0; /* #ffcc00 - iOS Yellow */
+    --ios-green: 52 199 89; /* #34c759 - iOS Green */
+    --ios-teal: 0 122 255; /* Use blue for consistency */
+    --ios-cyan: 0 122 255; /* Use blue for consistency */
+    --ios-indigo: 0 122 255; /* Use blue for consistency */
+
+    /* Glassmorphism */
+    --glass-bg: 255 255 255 / 0.8;
+    --glass-border: 255 255 255 / 0.2;
+    --glass-shadow: 0 0 0 / 0.1;
 
     --sidebar-background: 0 0% 98%;
 
@@ -52,33 +68,49 @@
   }
 
   .dark {
-    --background: 220 10% 3%;
-    --foreground: 210 40% 98%;
+    /* Context7 Authentic Dark Mode */
+    --background: 0 0% 0%; /* Pure black background */
+    --foreground: 0 0% 100%; /* Pure white text */
 
-    --card: 220 10% 8%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 11%; /* iOS Secondary System Background Dark */
+    --card-foreground: 0 0% 100%;
 
-    --popover: 220 10% 8%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 18%; /* iOS Tertiary System Background Dark */
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 220 10% 10%;
+    --primary: 211 100% 52%; /* iOS Blue Dark #0a84ff */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 215 20.2% 14.1%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 0% 11%; /* iOS Secondary System Background Dark */
+    --secondary-foreground: 240 5% 94%; /* iOS Secondary Label Dark */
 
-    --muted: 215 20.2% 14.1%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 0 0% 18%; /* iOS Tertiary System Background Dark */
+    --muted-foreground: 240 2% 56%; /* iOS Tertiary Label Dark */
 
-    --accent: 215 20.2% 14.1%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 211 100% 52%; /* Same as primary */
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 5 85% 63%; /* iOS Red Dark #ff453a */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 215 20.2% 20%;
-    --input: 215 20.2% 20%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 0 0% 22%; /* iOS Separator Dark */
+    --input: 0 0% 18%; /* iOS Fill Dark */
+    --ring: 211 100% 52%; /* iOS Blue Dark */
+
+    /* Context7 Authentic Dark Palette */
+    --ios-blue: 10 132 255; /* #0a84ff - iOS Blue Dark */
+    --ios-red: 255 69 58; /* #ff453a - iOS Red Dark */
+    --ios-orange: 255 159 10; /* #ff9f0a - iOS Orange Dark */
+    --ios-yellow: 255 214 10; /* #ffd60a - iOS Yellow Dark */
+    --ios-green: 48 209 88; /* #30d158 - iOS Green Dark */
+    --ios-teal: 10 132 255; /* Use blue for consistency */
+    --ios-cyan: 10 132 255; /* Use blue for consistency */
+    --ios-indigo: 10 132 255; /* Use blue for consistency */
+
+    /* Glassmorphism Dark */
+    --glass-bg: 28 28 30 / 0.8;
+    --glass-border: 255 255 255 / 0.1;
+    --glass-shadow: 0 0 0 / 0.3;
 
     --sidebar-background: 220 10% 8%;
     --sidebar-foreground: 210 40% 98%;
@@ -98,5 +130,174 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+}
+
+@layer components {
+  /* iOS Glassmorphism Utilities */
+  .glass {
+    @apply backdrop-blur-xl bg-background/80 border border-border/20;
+  }
+  
+  .glass-card {
+    @apply backdrop-blur-xl bg-card/90 border border-border/30 shadow-ios;
+  }
+
+  .glass-input {
+    @apply backdrop-blur-xl bg-input/80 border border-border/40;
+  }
+
+  /* iOS Shadow System - Adaptive to Dark Mode */
+  .shadow-ios-sm {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  }
+  
+  .shadow-ios {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  }
+  
+  .shadow-ios-lg {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  }
+  
+  .shadow-ios-xl {
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  }
+
+  /* Dark mode shadows */
+  .dark .shadow-ios-sm {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.2);
+  }
+  
+  .dark .shadow-ios {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+  }
+  
+  .dark .shadow-ios-lg {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+  }
+  
+  .dark .shadow-ios-xl {
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.4);
+  }
+
+  /* iOS Button Haptic Effect */
+  .haptic {
+    @apply transition-transform duration-150 ease-out active:scale-95;
+  }
+
+  /* iOS Segmented Control */
+  .segmented-control {
+    @apply bg-muted rounded-lg p-1 flex space-x-1;
+  }
+  
+  .segment {
+    @apply flex-1 text-center py-2 px-4 rounded-md text-sm font-medium transition-all duration-200;
+  }
+  
+  .segment-active {
+    @apply bg-background text-foreground shadow-ios-sm;
+  }
+  
+  .segment-inactive {
+    @apply text-muted-foreground hover:text-foreground;
+  }
+
+  /* iOS Color Utilities */
+  .text-ios-blue { color: rgb(var(--ios-blue)); }
+  .bg-ios-blue { background-color: rgb(var(--ios-blue)); }
+  .border-ios-blue { border-color: rgb(var(--ios-blue)); }
+  
+  .text-ios-red { color: rgb(var(--ios-red)); }
+  .bg-ios-red { background-color: rgb(var(--ios-red)); }
+  .border-ios-red { border-color: rgb(var(--ios-red)); }
+  
+  .text-ios-green { color: rgb(var(--ios-green)); }
+  .bg-ios-green { background-color: rgb(var(--ios-green)); }
+  .border-ios-green { border-color: rgb(var(--ios-green)); }
+  
+  .text-ios-yellow { color: rgb(var(--ios-yellow)); }
+  .bg-ios-yellow { background-color: rgb(var(--ios-yellow)); }
+  .border-ios-yellow { border-color: rgb(var(--ios-yellow)); }
+  
+  .text-ios-orange { color: rgb(var(--ios-orange)); }
+  .bg-ios-orange { background-color: rgb(var(--ios-orange)); }
+  .border-ios-orange { border-color: rgb(var(--ios-orange)); }
+
+  /* Accessibility Features */
+  .reduced-motion *,
+  .reduced-motion *::before,
+  .reduced-motion *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+    transform: none !important;
+  }
+  
+  /* Disable Framer Motion animations */
+  .reduced-motion [data-framer-component] {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .high-contrast {
+    --background: 0 0% 100%; /* Pure white */
+    --foreground: 0 0% 0%; /* Pure black */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+    --primary: 0 0% 0%; /* Black instead of blue */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 95%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 90%;
+    --muted-foreground: 0 0% 20%;
+    --accent: 0 0% 0%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 85% 40%; /* Darker red */
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 60%; /* Darker borders */
+    --input: 0 0% 95%;
+    --ring: 0 0% 0%;
+  }
+
+  .dark.high-contrast {
+    --background: 0 0% 0%; /* Pure black */
+    --foreground: 0 0% 100%; /* Pure white */
+    --card: 0 0% 0%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 0%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 0 0% 100%; /* White instead of blue */
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 80%;
+    --accent: 0 0% 100%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 5 85% 70%; /* Brighter red */
+    --destructive-foreground: 0 0% 0%;
+    --border: 0 0% 40%; /* Lighter borders */
+    --input: 0 0% 15%;
+    --ring: 0 0% 100%;
+  }
+
+  .large-text {
+    font-size: 115% !important;
+  }
+
+  .large-text h1 { font-size: 130% !important; }
+  .large-text h2 { font-size: 125% !important; }
+  .large-text h3 { font-size: 120% !important; }
+  .large-text .text-xs { font-size: 0.8rem !important; }
+  .large-text .text-sm { font-size: 0.95rem !important; }
+  .large-text .text-base { font-size: 1.1rem !important; }
+  .large-text .text-lg { font-size: 1.25rem !important; }
+  .large-text .text-xl { font-size: 1.4rem !important; }
 }

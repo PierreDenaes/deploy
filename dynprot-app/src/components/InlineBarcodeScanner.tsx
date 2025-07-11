@@ -228,11 +228,11 @@ export const InlineBarcodeScanner: React.FC<InlineBarcodeScannerProps> = ({
     switch (status) {
       case 'initializing':
       case 'scanning':
-        return <Scan className="w-5 h-5 text-purple-500" />;
+        return <Scan className="w-5 h-5 text-primary" />;
       case 'manual':
         return <Keyboard className="w-5 h-5 text-blue-500" />;
       case 'processing':
-        return <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />;
+        return <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />;
       case 'success':
         return <CheckCircle2 className="w-5 h-5 text-green-500" />;
       case 'error':
@@ -250,11 +250,11 @@ export const InlineBarcodeScanner: React.FC<InlineBarcodeScannerProps> = ({
       animate={{ height: 'auto', opacity: 1 }}
       exit={{ height: 0, opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="overflow-hidden bg-gradient-to-br from-purple-50 to-blue-50 border-t border-purple-200 rounded-t-lg"
+      className="overflow-hidden bg-gradient-to-br from-gray-50 to-blue-50 border-t border-blue-200 rounded-t-lg"
     >
       <div className="relative">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 bg-purple-800 text-white">
+        <div className="flex items-center justify-between p-4 bg-primary text-white">
           <div className="flex items-center gap-2">
             {getStatusIcon()}
             <span className="font-medium">Scanner un code-barres</span>
@@ -263,7 +263,7 @@ export const InlineBarcodeScanner: React.FC<InlineBarcodeScannerProps> = ({
             variant="ghost"
             size="sm"
             onClick={handleCancel}
-            className="text-white hover:bg-purple-700"
+            className="text-white hover:bg-primary/80"
           >
             <X className="w-4 h-4" />
           </Button>
@@ -287,7 +287,7 @@ export const InlineBarcodeScanner: React.FC<InlineBarcodeScannerProps> = ({
                   <Button
                     onClick={handleManualSearch}
                     disabled={!manualInput.trim()}
-                    className="flex-1 bg-purple-500 hover:bg-purple-600"
+                    className="flex-1 bg-primary hover:bg-primary/90"
                   >
                     <Search className="w-4 h-4 mr-2" />
                     Rechercher
@@ -333,16 +333,16 @@ export const InlineBarcodeScanner: React.FC<InlineBarcodeScannerProps> = ({
                   {/* Scanning overlay */}
                   {status === 'scanning' && (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="border-2 border-purple-400 rounded-lg w-64 h-40 bg-transparent relative">
+                      <div className="border-2 border-primary rounded-lg w-64 h-40 bg-transparent relative">
                         {/* Corner markers */}
-                        <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-purple-400 rounded-tl-lg"></div>
-                        <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-purple-400 rounded-tr-lg"></div>
-                        <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-purple-400 rounded-bl-lg"></div>
-                        <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-purple-400 rounded-br-lg"></div>
+                        <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-lg"></div>
+                        <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-primary rounded-tr-lg"></div>
+                        <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-primary rounded-bl-lg"></div>
+                        <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-primary rounded-br-lg"></div>
                         
                         {/* Scanning line */}
                         <div className="absolute inset-0 overflow-hidden rounded-lg">
-                          <div className="w-full h-0.5 bg-purple-400 animate-pulse"></div>
+                          <div className="w-full h-0.5 bg-primary animate-pulse"></div>
                         </div>
                       </div>
                     </div>

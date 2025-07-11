@@ -88,7 +88,7 @@ export const AnalysisResultCard: React.FC<AnalysisResultCardProps> = ({
       case 'text':
         return <Type className="h-4 w-4 text-green-500" />;
       default:
-        return <Brain className="h-4 w-4 text-purple-500" />;
+        return <Brain className="h-4 w-4 text-primary" />;
     }
   };
 

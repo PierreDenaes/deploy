@@ -397,7 +397,7 @@ export default function PeriodSummary({ className }: PeriodSummaryProps) {
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-purple-500" />
+                        <Clock className="h-4 w-4 text-gray-500" />
                         <span className="text-sm">Nuit</span>
                       </div>
                       <span className="font-medium">{currentSummary.mealFrequency.night}</span>

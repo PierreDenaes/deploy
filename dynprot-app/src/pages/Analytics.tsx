@@ -231,7 +231,7 @@ export default function Analytics() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-background via-secondary/20 to-accent/10">
       <div className="container max-w-4xl mx-auto p-4 pb-32">
         <motion.div 
           className="space-y-8" 
@@ -242,28 +242,35 @@ export default function Analytics() {
           {/* Header */}
           <motion.header 
             variants={itemVariants} 
-            className="flex items-center justify-between mb-6 sticky top-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm z-10 -mx-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800"
+            className="flex items-center justify-between mb-8 sticky top-0 glass z-20 -mx-4 px-6 py-4 border-b border-border/30"
           >
             <div className="flex items-center">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate(-1)}
-                aria-label="Retour"
-                className="mr-3"
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div className="flex items-center gap-2">
-                <BarChart3 className="h-6 w-6 text-primary" />
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate(-1)}
+                  aria-label="Retour"
+                  className="mr-4 rounded-2xl h-12 w-12 hover:bg-primary/10"
+                >
+                  <ArrowLeft className="h-6 w-6" strokeWidth={2.5} />
+                </Button>
+              </motion.div>
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-accent/20 rounded-2xl flex items-center justify-center shadow-ios">
+                  <BarChart3 className="h-7 w-7 text-primary" strokeWidth={2.5} />
+                </div>
+                <h1 className="text-3xl font-bold text-foreground tracking-tight">
                   Analytics
                 </h1>
               </div>
             </div>
             <DataExport 
               variant="inline" 
-              className="h-10 w-auto"
+              className="h-12 px-6 rounded-2xl font-semibold shadow-ios"
               buttonText="Exporter"
             />
           </motion.header>
@@ -272,73 +279,119 @@ export default function Analytics() {
           <motion.div variants={itemVariants}>
             <Tabs value={currentTab} onValueChange={handleTabChange}>
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="analytics" className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
+                <TabsTrigger value="analytics" className="flex items-center gap-3">
+                  <TrendingUp className="h-5 w-5" strokeWidth={2.5} />
                   Analytics
                 </TabsTrigger>
-                <TabsTrigger value="history" className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
+                <TabsTrigger value="history" className="flex items-center gap-3">
+                  <Calendar className="h-5 w-5" strokeWidth={2.5} />
                   Historique
                 </TabsTrigger>
               </TabsList>
 
               {/* Analytics Tab */}
-              <TabsContent value="analytics" className="space-y-6 mt-6">
+              <TabsContent value="analytics" className="space-y-8 mt-8">
                 {/* Quick Stats Cards */}
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <Card className="border-0 shadow-lg py-4">
-                    <CardContent className="p-4">
-                      <p className="text-2xl font-bold">{stats.totalMeals}</p>
-                      <p className="text-sm text-muted-foreground">Repas</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-0 shadow-lg py-4">
-                    <CardContent className="p-4">
-                      <p className="text-2xl font-bold">{stats.totalProtein}g</p>
-                      <p className="text-sm text-muted-foreground">Protéines</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-0 shadow-lg py-4">
-                    <CardContent className="p-4">
-                      <p className="text-2xl font-bold">{stats.avgProtein}g</p>
-                      <p className="text-sm text-muted-foreground">Moyenne</p>
-                    </CardContent>
-                  </Card>
+                <div className="grid grid-cols-3 gap-4">
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.1 }}
+                  >
+                    <Card className="border-0 shadow-ios backdrop-blur-xl text-center hover:shadow-ios-lg transition-shadow">
+                      <CardContent className="p-6">
+                        <div className="w-12 h-12 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                          <Utensils className="h-6 w-6 text-primary" strokeWidth={2.5} />
+                        </div>
+                        <p className="text-3xl font-bold text-foreground mb-1">{stats.totalMeals}</p>
+                        <p className="text-base text-muted-foreground font-medium">Repas</p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <Card className="border-0 shadow-ios backdrop-blur-xl text-center hover:shadow-ios-lg transition-shadow">
+                      <CardContent className="p-6">
+                        <div className="w-12 h-12 bg-accent/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                          <Target className="h-6 w-6 text-accent" strokeWidth={2.5} />
+                        </div>
+                        <p className="text-3xl font-bold text-foreground mb-1">{stats.totalProtein}g</p>
+                        <p className="text-base text-muted-foreground font-medium">Protéines</p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    <Card className="border-0 shadow-ios backdrop-blur-xl text-center hover:shadow-ios-lg transition-shadow">
+                      <CardContent className="p-6">
+                        <div className="w-12 h-12 bg-ios-green/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                          <Award className="h-6 w-6 text-ios-green" strokeWidth={2.5} />
+                        </div>
+                        <p className="text-3xl font-bold text-foreground mb-1">{stats.avgProtein}g</p>
+                        <p className="text-base text-muted-foreground font-medium">Moyenne</p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
                 </div>
 
                 {/* Trend Chart */}
-                <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle>Tendances</CardTitle>
-                    <CardDescription>{getDateFilterName()}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <WeeklyTrendChart showProtein showCalories={false} />
-                  </CardContent>
-                </Card>
+                <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  <Card className="border-0 shadow-ios backdrop-blur-xl hover:shadow-ios-lg transition-shadow">
+                    <CardHeader className="pb-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center">
+                          <TrendingUp className="h-6 w-6 text-primary" strokeWidth={2.5} />
+                        </div>
+                        <div>
+                          <CardTitle className="text-2xl font-bold">Tendances</CardTitle>
+                          <CardDescription className="text-base font-medium">{getDateFilterName()}</CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                      <WeeklyTrendChart showProtein showCalories={false} />
+                    </CardContent>
+                  </Card>
+                </motion.div>
 
                 {/* Period Summary - Compact Mode */}
-                <PeriodSummary />
+                <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  <PeriodSummary />
+                </motion.div>
               </TabsContent>
 
               {/* History Tab */}
-              <TabsContent value="history" className="space-y-6 mt-6">
+              <TabsContent value="history" className="space-y-8 mt-8">
                 {/* Filters and Search */}
                 <div className="flex flex-col sm:flex-row gap-4">
                   <div className="relative flex-grow">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground" strokeWidth={2} />
                     <Input
                       placeholder="Rechercher un repas..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-12 h-12 text-base"
+                      className="pl-14 h-14 text-lg font-medium shadow-ios"
                     />
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="h-12 w-full sm:w-auto">
-                          <Filter className="h-4 w-4 mr-2" />
+                        <Button variant="outline" className="h-14 px-6 text-base font-semibold shadow-ios border-border/20 hover:border-primary/30 hover:bg-primary/5">
+                          <Filter className="h-5 w-5 mr-3" strokeWidth={2.5} />
                           {getDateFilterName()}
                         </Button>
                       </DropdownMenuTrigger>
@@ -367,8 +420,8 @@ export default function Analytics() {
                     </DropdownMenu>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="h-12 w-full sm:w-auto">
-                          <ArrowUpDown className="h-4 w-4 mr-2" />
+                        <Button variant="outline" className="h-14 px-6 text-base font-semibold shadow-ios border-border/20 hover:border-accent/30 hover:bg-accent/5">
+                          <ArrowUpDown className="h-5 w-5 mr-3" strokeWidth={2.5} />
                           Trier
                         </Button>
                       </DropdownMenuTrigger>
@@ -406,90 +459,109 @@ export default function Analytics() {
                 </div>
 
                 {/* Detailed Meal History */}
-                <div className="space-y-6">
+                <div className="space-y-8">
                   {groupedMeals.length > 0 ? (
-                    groupedMeals.map((group) => (
-                      <div key={group.date} className="space-y-3">
-                        <div className="flex items-center justify-between px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md">
-                          <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200">
+                    groupedMeals.map((group, groupIndex) => (
+                      <motion.div 
+                        key={group.date} 
+                        className="space-y-4"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: groupIndex * 0.1 }}
+                      >
+                        <div className="flex items-center justify-between px-6 py-4 bg-muted/50 backdrop-blur-xl rounded-2xl shadow-ios border border-border/20">
+                          <h3 className="text-xl font-bold text-foreground">
                             {format(parseISO(group.date), "EEEE d MMMM", { locale: fr })}
                           </h3>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="text-base font-bold">
+                          <div className="flex items-center gap-3">
+                            <Badge variant="secondary" className="text-lg font-bold py-2 px-4 rounded-xl bg-primary/10 text-primary border-primary/20">
                               {group.totalProtein}g
                             </Badge>
-                            <Badge variant="outline" className="text-base font-bold">
+                            <Badge variant="outline" className="text-lg font-bold py-2 px-4 rounded-xl border-accent/20 text-accent">
                               {group.totalCalories} kcal
                             </Badge>
                           </div>
                         </div>
-                        <div className="space-y-3">
-                          {group.meals.map((meal) => (
+                        <div className="space-y-4">
+                          {group.meals.map((meal, mealIndex) => (
                             <motion.div 
                               key={meal.id} 
-                              initial={{ opacity: 0, y: 10 }} 
-                              animate={{ opacity: 1, y: 0 }} 
-                              exit={{ opacity: 0, y: -10 }}
+                              initial={{ opacity: 0, x: -20 }} 
+                              animate={{ opacity: 1, x: 0 }} 
+                              exit={{ opacity: 0, x: 20 }}
+                              transition={{ delay: mealIndex * 0.05 }}
+                              whileHover={{ x: 4 }}
                             >
-                              <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-                                <CardContent className="p-4 flex items-center justify-between">
-                                  <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                                      <Utensils className="h-6 w-6 text-primary" />
+                              <Card className="border-0 shadow-ios backdrop-blur-xl hover:shadow-ios-lg transition-all duration-200">
+                                <CardContent className="p-6 flex items-center justify-between">
+                                  <div className="flex items-center gap-5">
+                                    <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-accent/20 rounded-2xl flex items-center justify-center shadow-ios-sm">
+                                      <Utensils className="h-7 w-7 text-primary" strokeWidth={2.5} />
                                     </div>
                                     <div>
-                                      <h3 className="font-semibold text-gray-900 dark:text-white">
+                                      <h3 className="text-lg font-bold text-foreground mb-1">
                                         {meal.description}
                                       </h3>
-                                      <div className="flex items-center text-sm text-muted-foreground">
-                                        <Clock className="h-3.5 w-3.5 mr-1.5" />
+                                      <div className="flex items-center text-base text-muted-foreground">
+                                        <Clock className="h-4 w-4 mr-2" strokeWidth={2} />
                                         {format(parseISO(meal.timestamp), "HH:mm", { locale: fr })}
                                       </div>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <Badge variant="secondary" className="text-base font-bold py-1 px-3">
+                                  <div className="flex items-center gap-3">
+                                    <Badge variant="secondary" className="text-lg font-bold py-2 px-4 rounded-xl bg-primary/10 text-primary border-primary/20">
                                       {meal.protein}g
                                     </Badge>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon" 
-                                      onClick={() => handleAddToFavorites(meal)}
-                                      disabled={isMealInFavorites(meal)}
-                                      className={cn(
-                                        "text-muted-foreground transition-colors",
-                                        isMealInFavorites(meal) 
-                                          ? "text-red-500 hover:text-red-600" 
-                                          : "hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950"
-                                      )}
-                                      title={isMealInFavorites(meal) ? "Déjà dans les favoris" : "Ajouter aux favoris"}
-                                    >
-                                      <Heart className={cn("h-4 w-4", isMealInFavorites(meal) && "fill-current")} />
-                                    </Button>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon" 
-                                      onClick={() => handleDeleteMeal(meal.id)} 
-                                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                    <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        onClick={() => handleAddToFavorites(meal)}
+                                        disabled={isMealInFavorites(meal)}
+                                        className={cn(
+                                          "h-12 w-12 rounded-2xl transition-colors shadow-ios-sm",
+                                          isMealInFavorites(meal) 
+                                            ? "text-ios-red bg-ios-red/10 hover:bg-ios-red/20" 
+                                            : "text-muted-foreground hover:text-ios-red hover:bg-ios-red/10"
+                                        )}
+                                        title={isMealInFavorites(meal) ? "Déjà dans les favoris" : "Ajouter aux favoris"}
+                                      >
+                                        <Heart className={cn("h-5 w-5", isMealInFavorites(meal) && "fill-current")} strokeWidth={2} />
+                                      </Button>
+                                    </motion.div>
+                                    <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        onClick={() => handleDeleteMeal(meal.id)} 
+                                        className="h-12 w-12 rounded-2xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 shadow-ios-sm"
+                                      >
+                                        <Trash2 className="h-5 w-5" strokeWidth={2} />
+                                      </Button>
+                                    </motion.div>
                                   </div>
                                 </CardContent>
                               </Card>
                             </motion.div>
                           ))}
                         </div>
-                      </div>
+                      </motion.div>
                     ))
                   ) : (
-                    <div className="text-center py-16">
-                      <BarChart3 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-xl font-semibold mb-2">Aucun repas trouvé</h3>
-                      <p className="text-muted-foreground">
+                    <motion.div 
+                      className="text-center py-20"
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ type: "spring", stiffness: 200 }}
+                    >
+                      <div className="w-24 h-24 bg-gradient-to-br from-muted to-muted/50 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-ios">
+                        <BarChart3 className="h-12 w-12 text-muted-foreground" strokeWidth={2} />
+                      </div>
+                      <h3 className="text-2xl font-bold mb-3 text-foreground">Aucun repas trouvé</h3>
+                      <p className="text-lg text-muted-foreground leading-relaxed">
                         {searchTerm ? "Essayez un autre terme de recherche." : "Modifiez vos filtres ou ajoutez de nouveaux repas."}
                       </p>
-                    </div>
+                    </motion.div>
                   )}
                 </div>
               </TabsContent>
@@ -500,18 +572,29 @@ export default function Analytics() {
 
         {/* Delete Confirmation Dialog */}
         <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Supprimer le repas</DialogTitle>
-              <DialogDescription>
+          <DialogContent className="rounded-3xl border-0 shadow-ios-xl backdrop-blur-xl">
+            <DialogHeader className="text-center">
+              <div className="w-16 h-16 bg-destructive/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="h-8 w-8 text-destructive" strokeWidth={2} />
+              </div>
+              <DialogTitle className="text-2xl font-bold">Supprimer le repas</DialogTitle>
+              <DialogDescription className="text-lg leading-relaxed mt-2">
                 Êtes-vous sûr de vouloir supprimer ce repas ? Cette action est irréversible.
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+            <DialogFooter className="flex gap-3 mt-6">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowDeleteDialog(false)}
+                className="flex-1 h-12 rounded-2xl text-base font-semibold shadow-ios"
+              >
                 Annuler
               </Button>
-              <Button variant="destructive" onClick={confirmDeleteMeal}>
+              <Button 
+                variant="destructive" 
+                onClick={confirmDeleteMeal}
+                className="flex-1 h-12 rounded-2xl text-base font-semibold shadow-ios"
+              >
                 Supprimer
               </Button>
             </DialogFooter>

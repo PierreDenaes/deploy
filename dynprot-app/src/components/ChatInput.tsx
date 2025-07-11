@@ -236,8 +236,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             size="sm"
             onClick={() => handleActionClick('scan')}
             className={cn(
-              "w-8 h-8 p-0 text-gray-500 hover:text-purple-500",
-              activeMode === 'scan' && "bg-purple-100 text-purple-600"
+              "w-8 h-8 p-0 text-gray-500 hover:text-primary",
+              activeMode === 'scan' && "bg-primary/10 text-primary"
             )}
             disabled={disabled || !!activeMode}
           >

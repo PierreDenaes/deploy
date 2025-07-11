@@ -390,64 +390,117 @@ export const UnifiedMealChat: React.FC<UnifiedMealChatProps> = ({ className }) =
   }, [addMessage, navigate, handleSaveMeal]);
 
   return (
-    <div className={cn("flex flex-col h-full max-w-4xl mx-auto", className)}>
+    <div className={cn("flex flex-col h-full max-w-4xl mx-auto bg-gradient-to-br from-background via-secondary/10 to-accent/5", className)}>
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 bg-white border-b border-gray-200">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate('/')}
-          className="flex-shrink-0"
+      <motion.div 
+        className="flex items-center gap-4 p-6 glass border-b border-border/30 backdrop-blur-xl"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <motion.div
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
         >
-          <ArrowLeft className="w-4 h-4" />
-        </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/')}
+            className="flex-shrink-0 rounded-2xl h-12 w-12 hover:bg-primary/10"
+          >
+            <ArrowLeft className="w-6 h-6" strokeWidth={2.5} />
+          </Button>
+        </motion.div>
         
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-            <MessageSquare className="w-4 h-4 text-white" />
-          </div>
+        <div className="flex items-center gap-4">
+          <motion.div 
+            className="w-14 h-14 bg-gradient-to-br from-primary to-accent rounded-2xl flex items-center justify-center shadow-ios"
+            animate={{ 
+              scale: state.isLoading ? [1, 1.05, 1] : 1,
+              rotate: state.isLoading ? [0, 5, -5, 0] : 0
+            }}
+            transition={{ 
+              duration: 2,
+              repeat: state.isLoading ? Infinity : 0,
+              ease: "easeInOut"
+            }}
+          >
+            <MessageSquare className="w-7 h-7 text-white" strokeWidth={2.5} />
+          </motion.div>
           <div>
-            <h1 className="font-semibold text-gray-900">Assistant Nutritionnel</h1>
-            <p className="text-sm text-gray-500">Analysez vos repas facilement</p>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">Assistant Nutritionnel</h1>
+            <p className="text-base text-muted-foreground font-medium">Analysez vos repas facilement</p>
           </div>
         </div>
 
         {state.isLoading && (
-          <Badge variant="secondary" className="ml-auto">
-            <Sparkles className="w-3 h-3 mr-1" />
-            Analyse en cours...
-          </Badge>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="ml-auto"
+          >
+            <Badge variant="secondary" className="px-4 py-2 rounded-2xl bg-primary/10 text-primary border-primary/20 shadow-ios">
+              <Sparkles className="w-4 h-4 mr-2 animate-pulse" strokeWidth={2} />
+              Analyse en cours...
+            </Badge>
+          </motion.div>
         )}
-      </div>
+      </motion.div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-        <AnimatePresence>
-          {state.messages.map((message) => (
-            <ChatMessage
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <AnimatePresence mode="popLayout">
+          {state.messages.map((message, index) => (
+            <motion.div
               key={message.id}
-              message={message}
-              onSuggestionClick={handleSuggestionClick}
-              onActionClick={handleChatActionClick}
-            />
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              transition={{ 
+                duration: 0.4,
+                delay: index * 0.1,
+                type: "spring",
+                stiffness: 200,
+                damping: 20
+              }}
+            >
+              <ChatMessage
+                message={message}
+                onSuggestionClick={handleSuggestionClick}
+                onActionClick={handleChatActionClick}
+              />
+            </motion.div>
           ))}
         </AnimatePresence>
         
         {/* Loading indicator */}
         {state.isLoading && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
             className="flex justify-start"
           >
-            <div className="bg-white rounded-lg p-3 shadow-sm">
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" />
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse delay-100" />
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse delay-200" />
+            <div className="glass rounded-3xl p-6 shadow-ios border border-border/20">
+              <div className="flex items-center gap-4">
+                <div className="flex gap-2">
+                  <motion.div 
+                    className="w-3 h-3 bg-primary rounded-full"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.7, 1, 0.7] }}
+                    transition={{ duration: 1, repeat: Infinity, delay: 0 }}
+                  />
+                  <motion.div 
+                    className="w-3 h-3 bg-accent rounded-full"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.7, 1, 0.7] }}
+                    transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
+                  />
+                  <motion.div 
+                    className="w-3 h-3 bg-primary rounded-full"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.7, 1, 0.7] }}
+                    transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
+                  />
                 </div>
-                <span className="text-sm text-gray-500">Analyse en cours...</span>
+                <span className="text-lg text-muted-foreground font-medium">Analyse en cours...</span>
               </div>
             </div>
           </motion.div>
@@ -457,16 +510,23 @@ export const UnifiedMealChat: React.FC<UnifiedMealChatProps> = ({ className }) =
       </div>
 
       {/* Input Area */}
-      <ChatGPTInput
-        value={state.currentInput}
-        onChange={(value) => updateState({ currentInput: value })}
-        onSend={handleUserMessage}
-        onPhotoCapture={handlePhotoCapture}
-        onVoiceTranscript={handleVoiceTranscript}
-        onBarcodeDetected={handleBarcodeDetected}
-        isLoading={state.isLoading}
-        placeholder="Décrivez votre repas..."
-      />
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="backdrop-blur-xl"
+      >
+        <ChatGPTInput
+          value={state.currentInput}
+          onChange={(value) => updateState({ currentInput: value })}
+          onSend={handleUserMessage}
+          onPhotoCapture={handlePhotoCapture}
+          onVoiceTranscript={handleVoiceTranscript}
+          onBarcodeDetected={handleBarcodeDetected}
+          isLoading={state.isLoading}
+          placeholder="Décrivez votre repas..."
+        />
+      </motion.div>
 
       {/* ChatGPT-like interface with integrated attachments and press-to-talk */}
     </div>
