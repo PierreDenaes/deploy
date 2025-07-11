@@ -5,6 +5,7 @@ import profileRoutes from './profile.routes';
 import summaryRoutes from './summary.routes';
 import uploadRoutes from './upload.routes';
 import productRoutes from './product.routes';
+import aiRoutes from './ai.routes';
 import { authenticateToken } from '../middleware/auth.middleware';
 
 
@@ -35,6 +36,7 @@ router.use('/profile', authenticateToken, profileRoutes);
 router.use('/meals', authenticateToken, mealRoutes);
 router.use('/summaries', authenticateToken, summaryRoutes);
 router.use('/upload', authenticateToken, uploadRoutes);
+router.use('/ai', aiRoutes); // AI routes have their own authentication
 console.log('✅ All protected routes mounted');
 
 // API info endpoint
@@ -49,7 +51,8 @@ router.get('/', (req, res) => {
       profile: '/api/profile',
       meals: '/api/meals',
       summaries: '/api/summaries',
-      upload: '/api/upload'
+      upload: '/api/upload',
+      ai: '/api/ai'
     }
   });
 });

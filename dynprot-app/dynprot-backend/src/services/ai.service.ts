@@ -1276,4 +1276,125 @@ export class AIService {
     
     return result;
   }
+
+  /**
+   * Générer une completion chat pour les services avancés (nutrition coach, analyse)
+   */
+  static async generateChatCompletion(
+    systemPrompt: string, 
+    userPrompt: string, 
+    options: { maxTokens?: number; temperature?: number } = {}
+  ): Promise<{ data: any; tokensUsed: number; cost: number }> {
+    let retries = 0;
+    
+    while (retries <= AI_CONFIG.maxRetries) {
+      try {
+        console.log(`🤖 Génération chat completion (tentative ${retries + 1})`);
+        
+        const completion = await openai.chat.completions.create({
+          model: AI_CONFIG.textModel,
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: userPrompt
+            }
+          ],
+          max_tokens: options.maxTokens || AI_CONFIG.maxTokens,
+          temperature: options.temperature || AI_CONFIG.temperature,
+        }, {
+          timeout: AI_CONFIG.timeout,
+        });
+
+        const responseText = completion.choices[0]?.message?.content;
+        if (!responseText) {
+          throw new AIError('Réponse vide de l\'IA', AI_ERROR_CODES.INVALID_RESPONSE, true);
+        }
+
+        // Parser la réponse JSON avec nettoyage intelligent
+        let parsedResponse: any;
+        try {
+          // Nettoyer la réponse pour extraire uniquement le JSON
+          const cleanedResponse = this.cleanJSONResponse(responseText);
+          parsedResponse = JSON.parse(cleanedResponse);
+        } catch (parseError) {
+          console.error('Erreur parsing JSON IA:', parseError);
+          console.error('Réponse brute:', responseText);
+          
+          // Tentative de récupération avec extraction de JSON plus agressive
+          try {
+            const extractedJSON = this.extractJSONFromText(responseText);
+            parsedResponse = JSON.parse(extractedJSON);
+            console.log('✅ Récupération JSON réussie');
+          } catch (secondParseError) {
+            // Si le parsing échoue, retourner la réponse textuelle brute
+            parsedResponse = { 
+              response: responseText,
+              warning: 'Réponse non structurée - parsing JSON échoué'
+            };
+          }
+        }
+
+        // Calculer les statistiques d'utilisation
+        const tokensUsed = completion.usage?.total_tokens || 0;
+        const cost = this.calculateCost(tokensUsed, AI_CONFIG.textModel);
+
+        console.log(`✅ Chat completion réussie (tokens: ${tokensUsed}, coût: $${cost.toFixed(4)})`);
+        
+        return {
+          data: parsedResponse,
+          tokensUsed,
+          cost
+        };
+
+      } catch (error: any) {
+        retries++;
+        
+        // Gestion des erreurs spécifiques
+        if (error.code === 'rate_limit_exceeded') {
+          const waitTime = Math.pow(2, retries) * 1000; // Backoff exponentiel
+          console.warn(`⏱️ Rate limit atteint, attente ${waitTime}ms...`);
+          
+          if (retries <= AI_CONFIG.maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            continue;
+          } else {
+            throw new AIError('Limite de taux dépassée', AI_ERROR_CODES.RATE_LIMIT, false);
+          }
+        }
+        
+        if (error.code === 'timeout') {
+          throw new AIError('Timeout de l\'analyse IA', AI_ERROR_CODES.TIMEOUT, true);
+        }
+
+        if (error instanceof AIError && !error.retryable) {
+          throw error;
+        }
+
+        if (retries > AI_CONFIG.maxRetries) {
+          console.error(`❌ Échec après ${AI_CONFIG.maxRetries} tentatives:`, error.message);
+          throw new AIError('Service IA temporairement indisponible', AI_ERROR_CODES.API_ERROR, false);
+        }
+        
+        // Attente avant retry
+        const waitTime = Math.pow(2, retries) * 1000;
+        console.warn(`⏳ Tentative ${retries}/${AI_CONFIG.maxRetries} échouée, retry dans ${waitTime}ms...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+    
+    throw new AIError('Service IA indisponible', AI_ERROR_CODES.API_ERROR, false);
+  }
+
+  /**
+   * Calculer le coût approximatif basé sur les tokens
+   */
+  private static calculateCost(tokens: number, model: string): number {
+    // Tarifs approximatifs OpenAI (à ajuster selon les tarifs actuels)
+    const pricePerToken = model.includes('gpt-4') ? 0.00003 : 0.000002; // $0.03/$0.002 per 1K tokens
+    return tokens * pricePerToken;
+  }
 }
