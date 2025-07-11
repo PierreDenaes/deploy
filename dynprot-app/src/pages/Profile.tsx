@@ -646,7 +646,10 @@ export default function Profile() {
                         <Separator className="border-border/30" />
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0 p-4 rounded-2xl bg-muted/30 border border-border/20">
                           <div className="space-y-1">
-                            <Label htmlFor="meal-recommendations" className="text-base md:text-lg font-semibold">Recommandations de repas</Label>
+                            <div className="flex items-center gap-2">
+                              <Label htmlFor="meal-recommendations" className="text-base md:text-lg font-semibold">Recommandations de repas</Label>
+                              <Badge variant="secondary" className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">🤖 IA</Badge>
+                            </div>
                             <p className="text-base text-muted-foreground font-medium">
                               Obtenez des suggestions de repas basées sur vos objectifs.
                             </p>
@@ -654,14 +657,22 @@ export default function Profile() {
                           <Switch 
                             id="meal-recommendations" 
                             checked={state.ai.features.mealRecommendation} 
-                            onCheckedChange={() => toggleAIFeature('mealRecommendation')}
+                            onCheckedChange={(checked) => {
+                              toggleAIFeature('mealRecommendation');
+                              if (checked) {
+                                navigate('/recommendations');
+                              }
+                            }}
                             className="scale-110 sm:scale-125" 
                           />
                         </div>
                         <Separator className="border-border/30" />
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0 p-4 rounded-2xl bg-muted/30 border border-border/20">
                           <div className="space-y-1">
-                            <Label htmlFor="nutrition-analysis" className="text-base md:text-lg font-semibold">Analyse nutritionnelle</Label>
+                            <div className="flex items-center gap-2">
+                              <Label htmlFor="nutrition-analysis" className="text-base md:text-lg font-semibold">Analyse nutritionnelle</Label>
+                              <Badge variant="secondary" className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">🤖 IA</Badge>
+                            </div>
                             <p className="text-base text-muted-foreground font-medium">
                               Obtenez des analyses nutritionnelles détaillées de vos repas.
                             </p>
@@ -669,7 +680,12 @@ export default function Profile() {
                           <Switch 
                             id="nutrition-analysis" 
                             checked={state.ai.features.nutritionAnalysis} 
-                            onCheckedChange={() => toggleAIFeature('nutritionAnalysis')}
+                            onCheckedChange={(checked) => {
+                              toggleAIFeature('nutritionAnalysis');
+                              if (checked) {
+                                navigate('/nutrition-analysis');
+                              }
+                            }}
                             className="scale-110 sm:scale-125" 
                           />
                         </div>
@@ -681,15 +697,15 @@ export default function Profile() {
                           <h4 className="text-lg font-semibold">Tester les fonctionnalités</h4>
                           <div className="flex flex-col sm:flex-row gap-3">
                             <Button 
-                              onClick={handleGetMealRecommendation}
+                              onClick={() => navigate('/recommendations')}
                               disabled={!state.ai.features.mealRecommendation}
                               className="flex-1 h-12 text-base font-semibold"
                               variant="outline"
                             >
-                              Obtenir des recommandations
+                              Voir mes recommandations
                             </Button>
                             <Button 
-                              onClick={handleGetNutritionalAnalysis}
+                              onClick={() => navigate('/nutrition-analysis')}
                               disabled={!state.ai.features.nutritionAnalysis}
                               className="flex-1 h-12 text-base font-semibold"
                               variant="outline"
