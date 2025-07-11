@@ -28,6 +28,9 @@ export interface MealEntry {
   description: string;
   protein: number;
   calories?: number | null;
+  carbs?: number | null;
+  fat?: number | null;
+  fiber?: number | null;
   photo?: string;
   imageUrl?: string;
   source?: string;
@@ -471,15 +474,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           dispatch({ type: 'SET_USER', payload: userProfile });
           
           // Load last analytics viewed timestamp from auth user
-          if (authUser?.last_analytics_viewed) {
-            const lastAnalyticsViewed = typeof authUser.last_analytics_viewed === 'string' 
-              ? authUser.last_analytics_viewed 
-              : authUser.last_analytics_viewed.toISOString();
-            dispatch({ 
-              type: 'SET_LAST_ANALYTICS_VIEWED', 
-              payload: lastAnalyticsViewed 
-            });
-          }
+          // Removed: authUser?.last_analytics_viewed block, as this property does not exist on AuthUser
           
           // Update user settings
           dispatch({ 
