@@ -294,26 +294,13 @@ export default function Analytics() {
               {/* Analytics Tab */}
               <TabsContent value="analytics" className="space-y-8 mt-8">
                 {/* Quick Stats Cards */}
-                <div className="grid grid-cols-3 gap-4">
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.1 }}
-                  >
-                    <Card className="border-0 shadow-ios backdrop-blur-xl text-center hover:shadow-ios-lg transition-shadow">
-                      <CardContent className="p-6">
-                        <div className="w-12 h-12 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                          <Utensils className="h-6 w-6 text-primary" strokeWidth={2.5} />
-                        </div>
-                        <p className="text-2xl sm:text-3xl font-bold text-foreground mb-1 break-words">{stats.totalMeals}</p>
-                        <p className="text-base text-muted-foreground font-medium">Repas</p>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {/* Protéines - 2 colonnes sur mobile, 1 colonne sur desktop */}
                   <motion.div
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.2 }}
+                    className="col-span-2 sm:col-span-1 sm:order-2"
                   >
                     <Card className="border-0 shadow-ios backdrop-blur-xl text-center hover:shadow-ios-lg transition-shadow">
                       <CardContent className="p-6">
@@ -325,10 +312,31 @@ export default function Analytics() {
                       </CardContent>
                     </Card>
                   </motion.div>
+                  
+                  {/* Repas - 1 colonne sur mobile, order pour desktop */}
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.1 }}
+                    className="col-span-1 sm:order-1"
+                  >
+                    <Card className="border-0 shadow-ios backdrop-blur-xl text-center hover:shadow-ios-lg transition-shadow">
+                      <CardContent className="p-6">
+                        <div className="w-12 h-12 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                          <Utensils className="h-6 w-6 text-primary" strokeWidth={2.5} />
+                        </div>
+                        <p className="text-2xl sm:text-3xl font-bold text-foreground mb-1 break-words">{stats.totalMeals}</p>
+                        <p className="text-base text-muted-foreground font-medium">Repas</p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                  
+                  {/* Moyenne - 1 colonne sur mobile, order pour desktop */}
                   <motion.div
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.3 }}
+                    className="col-span-1 sm:order-3"
                   >
                     <Card className="border-0 shadow-ios backdrop-blur-xl text-center hover:shadow-ios-lg transition-shadow">
                       <CardContent className="p-6">
