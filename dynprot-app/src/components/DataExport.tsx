@@ -226,8 +226,9 @@ export default function DataExport({
       case 'inline':
         return (
           <Button variant="outline" className={className}>
-            <Download className="h-4 w-4 mr-2" />
-            {buttonText}
+            <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="sm:hidden">Export</span>
+            <span className="hidden sm:inline">{buttonText}</span>
           </Button>
         );
       default:

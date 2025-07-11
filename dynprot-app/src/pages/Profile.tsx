@@ -237,44 +237,49 @@ export default function Profile() {
         >
           <motion.header 
             variants={itemVariants} 
-            className="flex items-center mb-8 sticky top-0 glass z-20 -mx-4 px-6 py-4 border-b border-border/30"
+            className="flex items-center justify-between mb-8 sticky top-0 glass z-20 -mx-4 px-4 sm:px-6 py-4 border-b border-border/30"
           >
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate(-1)}
-                aria-label="Retour"
-                className="mr-4 rounded-2xl h-12 w-12 hover:bg-primary/10"
+            <div className="flex items-center flex-1 min-w-0">
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
-                <ArrowLeft className="h-6 w-6" strokeWidth={2.5} />
-              </Button>
-            </motion.div>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-accent/20 rounded-2xl flex items-center justify-center shadow-ios">
-                <User className="h-7 w-7 text-primary" strokeWidth={2.5} />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate(-1)}
+                  aria-label="Retour"
+                  className="mr-3 sm:mr-4 rounded-2xl h-10 w-10 sm:h-12 sm:w-12 hover:bg-primary/10 flex-shrink-0"
+                >
+                  <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.5} />
+                </Button>
+              </motion.div>
+              <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-primary/20 to-accent/20 rounded-2xl flex items-center justify-center shadow-ios flex-shrink-0">
+                  <User className="h-6 w-6 sm:h-7 sm:w-7 text-primary" strokeWidth={2.5} />
+                </div>
+                <h1 className="text-lg sm:text-2xl md:text-3xl font-bold text-foreground tracking-tight truncate">
+                  <span className="sm:hidden">Profil</span>
+                  <span className="hidden sm:inline">Profil & Paramètres</span>
+                </h1>
               </div>
-              <h1 className="text-3xl font-bold text-foreground tracking-tight">Profil & Paramètres</h1>
             </div>
           </motion.header>
 
           <motion.div variants={itemVariants}>
             <Tabs defaultValue="profile" className="space-y-8">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="profile" className="flex items-center gap-2">
-                  <User className="h-5 w-5" strokeWidth={2.5} />
-                  Profil
+              <TabsList className="grid w-full grid-cols-3 h-auto">
+                <TabsTrigger value="profile" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm p-2 sm:p-3">
+                  <User className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2.5} />
+                  <span className="hidden xs:inline">Profil</span>
                 </TabsTrigger>
-                <TabsTrigger value="goals" className="flex items-center gap-2">
-                  <Target className="h-5 w-5" strokeWidth={2.5} />
-                  Objectifs
+                <TabsTrigger value="goals" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm p-2 sm:p-3">
+                  <Target className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2.5} />
+                  <span className="hidden xs:inline">Objectifs</span>
                 </TabsTrigger>
-                <TabsTrigger value="settings" className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" strokeWidth={2.5} />
-                  Paramètres
+                <TabsTrigger value="settings" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm p-2 sm:p-3">
+                  <Settings className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2.5} />
+                  <span className="hidden xs:inline">Paramètres</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -300,27 +305,27 @@ export default function Profile() {
                     </CardHeader>
                     <CardContent className="p-6 space-y-6">
                       <div className="space-y-3">
-                        <Label htmlFor="name" className="text-lg font-semibold">Nom</Label>
+                        <Label htmlFor="name" className="text-base md:text-lg font-semibold">Nom</Label>
                         <Input
                           id="name"
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           placeholder="Votre nom"
-                          className="h-14 text-lg font-medium shadow-ios"
+                          className="h-12 md:h-14 text-base md:text-lg font-medium shadow-ios"
                         />
                       </div>
 
                       <div className="space-y-3">
-                        <Label htmlFor="email" className="text-lg font-semibold">Email</Label>
+                        <Label htmlFor="email" className="text-base md:text-lg font-semibold">Email</Label>
                         <Input
                           id="email"
                           type="email"
                           value={authUser?.email || "utilisateur@exemple.com"}
                           disabled
                           placeholder="Votre email"
-                          className="h-14 text-lg font-medium bg-muted/50 shadow-ios"
+                          className="h-12 md:h-14 text-base md:text-lg font-medium bg-muted/50 shadow-ios"
                         />
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0">
                           <p className="text-base text-muted-foreground font-medium">
                             {authUser?.emailVerified ? "Email vérifié" : "Email en attente de vérification"}
                           </p>
@@ -334,7 +339,7 @@ export default function Profile() {
                       </div>
                     </CardContent>
                     <CardFooter className="border-t border-border/30 pt-6">
-                      <Button onClick={saveProfile} variant="ios" className="w-full h-14 text-lg font-semibold shadow-ios">
+                      <Button onClick={saveProfile} variant="ios" className="w-full h-12 md:h-14 text-base md:text-lg font-semibold shadow-ios">
                         <Save className="mr-3 h-5 w-5" strokeWidth={2.5} />
                         Enregistrer le profil
                       </Button>
@@ -364,8 +369,8 @@ export default function Profile() {
                     <CardContent className="p-6 space-y-6">
                       <Alert className="border-destructive/20 bg-destructive/5 rounded-2xl p-4">
                         <AlertTriangle className="h-5 w-5 text-destructive" strokeWidth={2} />
-                        <AlertTitle className="text-lg font-bold">Attention !</AlertTitle>
-                        <AlertDescription className="text-base font-medium leading-relaxed">
+                        <AlertTitle className="text-base md:text-lg font-bold">Attention !</AlertTitle>
+                        <AlertDescription className="text-sm md:text-base font-medium leading-relaxed">
                           La suppression des données est irréversible. Soyez prudent.
                         </AlertDescription>
                       </Alert>
@@ -374,24 +379,25 @@ export default function Profile() {
                       <div className="flex flex-col gap-3 w-full">
                         <DataExport 
                           variant="inline" 
-                          className="w-full h-14 text-lg font-semibold shadow-ios rounded-2xl"
+                          className="w-full h-12 md:h-14 text-base md:text-lg font-semibold shadow-ios rounded-2xl"
                           buttonText="Exporter les données"
                         />
                         <DataDeletion 
                           variant="inline" 
-                          className="w-full h-14 text-lg font-semibold shadow-ios rounded-2xl"
+                          className="w-full h-12 md:h-14 text-base md:text-lg font-semibold shadow-ios rounded-2xl"
                           buttonText="Supprimer sélectivement"
                         />
                       </div>
-                      <Button variant="destructive" onClick={handleResetAppData} className="w-full h-14 text-lg font-semibold shadow-ios rounded-2xl">
-                        Réinitialiser toutes les données (aujourd'hui)
+                      <Button variant="destructive" onClick={handleResetAppData} className="w-full h-12 md:h-14 text-sm md:text-base font-semibold shadow-ios rounded-2xl">
+                        <span className="block sm:hidden">Réinitialiser les données</span>
+                        <span className="hidden sm:block">Réinitialiser toutes les données (aujourd'hui)</span>
                       </Button>
                     </CardFooter>
                     <div className="w-full flex flex-col items-center gap-4 p-6">
                       <Button 
                         variant="destructive" 
                         onClick={handleLogout}
-                        className="w-full h-14 text-lg font-semibold shadow-ios rounded-2xl"
+                        className="w-full h-12 md:h-14 text-base md:text-lg font-semibold shadow-ios rounded-2xl"
                       >
                         <LogOut className="mr-3 h-5 w-5" strokeWidth={2.5} />
                         Se déconnecter
@@ -414,10 +420,11 @@ export default function Profile() {
                       <Button 
                         variant="destructive" 
                         onClick={handleDeleteAccount}
-                        className="w-full h-14 text-lg font-semibold bg-destructive hover:bg-destructive/90 text-destructive-foreground border-destructive shadow-ios rounded-2xl mb-8"
+                        className="w-full h-12 md:h-14 text-sm md:text-base font-semibold bg-destructive hover:bg-destructive/90 text-destructive-foreground border-destructive shadow-ios rounded-2xl mb-8"
                       >
-                        <Trash2 className="mr-3 h-5 w-5" strokeWidth={2.5} />
-                        Supprimer définitivement mon compte
+                        <Trash2 className="mr-2 sm:mr-3 h-4 sm:h-5 w-4 sm:w-5" strokeWidth={2.5} />
+                        <span className="block sm:hidden">Supprimer mon compte</span>
+                        <span className="hidden sm:block">Supprimer définitivement mon compte</span>
                       </Button>
                     </div>
                   </Card>
@@ -462,41 +469,41 @@ export default function Profile() {
                     </CardHeader>
                     <CardContent className="p-6 space-y-6">
                       <div className="space-y-6">
-                        <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/30 border border-border/20">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0 p-4 rounded-2xl bg-muted/30 border border-border/20">
                           <div className="space-y-1">
-                            <Label htmlFor="protein-estimation" className="text-lg font-semibold">Estimation des protéines</Label>
+                            <Label htmlFor="protein-estimation" className="text-base md:text-lg font-semibold">Estimation des protéines</Label>
                             <p className="text-base text-muted-foreground font-medium">
                               Utilisez l'IA pour estimer les protéines à partir de photos.
                             </p>
                           </div>
-                          <Switch id="protein-estimation" checked={state.ai.features.proteinEstimation} className="scale-125" />
+                          <Switch id="protein-estimation" checked={state.ai.features.proteinEstimation} className="scale-110 sm:scale-125" />
                         </div>
                         <Separator className="border-border/30" />
-                        <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/30 border border-border/20">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0 p-4 rounded-2xl bg-muted/30 border border-border/20">
                           <div className="space-y-1">
-                            <Label htmlFor="meal-recommendations" className="text-lg font-semibold">Recommandations de repas</Label>
+                            <Label htmlFor="meal-recommendations" className="text-base md:text-lg font-semibold">Recommandations de repas</Label>
                             <p className="text-base text-muted-foreground font-medium">
                               Obtenez des suggestions de repas basées sur vos objectifs.
                             </p>
                           </div>
-                          <Switch id="meal-recommendations" checked={state.ai.features.mealRecommendation} className="scale-125" />
+                          <Switch id="meal-recommendations" checked={state.ai.features.mealRecommendation} className="scale-110 sm:scale-125" />
                         </div>
                         <Separator className="border-border/30" />
-                        <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/30 border border-border/20">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0 p-4 rounded-2xl bg-muted/30 border border-border/20">
                           <div className="space-y-1">
-                            <Label htmlFor="nutrition-analysis" className="text-lg font-semibold">Analyse nutritionnelle</Label>
+                            <Label htmlFor="nutrition-analysis" className="text-base md:text-lg font-semibold">Analyse nutritionnelle</Label>
                             <p className="text-base text-muted-foreground font-medium">
                               Obtenez des analyses nutritionnelles détaillées de vos repas.
                             </p>
                           </div>
-                          <Switch id="nutrition-analysis" checked={state.ai.features.nutritionAnalysis} className="scale-125" />
+                          <Switch id="nutrition-analysis" checked={state.ai.features.nutritionAnalysis} className="scale-110 sm:scale-125" />
                         </div>
                       </div>
                     </CardContent>
                     <CardFooter className="border-t border-border/30 pt-6">
-                      <div className="text-lg font-semibold text-foreground w-full flex justify-between items-center p-4 rounded-2xl bg-primary/5 border border-primary/20">
+                      <div className="text-base md:text-lg font-semibold text-foreground w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0 p-4 rounded-2xl bg-primary/5 border border-primary/20">
                         <span>Utilisation IA aujourd'hui</span>
-                        <Badge variant="secondary" className="text-lg font-bold px-4 py-2 rounded-xl bg-primary/10 text-primary border-primary/20">
+                        <Badge variant="secondary" className="text-sm md:text-base font-bold px-3 md:px-4 py-1 md:py-2 rounded-xl bg-primary/10 text-primary border-primary/20">
                           {state.ai.usageToday} / {state.ai.usageLimit}
                         </Badge>
                       </div>
@@ -528,8 +535,8 @@ export default function Profile() {
                   <CardContent className="space-y-6">
                     <ThemeToggle />
                     <Separator />
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0">
+                      <div className="space-y-0.5 flex-1">
                         <Label htmlFor="notifications">Notifications</Label>
                         <p className="text-sm text-muted-foreground">
                           Activez les notifications de l'application.
@@ -562,7 +569,7 @@ export default function Profile() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0">
                       <div className="space-y-0.5 flex-1">
                         <div className="flex items-center gap-2">
                           <Label htmlFor="reduced-motion">Animations réduites</Label>
@@ -583,7 +590,7 @@ export default function Profile() {
                       />
                     </div>
                     <Separator />
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0">
                       <div className="space-y-0.5 flex-1">
                         <div className="flex items-center gap-2">
                           <Label htmlFor="high-contrast">Contraste élevé</Label>
@@ -604,7 +611,7 @@ export default function Profile() {
                       />
                     </div>
                     <Separator />
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0">
                       <div className="space-y-0.5 flex-1">
                         <div className="flex items-center gap-2">
                           <Label htmlFor="large-text">Texte agrandi</Label>
@@ -638,8 +645,8 @@ export default function Profile() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0">
+                      <div className="space-y-0.5 flex-1">
                         <Label htmlFor="data-sharing">Partage de données</Label>
                         <p className="text-sm text-muted-foreground">
                           Autorisez le partage anonyme de données pour améliorer l'application.
@@ -652,8 +659,8 @@ export default function Profile() {
                       />
                     </div>
                     <Separator />
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0">
+                      <div className="space-y-0.5 flex-1">
                         <Label htmlFor="analytics">Analytiques</Label>
                         <p className="text-sm text-muted-foreground">
                           Autorisez la collecte d'analyses d'utilisation.
@@ -712,10 +719,10 @@ export default function Profile() {
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowResetConfirm(false)}>
+              <Button variant="outline" onClick={() => setShowResetConfirm(false)} className="h-10 md:h-12 text-sm md:text-base">
                 Annuler
               </Button>
-              <Button variant="destructive" onClick={confirmResetAppData}>
+              <Button variant="destructive" onClick={confirmResetAppData} className="h-10 md:h-12 text-sm md:text-base">
                 Réinitialiser
               </Button>
             </DialogFooter>
@@ -799,11 +806,11 @@ export default function Profile() {
             )}
 
             <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={closeDeleteDialog} disabled={isDeleting}>
+              <Button variant="outline" onClick={closeDeleteDialog} disabled={isDeleting} className="h-10 md:h-12 text-sm md:text-base">
                 Annuler
               </Button>
               {deleteStep === 1 ? (
-                <Button variant="destructive" onClick={proceedToStep2} disabled={!deletePassword.trim()}>
+                <Button variant="destructive" onClick={proceedToStep2} disabled={!deletePassword.trim()} className="h-10 md:h-12 text-sm md:text-base">
                   Continuer
                 </Button>
               ) : (
@@ -811,7 +818,7 @@ export default function Profile() {
                   variant="destructive" 
                   onClick={confirmDeleteAccount} 
                   disabled={deleteConfirmation !== 'SUPPRIMER' || isDeleting}
-                  className="bg-red-600 hover:bg-red-700"
+                  className="bg-red-600 hover:bg-red-700 h-10 md:h-12 text-sm md:text-base"
                 >
                   {isDeleting ? (
                     <>

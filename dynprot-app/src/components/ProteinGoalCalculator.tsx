@@ -1145,11 +1145,16 @@ export default function ProteinGoalCalculator({
 
         <Button 
           onClick={handleCalculate} 
-          className="w-full h-12"
+          className="w-full h-12 md:h-14 text-base md:text-lg font-semibold shadow-ios rounded-2xl"
           disabled={showFormFields ? !calculateProgress.isRequiredComplete || isCalculating : isCalculating}
         >
-          <Calculator className={`mr-2 h-5 w-5 ${isCalculating ? 'animate-spin' : ''}`} />
-          {isCalculating ? 'Calcul en cours...' : 'Calculer mes besoins en protéines et calories'}
+          <Calculator className={`mr-2 h-4 sm:h-5 w-4 sm:w-5 ${isCalculating ? 'animate-spin' : ''}`} />
+          {isCalculating ? 'Calcul en cours...' : (
+            <>
+              <span className="block sm:hidden">Calculer mes besoins</span>
+              <span className="hidden sm:block">Calculer mes besoins en protéines et calories</span>
+            </>
+          )}
         </Button>
         
         {showFormFields && !calculateProgress.isRequiredComplete && (
@@ -1300,11 +1305,16 @@ export default function ProteinGoalCalculator({
         <CardFooter className="border-t pt-4">
           <Button 
             onClick={handleApplyRecommendation} 
-            className="w-full h-12"
+            className="w-full h-12 md:h-14 text-base md:text-lg font-semibold shadow-ios rounded-2xl"
             disabled={isSaving}
           >
-            <Target className={`mr-2 h-5 w-5 ${isSaving ? 'animate-spin' : ''}`} />
-            {isSaving ? 'Sauvegarde en cours...' : 'Appliquer cette recommandation'}
+            <Target className={`mr-2 h-4 sm:h-5 w-4 sm:w-5 ${isSaving ? 'animate-spin' : ''}`} />
+            {isSaving ? 'Sauvegarde en cours...' : (
+              <>
+                <span className="block sm:hidden">Appliquer</span>
+                <span className="hidden sm:block">Appliquer cette recommandation</span>
+              </>
+            )}
           </Button>
         </CardFooter>
       )}

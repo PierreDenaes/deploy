@@ -242,9 +242,9 @@ export default function Analytics() {
           {/* Header */}
           <motion.header 
             variants={itemVariants} 
-            className="flex items-center justify-between mb-8 sticky top-0 glass z-20 -mx-4 px-6 py-4 border-b border-border/30"
+            className="flex items-center justify-between mb-8 sticky top-0 glass z-20 -mx-4 px-4 sm:px-6 py-4 border-b border-border/30"
           >
-            <div className="flex items-center">
+            <div className="flex items-center flex-1 min-w-0">
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -254,25 +254,27 @@ export default function Analytics() {
                   size="icon"
                   onClick={() => navigate(-1)}
                   aria-label="Retour"
-                  className="mr-4 rounded-2xl h-12 w-12 hover:bg-primary/10"
+                  className="mr-3 sm:mr-4 rounded-2xl h-10 w-10 sm:h-12 sm:w-12 hover:bg-primary/10 flex-shrink-0"
                 >
-                  <ArrowLeft className="h-6 w-6" strokeWidth={2.5} />
+                  <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.5} />
                 </Button>
               </motion.div>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-accent/20 rounded-2xl flex items-center justify-center shadow-ios">
-                  <BarChart3 className="h-7 w-7 text-primary" strokeWidth={2.5} />
+              <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-primary/20 to-accent/20 rounded-2xl flex items-center justify-center shadow-ios flex-shrink-0">
+                  <BarChart3 className="h-6 w-6 sm:h-7 sm:w-7 text-primary" strokeWidth={2.5} />
                 </div>
-                <h1 className="text-3xl font-bold text-foreground tracking-tight">
+                <h1 className="text-xl sm:text-3xl font-bold text-foreground tracking-tight truncate">
                   Analytics
                 </h1>
               </div>
             </div>
-            <DataExport 
-              variant="inline" 
-              className="h-12 px-6 rounded-2xl font-semibold shadow-ios"
-              buttonText="Exporter"
-            />
+            <div className="ml-4 flex-shrink-0">
+              <DataExport 
+                variant="inline" 
+                className="h-10 sm:h-12 px-3 sm:px-6 rounded-2xl font-semibold shadow-ios text-sm sm:text-base"
+                buttonText="Exporter"
+              />
+            </div>
           </motion.header>
 
           {/* Main Content with Tabs */}
@@ -303,7 +305,7 @@ export default function Analytics() {
                         <div className="w-12 h-12 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
                           <Utensils className="h-6 w-6 text-primary" strokeWidth={2.5} />
                         </div>
-                        <p className="text-3xl font-bold text-foreground mb-1">{stats.totalMeals}</p>
+                        <p className="text-2xl sm:text-3xl font-bold text-foreground mb-1 break-words">{stats.totalMeals}</p>
                         <p className="text-base text-muted-foreground font-medium">Repas</p>
                       </CardContent>
                     </Card>
@@ -318,7 +320,7 @@ export default function Analytics() {
                         <div className="w-12 h-12 bg-accent/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
                           <Target className="h-6 w-6 text-accent" strokeWidth={2.5} />
                         </div>
-                        <p className="text-3xl font-bold text-foreground mb-1">{stats.totalProtein}g</p>
+                        <p className="text-2xl sm:text-3xl font-bold text-foreground mb-1 break-words">{stats.totalProtein}g</p>
                         <p className="text-base text-muted-foreground font-medium">Protéines</p>
                       </CardContent>
                     </Card>
@@ -333,7 +335,7 @@ export default function Analytics() {
                         <div className="w-12 h-12 bg-ios-green/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
                           <Award className="h-6 w-6 text-ios-green" strokeWidth={2.5} />
                         </div>
-                        <p className="text-3xl font-bold text-foreground mb-1">{stats.avgProtein}g</p>
+                        <p className="text-2xl sm:text-3xl font-bold text-foreground mb-1 break-words">{stats.avgProtein}g</p>
                         <p className="text-base text-muted-foreground font-medium">Moyenne</p>
                       </CardContent>
                     </Card>
@@ -390,9 +392,10 @@ export default function Analytics() {
                   <div className="flex gap-3">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="h-14 px-6 text-base font-semibold shadow-ios border-border/20 hover:border-primary/30 hover:bg-primary/5">
-                          <Filter className="h-5 w-5 mr-3" strokeWidth={2.5} />
-                          {getDateFilterName()}
+                        <Button variant="outline" className="h-12 sm:h-14 px-3 sm:px-6 text-sm sm:text-base font-semibold shadow-ios border-border/20 hover:border-primary/30 hover:bg-primary/5">
+                          <Filter className="h-4 sm:h-5 w-4 sm:w-5 mr-2 sm:mr-3" strokeWidth={2.5} />
+                          <span className="hidden sm:inline">{getDateFilterName()}</span>
+                          <span className="sm:hidden">Filtre</span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -420,9 +423,10 @@ export default function Analytics() {
                     </DropdownMenu>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="h-14 px-6 text-base font-semibold shadow-ios border-border/20 hover:border-accent/30 hover:bg-accent/5">
-                          <ArrowUpDown className="h-5 w-5 mr-3" strokeWidth={2.5} />
-                          Trier
+                        <Button variant="outline" className="h-12 sm:h-14 px-3 sm:px-6 text-sm sm:text-base font-semibold shadow-ios border-border/20 hover:border-accent/30 hover:bg-accent/5">
+                          <ArrowUpDown className="h-4 sm:h-5 w-4 sm:w-5 mr-2 sm:mr-3" strokeWidth={2.5} />
+                          <span className="hidden sm:inline">Trier</span>
+                          <span className="sm:hidden">Tri</span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -474,10 +478,10 @@ export default function Analytics() {
                             {format(parseISO(group.date), "EEEE d MMMM", { locale: fr })}
                           </h3>
                           <div className="flex items-center gap-3">
-                            <Badge variant="secondary" className="text-lg font-bold py-2 px-4 rounded-xl bg-primary/10 text-primary border-primary/20">
+                            <Badge variant="secondary" className="text-sm sm:text-lg font-bold py-1 sm:py-2 px-2 sm:px-4 rounded-xl bg-primary/10 text-primary border-primary/20">
                               {group.totalProtein}g
                             </Badge>
-                            <Badge variant="outline" className="text-lg font-bold py-2 px-4 rounded-xl border-accent/20 text-accent">
+                            <Badge variant="outline" className="text-sm sm:text-lg font-bold py-1 sm:py-2 px-2 sm:px-4 rounded-xl border-accent/20 text-accent">
                               {group.totalCalories} kcal
                             </Badge>
                           </div>
@@ -493,52 +497,54 @@ export default function Analytics() {
                               whileHover={{ x: 4 }}
                             >
                               <Card className="border-0 shadow-ios backdrop-blur-xl hover:shadow-ios-lg transition-all duration-200">
-                                <CardContent className="p-6 flex items-center justify-between">
-                                  <div className="flex items-center gap-5">
-                                    <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-accent/20 rounded-2xl flex items-center justify-center shadow-ios-sm">
-                                      <Utensils className="h-7 w-7 text-primary" strokeWidth={2.5} />
-                                    </div>
-                                    <div>
-                                      <h3 className="text-lg font-bold text-foreground mb-1">
-                                        {meal.description}
-                                      </h3>
-                                      <div className="flex items-center text-base text-muted-foreground">
-                                        <Clock className="h-4 w-4 mr-2" strokeWidth={2} />
-                                        {format(parseISO(meal.timestamp), "HH:mm", { locale: fr })}
+                                <CardContent className="p-4 sm:p-6">
+                                  <div className="flex items-center justify-between gap-2 sm:gap-4">
+                                    <div className="flex items-center gap-3 sm:gap-5 flex-1 min-w-0">
+                                      <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-primary/20 to-accent/20 rounded-2xl flex items-center justify-center shadow-ios-sm flex-shrink-0">
+                                        <Utensils className="h-6 w-6 sm:h-7 sm:w-7 text-primary" strokeWidth={2.5} />
+                                      </div>
+                                      <div className="min-w-0 flex-1">
+                                        <h3 className="text-sm sm:text-lg font-bold text-foreground mb-1 truncate">
+                                          {meal.description}
+                                        </h3>
+                                        <div className="flex items-center text-xs sm:text-base text-muted-foreground">
+                                          <Clock className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" strokeWidth={2} />
+                                          {format(parseISO(meal.timestamp), "HH:mm", { locale: fr })}
+                                        </div>
                                       </div>
                                     </div>
-                                  </div>
-                                  <div className="flex items-center gap-3">
-                                    <Badge variant="secondary" className="text-lg font-bold py-2 px-4 rounded-xl bg-primary/10 text-primary border-primary/20">
-                                      {meal.protein}g
-                                    </Badge>
-                                    <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                                      <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        onClick={() => handleAddToFavorites(meal)}
-                                        disabled={isMealInFavorites(meal)}
-                                        className={cn(
-                                          "h-12 w-12 rounded-2xl transition-colors shadow-ios-sm",
-                                          isMealInFavorites(meal) 
-                                            ? "text-ios-red bg-ios-red/10 hover:bg-ios-red/20" 
-                                            : "text-muted-foreground hover:text-ios-red hover:bg-ios-red/10"
-                                        )}
-                                        title={isMealInFavorites(meal) ? "Déjà dans les favoris" : "Ajouter aux favoris"}
-                                      >
-                                        <Heart className={cn("h-5 w-5", isMealInFavorites(meal) && "fill-current")} strokeWidth={2} />
-                                      </Button>
-                                    </motion.div>
-                                    <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                                      <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        onClick={() => handleDeleteMeal(meal.id)} 
-                                        className="h-12 w-12 rounded-2xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 shadow-ios-sm"
-                                      >
-                                        <Trash2 className="h-5 w-5" strokeWidth={2} />
-                                      </Button>
-                                    </motion.div>
+                                    <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
+                                      <Badge variant="secondary" className="text-xs sm:text-lg font-bold py-1 sm:py-2 px-2 sm:px-4 rounded-xl bg-primary/10 text-primary border-primary/20">
+                                        {meal.protein}g
+                                      </Badge>
+                                      <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          onClick={() => handleAddToFavorites(meal)}
+                                          disabled={isMealInFavorites(meal)}
+                                          className={cn(
+                                            "h-8 w-8 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl transition-colors shadow-ios-sm",
+                                            isMealInFavorites(meal) 
+                                              ? "text-ios-red bg-ios-red/10 hover:bg-ios-red/20" 
+                                              : "text-muted-foreground hover:text-ios-red hover:bg-ios-red/10"
+                                          )}
+                                          title={isMealInFavorites(meal) ? "Déjà dans les favoris" : "Ajouter aux favoris"}
+                                        >
+                                          <Heart className={cn("h-4 w-4 sm:h-5 sm:w-5", isMealInFavorites(meal) && "fill-current")} strokeWidth={2} />
+                                        </Button>
+                                      </motion.div>
+                                      <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          onClick={() => handleDeleteMeal(meal.id)} 
+                                          className="h-8 w-8 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 shadow-ios-sm"
+                                        >
+                                          <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2} />
+                                        </Button>
+                                      </motion.div>
+                                    </div>
                                   </div>
                                 </CardContent>
                               </Card>

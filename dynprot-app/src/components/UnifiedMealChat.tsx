@@ -393,43 +393,51 @@ export const UnifiedMealChat: React.FC<UnifiedMealChatProps> = ({ className }) =
     <div className={cn("flex flex-col h-full max-w-4xl mx-auto bg-gradient-to-br from-background via-secondary/10 to-accent/5", className)}>
       {/* Header */}
       <motion.div 
-        className="flex items-center gap-4 p-6 glass border-b border-border/30 backdrop-blur-xl"
+        className="flex items-center justify-between glass border-b border-border/30 backdrop-blur-xl px-4 sm:px-6 py-4"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <motion.div
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/')}
-            className="flex-shrink-0 rounded-2xl h-12 w-12 hover:bg-primary/10"
+        <div className="flex items-center flex-1 min-w-0">
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
-            <ArrowLeft className="w-6 h-6" strokeWidth={2.5} />
-          </Button>
-        </motion.div>
-        
-        <div className="flex items-center gap-4">
-          <motion.div 
-            className="w-14 h-14 bg-gradient-to-br from-primary to-accent rounded-2xl flex items-center justify-center shadow-ios"
-            animate={{ 
-              scale: state.isLoading ? [1, 1.05, 1] : 1,
-              rotate: state.isLoading ? [0, 5, -5, 0] : 0
-            }}
-            transition={{ 
-              duration: 2,
-              repeat: state.isLoading ? Infinity : 0,
-              ease: "easeInOut"
-            }}
-          >
-            <MessageSquare className="w-7 h-7 text-white" strokeWidth={2.5} />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate('/')}
+              className="mr-3 sm:mr-4 rounded-2xl h-10 w-10 sm:h-12 sm:w-12 hover:bg-primary/10 flex-shrink-0"
+            >
+              <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.5} />
+            </Button>
           </motion.div>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">Assistant Nutritionnel</h1>
-            <p className="text-base text-muted-foreground font-medium">Analysez vos repas facilement</p>
+          
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <motion.div 
+              className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-primary/20 to-accent/20 rounded-2xl flex items-center justify-center shadow-ios flex-shrink-0"
+              animate={{ 
+                scale: state.isLoading ? [1, 1.05, 1] : 1,
+                rotate: state.isLoading ? [0, 5, -5, 0] : 0
+              }}
+              transition={{ 
+                duration: 2,
+                repeat: state.isLoading ? Infinity : 0,
+                ease: "easeInOut"
+              }}
+            >
+              <MessageSquare className="h-6 w-6 sm:h-7 sm:w-7 text-primary" strokeWidth={2.5} />
+            </motion.div>
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-2xl font-bold text-foreground tracking-tight truncate">
+                <span className="sm:hidden">Assistant</span>
+                <span className="hidden sm:inline">Assistant Nutritionnel</span>
+              </h1>
+              <p className="text-sm sm:text-base text-muted-foreground font-medium truncate">
+                <span className="sm:hidden">Analysez vos repas</span>
+                <span className="hidden sm:inline">Analysez vos repas facilement</span>
+              </p>
+            </div>
           </div>
         </div>
 
