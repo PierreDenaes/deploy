@@ -358,15 +358,34 @@ export class NutritionCoachService {
    */
   private transformFrenchResponse(frenchData: any): CoachRecommendationResponse {
     console.log('Transforming French response:', frenchData);
-    console.log('Total nutrition from API:', frenchData.total_nutrition);
+    
+    // Handle JSON parsing if the response is wrapped in markdown code blocks
+    let parsedData = frenchData;
+    if (typeof frenchData.response === 'string' && frenchData.response.includes('```json')) {
+      try {
+        // Extract JSON from markdown code blocks
+        const jsonMatch = frenchData.response.match(/```json\s*([\s\S]*?)\s*```/);
+        if (jsonMatch && jsonMatch[1]) {
+          const jsonString = jsonMatch[1].trim();
+          parsedData = JSON.parse(jsonString);
+          console.log('Successfully parsed JSON from markdown:', parsedData);
+        }
+      } catch (parseError) {
+        console.error('Failed to parse JSON from markdown:', parseError);
+        console.log('Raw response string:', frenchData.response);
+        // Fall back to using the original data
+      }
+    }
+    
+    console.log('Total nutrition from API:', parsedData.total_nutrition);
     
     // Mapper les recommandations vers le format attendu
     const recommendations: MealRecommendation[] = [];
     
     // Support à la fois de l'ancien format (recommandations) et du nouveau (recommendations)
-    const recList = frenchData.recommendations || frenchData.recommandations || frenchData.repas_recommandations || frenchData.meal_recommendations || frenchData.recommandations_de_repas || frenchData.recommandations_repas || frenchData.repas;
+    const recList = parsedData.recommendations || parsedData.recommandations || parsedData.repas_recommandations || parsedData.meal_recommendations || parsedData.recommandations_de_repas || parsedData.recommandations_repas || parsedData.repas;
     
-    console.log('Looking for recommendations in fields:', Object.keys(frenchData));
+    console.log('Looking for recommendations in fields:', Object.keys(parsedData));
     console.log('Found recommendations field with', recList?.length || 0, 'items');
     
     if (recList && Array.isArray(recList)) {
@@ -374,7 +393,7 @@ export class NutritionCoachService {
         console.log('Processing recommendation:', item);
         
         // L'API renvoie maintenant nutrition: {calories, proteins, carbs, fats} OU directement sur l'item
-        const nutritionValues = item.recipe?.nutrition || item.nutrition || item.apport_nutritionnel || item.valeurs_nutritionnelles || item || {};
+        const nutritionValues = item.nutritional_info || item.recipe?.nutrition || item.nutrition || item.informations_nutritionnelles || item.apport_nutritionnel || item.valeurs_nutritionnelles || item || {};
         console.log('Raw nutritionValues object:', nutritionValues);
         console.log('All available keys in nutritionValues:', Object.keys(nutritionValues));
         console.log('Type of nutritionValues:', typeof nutritionValues);
@@ -443,9 +462,21 @@ export class NutritionCoachService {
         console.log('Nutrition values:', mappedNutrition);
         console.log('Full item structure:', JSON.stringify(item, null, 2));
         
+        // Préparer les instructions d'abord pour pouvoir extraire les ingrédients si nécessaire
+        const instructions = Array.isArray(item.recipe?.instructions) ? item.recipe.instructions.map(String) : Array.isArray(item.recette?.instructions) ? item.recette.instructions.map(String) : Array.isArray(item.instructions) ? item.instructions.map(String) : (item.instructions ? [String(item.instructions)] : ['Instructions détaillées disponibles']);
+        
+        // Essayer d'abord de mapper les ingrédients existants
+        let mappedIngredients = this.mapIngredients(item.recipe?.ingredients || item.ingredients || item.ingrédients || item.recette?.ingrédients || []);
+        
+        // Si aucun ingrédient trouvé, extraire des instructions
+        if (mappedIngredients.length === 0 && instructions.length > 0) {
+          console.log('No explicit ingredients found, extracting from instructions');
+          mappedIngredients = this.extractIngredientsFromInstructions(instructions);
+        }
+        
         const recommendation: MealRecommendation = {
           id: `rec_${index + 1}`,
-          title: String(item.nom || item.recipe?.name || item.nom_du_repas || item.nom_repas || item.title || item.meal || item.meal_name || `Repas ${index + 1}`),
+          title: String(item.recipe || item.nom || item.recipe?.name || item.nom_du_repas || item.nom_repas || item.title || item.meal_name || `Repas ${index + 1}`),
           description: String(item.description || this.generateDescription(item.meal || item.meal_name, item.meal || item.meal_name || item.nom || item.recipe?.name)),
           category: this.mapMealCategory(item.meal || item.meal_name || item.nom || item.nom_du_repas || item.nom_repas || ''),
           nutrition: {
@@ -455,8 +486,8 @@ export class NutritionCoachService {
             fat: mappedNutrition.lipides || this.estimateFat(mappedNutrition),
             fiber: 0, // No fiber in nutritionValues, fallback to 0
           },
-          ingredients: this.mapIngredients(item.recipe?.ingredients || item.ingredients || item.ingrédients || item.recette || []),
-          instructions: Array.isArray(item.recipe?.instructions) ? item.recipe.instructions.map(String) : Array.isArray(item.instructions) ? item.instructions.map(String) : (item.instructions ? [String(item.instructions)] : ['Instructions détaillées disponibles']),
+          ingredients: mappedIngredients,
+          instructions: instructions,
           prepTime: item.temps_préparation || item.prepTime || 15,
           cookTime: item.temps_cuisson || item.cookTime || 15,
           servings: item.portions || item.servings || 1,
@@ -471,8 +502,11 @@ export class NutritionCoachService {
       });
     }
 
+    // S'assurer qu'il y a au moins une recommandation de chaque catégorie
+    this.ensureAllCategoriesRepresented(recommendations);
+
     // Collecter les tips depuis les recommandations individuelles OU depuis la structure globale
-    const globalTips = frenchData.conseils_pratiques || frenchData.astuces || frenchData.tips || [];
+    const globalTips = parsedData.conseils_pratiques || parsedData.astuces || parsedData.tips || [];
     const individualTips = recommendations.map(rec => rec.tags).filter(Boolean).flat();
     const mealTips = recList?.map((item: any) => item.tips).filter(Boolean) || [];
     const tips = Array.isArray(globalTips) ? globalTips : (globalTips ? [globalTips] : mealTips);
@@ -482,23 +516,23 @@ export class NutritionCoachService {
     console.log('First recommendation nutrition:', recommendations[0]?.nutrition);
     
     // Utiliser les totaux fournis par l'API dans total_nutrition ou total_journalier
-    const apiTotals = frenchData.total_nutrition || frenchData.total_journalier || frenchData.total_daily_nutrition || {};
+    const apiTotals = parsedData.total_nutrition || parsedData.total_journalier || parsedData.total_daily_nutrition || {};
     
     const totalProteins = apiTotals.proteins || apiTotals.protéines ||
-                         frenchData.total_protéines_journalières || 
-                         frenchData.total_protéines || 
+                         parsedData.total_protéines_journalières || 
+                         parsedData.total_protéines || 
                          recommendations.reduce((sum, rec) => sum + (rec.nutrition.protein || 0), 0);
     const totalCalories = apiTotals.calories || apiTotals.kcal ||
-                         frenchData.total_calories_journalières || 
-                         frenchData.total_calories || 
+                         parsedData.total_calories_journalières || 
+                         parsedData.total_calories || 
                          recommendations.reduce((sum, rec) => sum + (rec.nutrition.calories || 0), 0);
     const totalCarbs = apiTotals.carbs || apiTotals.glucides ||
-                      frenchData.total_glucides_journalières || 
-                      frenchData.total_glucides || 
+                      parsedData.total_glucides_journalières || 
+                      parsedData.total_glucides || 
                       recommendations.reduce((sum, rec) => sum + (rec.nutrition.carbs || 0), 0);
     const totalFats = apiTotals.fats || apiTotals.lipides ||
-                     frenchData.total_lipides_journalières || 
-                     frenchData.total_lipides || 
+                     parsedData.total_lipides_journalières || 
+                     parsedData.total_lipides || 
                      recommendations.reduce((sum, rec) => sum + (rec.nutrition.fat || 0), 0);
     
     console.log('Totals - Proteins:', totalProteins, 'Calories:', totalCalories, 'Carbs:', totalCarbs, 'Fats:', totalFats);
@@ -512,9 +546,9 @@ export class NutritionCoachService {
     
     return {
       recommendations,
-      explanation: frenchData.notes || frenchData.conseils || frenchData.commentaires || frenchData.explanation || 'Voici vos recommandations de repas personnalisées, conçues pour vous aider à atteindre vos objectifs nutritionnels.',
+      explanation: parsedData.notes || parsedData.conseils || parsedData.commentaires || parsedData.explanation || 'Voici vos recommandations de repas personnalisées, conçues pour vous aider à atteindre vos objectifs nutritionnels.',
       tips: Array.isArray(tips) ? tips : [],
-      nutritionalInsights: frenchData.insights || frenchData.nutritionalInsights || [
+      nutritionalInsights: parsedData.insights || parsedData.nutritionalInsights || [
         `Total protéines : ${totalProteins}g`,
         `Total calories : ${totalCalories} kcal`,
         `Total glucides : ${totalCarbs}g`,
@@ -612,12 +646,23 @@ export class NutritionCoachService {
    */
   private mapMealCategory(name: string): 'breakfast' | 'lunch' | 'dinner' | 'snack' {
     const lowerName = name.toLowerCase();
+    
+    // Mots-clés explicites pour les repas
     if (lowerName.includes('petit-déjeuner') || lowerName.includes('petit déjeuner') || lowerName.includes('breakfast')) return 'breakfast';
     if (lowerName.includes('déjeuner') && !lowerName.includes('petit')) return 'lunch';
     if (lowerName.includes('lunch')) return 'lunch';
     if (lowerName.includes('dîner') || lowerName.includes('diner') || lowerName.includes('dinner')) return 'dinner';
     if (lowerName.includes('snack') || lowerName.includes('collation')) return 'snack';
-    return 'lunch'; // Par défaut
+    
+    // Détection intelligente basée sur les ingrédients et types de plats
+    if (lowerName.includes('omelette') || lowerName.includes('œufs') || lowerName.includes('céréales') || lowerName.includes('porridge') || lowerName.includes('yaourt')) return 'breakfast';
+    if (lowerName.includes('salade') || lowerName.includes('soupe') || lowerName.includes('sandwich') || lowerName.includes('quinoa')) return 'lunch';
+    if (lowerName.includes('rôti') || lowerName.includes('grillé') || lowerName.includes('saumon') || lowerName.includes('poulet') || lowerName.includes('purée')) return 'dinner';
+    
+    // Distribution cyclique pour éviter que tout soit "lunch"
+    const categories: ('breakfast' | 'lunch' | 'dinner' | 'snack')[] = ['breakfast', 'lunch', 'dinner', 'snack'];
+    const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return categories[hash % categories.length];
   }
 
   /**
@@ -625,7 +670,6 @@ export class NutritionCoachService {
    */
   private estimateCarbs(nutritionValues: any): number {
     const calories = nutritionValues.calories || nutritionValues.énergie || 0;
-    const protein = nutritionValues.protéines || nutritionValues.proteins || nutritionValues.protein || 0;
     // Estimation: 40% des calories viennent des glucides
     // 1g glucides = 4 calories
     const carbCalories = calories * 0.4;
@@ -637,9 +681,6 @@ export class NutritionCoachService {
    */
   private estimateFat(nutritionValues: any): number {
     const calories = nutritionValues.calories || nutritionValues.énergie || 0;
-    const protein = nutritionValues.protéines || nutritionValues.proteins || nutritionValues.protein || 0;
-    // Calories des protéines (4 cal/g)
-    const proteinCalories = protein * 4;
     // Estimation: 30% des calories viennent des lipides
     // 1g lipides = 9 calories
     const fatCalories = calories * 0.3;
@@ -710,10 +751,28 @@ export class NutritionCoachService {
           unit: 'portion'
         };
       } else if (typeof ingredient === 'object') {
-        // L'API renvoie des objets comme {"oeufs": 3, "protéines": 21, "calories": 234}
+        // Nouveau format: {item: "nom", quantity: "quantité", unit: "unité"}
+        if (ingredient.item) {
+          return {
+            name: String(ingredient.item),
+            quantity: String(ingredient.quantity || '1'),
+            unit: String(ingredient.unit || 'unité')
+          };
+        }
+        
+        // Format alternatif: {nom/name: "nom", quantite/quantity: "quantité", unite/unit: "unité"}
+        if (ingredient.nom || ingredient.name) {
+          return {
+            name: String(ingredient.nom || ingredient.name),
+            quantity: String(ingredient.quantite || ingredient.quantité || ingredient.quantity || '1'),
+            unit: String(ingredient.unite || ingredient.unité || ingredient.unit || 'unité')
+          };
+        }
+        
+        // Ancien format: {"oeufs": 3, "protéines": 21, "calories": 234}
         // Le nom est la première clé qui n'est pas protéines/calories
         const keys = Object.keys(ingredient);
-        const nameKey = keys.find(key => !['protéines', 'calories', 'proteins', 'glucides', 'lipides', 'carbs', 'fat'].includes(key));
+        const nameKey = keys.find(key => !['protéines', 'calories', 'proteins', 'glucides', 'lipides', 'carbs', 'fat', 'item', 'quantity', 'unit', 'nom', 'name', 'quantite', 'quantité', 'unite', 'unité'].includes(key));
         
         if (nameKey) {
           return {
@@ -724,9 +783,9 @@ export class NutritionCoachService {
         }
         
         return {
-          name: String(ingredient.nom || ingredient.name || 'Ingrédient'),
-          quantity: String(ingredient.quantite || ingredient.quantité || ingredient.quantity || '1'),
-          unit: String(ingredient.unite || ingredient.unité || ingredient.unit || 'unité')
+          name: 'Ingrédient',
+          quantity: '1',
+          unit: 'unité'
         };
       }
       
@@ -753,6 +812,49 @@ export class NutritionCoachService {
     }
     
     return mapped;
+  }
+
+  /**
+   * Extraire les ingrédients des instructions lorsque le champ ingredients est vide
+   */
+  private extractIngredientsFromInstructions(instructions: string[]): Array<{ name: string; quantity: string; unit: string }> {
+    const ingredients: Array<{ name: string; quantity: string; unit: string }> = [];
+    
+    // Regex pour capturer quantité + unité + ingrédient dans les instructions
+    const patterns = [
+      // "200g de poitrine de poulet", "150g de filet de saumon"
+      /(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\s+(?:de\s+|d')([^,\.;]+)/gi,
+      // "1 cuillère à soupe d'huile d'olive", "2 cuillères à soupe de sauce soja"
+      /(\d+(?:\.\d+)?)\s+(cuillère[s]?\s+à\s+\w+)\s+(?:de\s+|d')([^,\.;]+)/gi,
+      // "1 oignon", "3 œufs", "2 gousses d'ail"
+      /(\d+(?:\.\d+)?)\s+(oignon[s]?|œuf[s]?|gousse[s]?\s+d'ail|gousse[s]?\s+d'ail)/gi,
+      // Formats avec unités spécifiques: "400ml de lait de coco", "1 boîte de tomates"
+      /(\d+(?:\.\d+)?)\s*(ml|cl|l|boîte[s]?|conserve[s]?)\s+(?:de\s+|d')([^,\.;]+)/gi
+    ];
+
+    instructions.forEach(instruction => {
+      patterns.forEach(pattern => {
+        let match;
+        const regex = new RegExp(pattern.source, pattern.flags);
+        while ((match = regex.exec(instruction)) !== null) {
+          const quantity = match[1];
+          const unit = match[2];
+          const name = match[3].trim();
+          
+          // Éviter les doublons
+          if (!ingredients.some(ing => ing.name.toLowerCase() === name.toLowerCase())) {
+            ingredients.push({
+              name: name,
+              quantity: quantity,
+              unit: unit
+            });
+          }
+        }
+      });
+    });
+
+    console.log('Extracted ingredients from instructions:', ingredients);
+    return ingredients;
   }
 
   /**
@@ -991,7 +1093,6 @@ export class NutritionCoachService {
         rec.nutrition.calories >= 0 &&
         rec.ingredients &&
         Array.isArray(rec.ingredients) &&
-        rec.ingredients.length > 0 &&
         rec.instructions &&
         Array.isArray(rec.instructions) &&
         rec.instructions.length > 0;
@@ -1032,6 +1133,69 @@ export class NutritionCoachService {
       ...response,
       recommendations: validRecommendations
     };
+  }
+
+  /**
+   * S'assurer qu'il y a exactement 5 recommandations avec au moins une de chaque catégorie
+   */
+  private ensureAllCategoriesRepresented(recommendations: MealRecommendation[]): void {
+    if (recommendations.length < 4) return; // Pas assez de recommandations
+
+    const categories: ('breakfast' | 'lunch' | 'dinner' | 'snack')[] = ['breakfast', 'lunch', 'dinner', 'snack'];
+    
+    console.log('Initial distribution:', recommendations.map(r => `${r.title} -> ${r.category}`));
+    
+    // Stratégie pour 5 recommandations: assigner les 4 premières aux catégories obligatoires
+    // La 5ème peut être n'importe quelle catégorie (favorise la diversité)
+    if (recommendations.length >= 5) {
+      // Assigner les 4 catégories principales aux 4 premières recommandations
+      categories.forEach((category, index) => {
+        if (index < 4 && recommendations[index]) {
+          const oldCategory = recommendations[index].category;
+          recommendations[index].category = category;
+          console.log(`Category assignment: ${recommendations[index].title} from ${oldCategory} to ${category}`);
+        }
+      });
+      
+      // La 5ème recommandation : choisir une catégorie qui n'est pas déjà utilisée 2 fois
+      if (recommendations[4]) {
+        const categoryCounts = recommendations.slice(0, 4).reduce((counts, rec) => {
+          counts[rec.category] = (counts[rec.category] || 0) + 1;
+          return counts;
+        }, {} as Record<string, number>);
+        
+        // Trouver une catégorie qui n'a qu'une seule occurrence parmi les 4 premières
+        const availableCategories = categories.filter(cat => (categoryCounts[cat] || 0) < 2);
+        
+        if (availableCategories.length > 0) {
+          // Utiliser la première catégorie disponible
+          recommendations[4].category = availableCategories[0];
+          console.log(`Fifth recommendation assigned to: ${availableCategories[0]} (available: ${availableCategories.join(', ')})`);
+        } else {
+          // Fallback: utiliser une catégorie aléatoire
+          recommendations[4].category = categories[Math.floor(Math.random() * categories.length)];
+          console.log(`Fifth recommendation assigned randomly to: ${recommendations[4].category}`);
+        }
+      }
+    } else {
+      // Pour moins de 5 recommandations, utiliser l'ancienne logique
+      const existingCategories = new Set(recommendations.map(r => r.category));
+      const missingCategories = categories.filter(cat => !existingCategories.has(cat));
+      
+      if (missingCategories.length > 0) {
+        console.log('Missing categories:', missingCategories);
+        
+        missingCategories.forEach((missingCategory, index) => {
+          if (index < recommendations.length) {
+            const oldCategory = recommendations[index].category;
+            recommendations[index].category = missingCategory;
+            console.log(`Forced category change: ${recommendations[index].title} from ${oldCategory} to ${missingCategory}`);
+          }
+        });
+      }
+    }
+    
+    console.log('Final distribution:', recommendations.map(r => `${r.title} -> ${r.category}`));
   }
 }
 
