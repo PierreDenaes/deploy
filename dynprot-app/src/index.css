@@ -300,4 +300,9 @@
   .large-text .text-base { font-size: 1.1rem !important; }
   .large-text .text-lg { font-size: 1.25rem !important; }
   .large-text .text-xl { font-size: 1.4rem !important; }
+
+  /* Extra small screens responsive helper */
+  @media (min-width: 480px) {
+    .xs\:inline { display: inline !important; }
+  }
 }

@@ -28,11 +28,11 @@ export class EmailService {
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background-color: #6366f1; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .header { background-color: #007aff; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
             .content { background-color: #f8fafc; padding: 30px; border-radius: 0 0 8px 8px; }
             .button { 
               display: inline-block; 
-              background-color: #6366f1; 
+              background-color: #007aff; 
               color: white; 
               text-decoration: none; 
               padding: 12px 24px; 
@@ -106,11 +106,11 @@ export class EmailService {
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background-color: #10b981; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .header { background-color: #34c759; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
             .content { background-color: #f8fafc; padding: 30px; border-radius: 0 0 8px 8px; }
             .button { 
               display: inline-block; 
-              background-color: #10b981; 
+              background-color: #34c759; 
               color: white; 
               text-decoration: none; 
               padding: 12px 24px; 
@@ -195,10 +195,10 @@ export class EmailService {
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .header { background-color: #007aff; color: white; padding: 30px 20px; text-align: center; border-radius: 8px 8px 0 0; }
             .content { background-color: #f8fafc; padding: 30px; border-radius: 0 0 8px 8px; }
             .welcome-badge { 
-              background-color: #10b981; 
+              background-color: #34c759; 
               color: white; 
               padding: 8px 16px; 
               border-radius: 20px; 
@@ -209,7 +209,7 @@ export class EmailService {
             }
             .button { 
               display: inline-block; 
-              background-color: #667eea; 
+              background-color: #007aff; 
               color: white; 
               text-decoration: none; 
               padding: 14px 28px; 
@@ -230,7 +230,7 @@ export class EmailService {
               margin-right: 10px; 
             }
             .footer { font-size: 12px; color: #6b7280; margin-top: 30px; text-align: center; }
-            .highlight { color: #667eea; font-weight: bold; }
+            .highlight { color: #007aff; font-weight: bold; }
           </style>
         </head>
         <body>
