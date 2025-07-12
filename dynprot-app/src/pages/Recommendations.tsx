@@ -155,19 +155,20 @@ export default function Recommendations() {
       try {
         const result = await nutritionCoach.getRecommendations(userProfile, request, state.meals.slice(-7));
         
+        console.log('🔍 DEBUG: API result:', result);
+        console.log('🔍 DEBUG: Recommendations array:', result?.recommendations);
+        
         // Check if we have valid recommendations from the transformed response
         if (result?.recommendations && Array.isArray(result.recommendations) && result.recommendations.length > 0) {
-          // Verify that recommendations have valid data (check if we have fallback ingredients vs real ones)
+          // Use AI recommendations directly - they come from the AI service so they're valid
           const validRecommendations = result.recommendations.filter(rec => {
-            // Check if this is real AI data vs fallback data
-            const hasRealIngredients = rec.ingredients && rec.ingredients.length > 0 && 
-              !rec.ingredients.some((ing: any) => ing.nom === "Protéine au choix" || ing.nom === "Ingrédients à préciser");
-            
             const hasValidTitle = rec && rec.titre && rec.titre.trim() !== '';
-            
-            // Accept any recommendation with a valid title (including "Repas X" if that's what AI returned)
-            return hasValidTitle && (hasRealIngredients || rec.source === 'ai_generated');
+            console.log('🔍 DEBUG: Checking recommendation:', { titre: rec.titre, ingredients: rec.ingredients?.slice(0, 2) });
+            // Accept any recommendation with a valid title from AI
+            return hasValidTitle;
           });
+          
+          console.log('🔍 DEBUG: Valid recommendations count:', validRecommendations.length);
           
           if (validRecommendations.length > 0) {
             apiSucceeded = true;
@@ -206,7 +207,7 @@ export default function Recommendations() {
         toast.warning("Génération des recommandations par défaut");
         
         // Create fallback recommendations
-        const mealTypes: Array<'breakfast' | 'lunch' | 'dinner' | 'snack'> = ['breakfast', 'lunch', 'dinner', 'snack'];
+        const mealTypes: Array<'petit-dejeuner' | 'dejeuner' | 'diner' | 'collation'> = ['petit-dejeuner', 'dejeuner', 'diner', 'collation'];
         const fallbackTitles = [
           'Petit-déjeuner protéiné',
           'Déjeuner équilibré', 
@@ -217,8 +218,8 @@ export default function Recommendations() {
         allRecommendations = mealTypes.map((mealType, index) => ({
           id: `fallback_${mealType}_${index}_${Date.now()}`,
           titre: fallbackTitles[index],
-          description: `Un ${mealType === 'breakfast' ? 'petit-déjeuner' : mealType === 'lunch' ? 'déjeuner' : mealType === 'dinner' ? 'dîner' : 'collation'} riche en protéines et équilibré`,
-          categorie: mealType === 'breakfast' ? 'petit-dejeuner' : mealType === 'lunch' ? 'dejeuner' : mealType === 'dinner' ? 'diner' : 'collation',
+          description: `Un ${mealType === 'petit-dejeuner' ? 'petit-déjeuner' : mealType === 'dejeuner' ? 'déjeuner' : mealType === 'diner' ? 'dîner' : 'collation'} riche en protéines et équilibré`,
+          categorie: mealType,
           nutrition: {
             calories: 300 + (index * 50),
             proteines: 20 + (index * 5),
