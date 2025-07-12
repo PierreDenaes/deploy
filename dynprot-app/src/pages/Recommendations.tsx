@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Filter, Heart, Clock, Users, Zap, ChefHat, Target, Plus } from 'lucide-react';
+import { ArrowLeft, Filter, Heart, Clock, Users, Zap, ChefHat, Target, Plus, AlertCircle, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useAppContext } from '@/context/AppContext';
 import { nutritionCoach } from '@/services/nutritionCoach.service';
 import type { MealRecommendation, CoachRecommendationResponse } from '@/services/nutritionCoach.service';
@@ -68,18 +69,145 @@ const ensureCategoriesInRecommendations = (recommendations: MealRecommendation[]
   return recommendations;
 };
 
+// Fallback recommendations generator
+const generateFallbackRecommendations = (): MealRecommendation[] => {
+  const categories: ('petit-dejeuner' | 'dejeuner' | 'diner' | 'collation')[] = 
+    ['petit-dejeuner', 'dejeuner', 'diner', 'collation'];
+  
+  const fallbackData = [
+    {
+      titre: 'Omelette protéinée aux légumes',
+      description: 'Un petit-déjeuner équilibré pour bien commencer la journée',
+      categorie: 'petit-dejeuner' as const,
+      nutrition: { calories: 320, proteines: 28, glucides: 12, lipides: 18, fibres: 3 },
+      ingredients: [
+        { nom: "Oeufs", quantite: "3", unite: "unités" },
+        { nom: "Épinards frais", quantite: "50", unite: "g" },
+        { nom: "Tomates cerises", quantite: "100", unite: "g" },
+        { nom: "Fromage feta", quantite: "30", unite: "g" }
+      ],
+      instructions: [
+        "Battre les œufs dans un bol",
+        "Faire revenir les épinards et tomates dans une poêle",
+        "Verser les œufs battus et cuire 3-4 minutes",
+        "Ajouter le fromage feta émietté avant de servir"
+      ],
+      tempsPreparation: 5,
+      tempsCuisson: 10,
+      difficulte: 'facile' as const
+    },
+    {
+      titre: 'Salade de quinoa au poulet grillé',
+      description: 'Un déjeuner léger et nutritif',
+      categorie: 'dejeuner' as const,
+      nutrition: { calories: 380, proteines: 32, glucides: 35, lipides: 12, fibres: 8 },
+      ingredients: [
+        { nom: "Quinoa cuit", quantite: "150", unite: "g" },
+        { nom: "Blanc de poulet", quantite: "120", unite: "g" },
+        { nom: "Concombre", quantite: "100", unite: "g" },
+        { nom: "Avocat", quantite: "0.5", unite: "unité" }
+      ],
+      instructions: [
+        "Griller le poulet assaisonné 6-7 minutes de chaque côté",
+        "Couper le concombre et l'avocat en dés",
+        "Mélanger le quinoa avec les légumes",
+        "Trancher le poulet et disposer sur la salade"
+      ],
+      tempsPreparation: 10,
+      tempsCuisson: 15,
+      difficulte: 'facile' as const
+    },
+    {
+      titre: 'Saumon au four et légumes rôtis',
+      description: 'Un dîner savoureux riche en oméga-3',
+      categorie: 'diner' as const,
+      nutrition: { calories: 420, proteines: 35, glucides: 28, lipides: 18, fibres: 6 },
+      ingredients: [
+        { nom: "Filet de saumon", quantite: "150", unite: "g" },
+        { nom: "Brocoli", quantite: "150", unite: "g" },
+        { nom: "Patates douces", quantite: "100", unite: "g" },
+        { nom: "Huile d'olive", quantite: "1", unite: "cuillère à soupe" }
+      ],
+      instructions: [
+        "Préchauffer le four à 200°C",
+        "Disposer le saumon et les légumes sur une plaque",
+        "Arroser d'huile d'olive et assaisonner",
+        "Cuire 20-25 minutes jusqu'à ce que tout soit doré"
+      ],
+      tempsPreparation: 10,
+      tempsCuisson: 25,
+      difficulte: 'moyen' as const
+    },
+    {
+      titre: 'Smoothie protéiné aux fruits rouges',
+      description: 'Une collation rafraîchissante et énergisante',
+      categorie: 'collation' as const,
+      nutrition: { calories: 180, proteines: 20, glucides: 18, lipides: 3, fibres: 4 },
+      ingredients: [
+        { nom: "Whey protéine vanille", quantite: "30", unite: "g" },
+        { nom: "Fruits rouges surgelés", quantite: "100", unite: "g" },
+        { nom: "Lait d'amande", quantite: "200", unite: "ml" },
+        { nom: "Graines de chia", quantite: "1", unite: "cuillère à soupe" }
+      ],
+      instructions: [
+        "Mettre tous les ingrédients dans le blender",
+        "Mixer pendant 60 secondes jusqu'à consistance lisse",
+        "Ajouter des glaçons si désiré",
+        "Servir immédiatement"
+      ],
+      tempsPreparation: 5,
+      tempsCuisson: 0,
+      difficulte: 'facile' as const
+    }
+  ];
+
+  return fallbackData.map((data, index) => ({
+    ...data,
+    id: `fallback_${data.categorie}_${Date.now()}_${index}`,
+    portions: 1,
+    tags: ['équilibré', 'protéiné', 'fait maison'],
+    confiance: 0.75,
+    source: 'fallback' as const
+  }));
+};
+
 export default function Recommendations() {
   const navigate = useNavigate();
   const { state } = useAppContext();
   const [recommendations, setRecommendations] = useState<CoachRecommendationResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const [activeCategory, setActiveCategory] = useState<'all' | 'petit-dejeuner' | 'dejeuner' | 'diner' | 'collation'>('all');
   const [sortBy, setSortBy] = useState<'proteines' | 'calories' | 'time' | 'difficulty'>('proteines');
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
 
-  // Charger les recommandations au montage
+  // Charger les favoris depuis localStorage au montage
   useEffect(() => {
-    generateRecommendations();
+    try {
+      const savedFavorites = localStorage.getItem('mealFavorites');
+      if (savedFavorites) {
+        setFavorites(new Set(JSON.parse(savedFavorites)));
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des favoris:', error);
+    }
+  }, []);
+
+  // Sauvegarder les favoris dans localStorage à chaque changement
+  useEffect(() => {
+    try {
+      localStorage.setItem('mealFavorites', JSON.stringify([...favorites]));
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde des favoris:', error);
+    }
+  }, [favorites]);
+
+  // Charger les recommandations au montage seulement si nécessaire
+  useEffect(() => {
+    if (!recommendations) {
+      generateRecommendations();
+    }
   }, []);
 
   // Helper to map fitness goal values to expected schema
@@ -100,24 +228,24 @@ export default function Recommendations() {
     }
   };
 
-  const generateRecommendations = async () => {
-    
-    // No need to check for state.user.profile, just check for required fields
+  const generateRecommendations = async (isRetry = false) => {
+    // Validation initiale
     if (!state.user || !state.userSettings) {
-      console.error('Missing user data');
-      toast.error("Profil utilisateur manquant");
+      setError("Profil utilisateur incomplet. Veuillez compléter votre profil.");
       return;
     }
 
     setIsLoading(true);
+    setError(null);
+    
     try {
-      // Build userProfile as in Profile.tsx
+      // Build userProfile with validation
       const userProfile = {
         age: Number(state.userSettings.age) || 30,
         gender: (state.userSettings.gender as 'male' | 'female' | 'other') || 'other',
         weight: Number(state.user.weightKg) || 75,
         height: Number(state.user.heightCm) || 175,
-        activityLevel: state.user.activityLevel,
+        activityLevel: state.user.activityLevel || 'moderate',
         fitnessGoal: mapFitnessGoal(state.userSettings.fitnessGoal),
         proteinGoal: Number(state.user.dailyProteinGoal) || 120,
         calorieGoal: Number(state.user.calorieGoal) || 2000,
@@ -129,140 +257,82 @@ export default function Recommendations() {
         equipment: ['four', 'plaques', 'mixeur']
       };
 
-
-      // Make a single API call to get all recommendations
-      
       const request = {
         type: 'meal' as const,
-        context: 'Générer 4 recommandations de repas : 1 petit-déjeuner, 1 déjeuner, 1 dîner, 1 collation. Chaque recommandation doit correspondre exactement à sa catégorie.'
+        context: 'Générer 4 recommandations de repas variées : 1 petit-déjeuner, 1 déjeuner, 1 dîner, 1 collation. Chaque recommandation doit correspondre exactement à sa catégorie avec des recettes complètes et détaillées.'
       };
 
-      let allRecommendations: any[] = [];
-      let apiMetadata = {
-        explanation: "Recommandations personnalisées générées pour tous les types de repas",
-        tips: ["Variez vos sources de protéines", "Équilibrez vos macronutriments", "Adaptez les portions selon vos besoins"],
-        nutritionalInsights: ["Recommandations adaptées à vos objectifs nutritionnels", "Équilibre optimal entre les différents types de repas"],
-        weeklyGoalProgress: {
-          proteinProgress: 75,
-          calorieProgress: 80,
-          balanceScore: 85
-        }
+      // Tentative d'appel API avec timeout
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 30000)
+      );
+
+      const apiPromise = nutritionCoach.getRecommendations(
+        userProfile, 
+        request, 
+        state.meals.slice(-7)
+      );
+
+      const result = await Promise.race([apiPromise, timeoutPromise]) as CoachRecommendationResponse;
+      
+      // Validation du résultat
+      if (!result.recommendations || result.recommendations.length === 0) {
+        throw new Error('Aucune recommandation reçue');
+      }
+
+      // S'assurer que toutes les catégories sont représentées
+      const processedResult = {
+        ...result,
+        recommendations: ensureCategoriesInRecommendations(result.recommendations)
       };
 
-      // Try API call without aggressive timeout
-      let apiSucceeded = false;
-      
-      try {
-        const result = await nutritionCoach.getRecommendations(userProfile, request, state.meals.slice(-7));
-        
-        console.log('🔍 DEBUG: API result:', result);
-        console.log('🔍 DEBUG: Recommendations array:', result?.recommendations);
-        
-        // Check if we have valid recommendations from the transformed response
-        if (result?.recommendations && Array.isArray(result.recommendations) && result.recommendations.length > 0) {
-          // Use AI recommendations directly - they come from the AI service so they're valid
-          const validRecommendations = result.recommendations.filter(rec => {
-            const hasValidTitle = rec && rec.titre && rec.titre.trim() !== '';
-            console.log('🔍 DEBUG: Checking recommendation:', { titre: rec.titre, ingredients: rec.ingredients?.slice(0, 2) });
-            // Accept any recommendation with a valid title from AI
-            return hasValidTitle;
-          });
-          
-          console.log('🔍 DEBUG: Valid recommendations count:', validRecommendations.length);
-          
-          if (validRecommendations.length > 0) {
-            apiSucceeded = true;
-            
-            // Store API metadata
-            apiMetadata = {
-              explanation: result.explanation || apiMetadata.explanation,
-              tips: result.tips || apiMetadata.tips,
-              nutritionalInsights: result.nutritionalInsights || apiMetadata.nutritionalInsights,
-              weeklyGoalProgress: result.weeklyGoalProgress || apiMetadata.weeklyGoalProgress
-            };
-            
-            // Use the API recommendations directly (they're already processed by transformFrenchResponse)
-            allRecommendations = result.recommendations.slice(0, 4).map((rec: any, index: number) => {
-              // Generate unique ID if not present
-              const uniqueId = rec.id || `ai_rec_${index}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-              
-              return {
-                ...rec, // Keep all original data from the transformation
-                id: uniqueId // Ensure unique ID
-              };
-            });
-          
-            toast.success(`${allRecommendations.length} recommandations AI générées !`);
-          } else {
-            apiSucceeded = false;
-          }
-        }
-      } catch (error) {
-        console.error('API call failed:', error);
-        apiSucceeded = false;
-      }
-      
-      // Use fallback only if API completely failed
-      if (!apiSucceeded) {
-        toast.warning("Génération des recommandations par défaut");
-        
-        // Create fallback recommendations
-        const mealTypes: Array<'petit-dejeuner' | 'dejeuner' | 'diner' | 'collation'> = ['petit-dejeuner', 'dejeuner', 'diner', 'collation'];
-        const fallbackTitles = [
-          'Petit-déjeuner protéiné',
-          'Déjeuner équilibré', 
-          'Dîner nutritif',
-          'Collation énergétique'
-        ];
-        
-        allRecommendations = mealTypes.map((mealType, index) => ({
-          id: `fallback_${mealType}_${index}_${Date.now()}`,
-          titre: fallbackTitles[index],
-          description: `Un ${mealType === 'petit-dejeuner' ? 'petit-déjeuner' : mealType === 'dejeuner' ? 'déjeuner' : mealType === 'diner' ? 'dîner' : 'collation'} riche en protéines et équilibré`,
-          categorie: mealType,
-          nutrition: {
-            calories: 300 + (index * 50),
-            proteines: 20 + (index * 5),
-            glucides: 30,
-            lipides: 10,
-            fibres: 5
-          },
-          ingredients: [
-            { nom: "Protéine au choix", quantite: "100", unite: "g" },
-            { nom: "Légumes", quantite: "150", unite: "g" },
-            { nom: "Féculents", quantite: "80", unite: "g" }
-          ],
-          instructions: ["Préparer les ingrédients", "Assembler le repas", "Servir frais"],
-          tempsPreparation: 10,
-          tempsCuisson: 15,
-          portions: 1,
-          difficulte: 'facile' as const,
-          tags: ['équilibré', 'protéiné'],
-          confiance: 0.8,
-          source: 'fallback' as const
-        }));
-      }
-
-      // Validate uniqueness of IDs
-      const uniqueIds = new Set(allRecommendations.map(r => r.id));
-      if (allRecommendations.length !== uniqueIds.size) {
-        console.warn('Duplicate IDs detected in recommendations!');
-      }
-
-      // Create a combined result object matching the expected type
-      const combinedResult = {
-        recommendations: allRecommendations,
-        explanation: apiMetadata.explanation,
-        tips: apiMetadata.tips,
-        nutritionalInsights: apiMetadata.nutritionalInsights,
-        weeklyGoalProgress: apiMetadata.weeklyGoalProgress
-      };
-      
-      setRecommendations(combinedResult);
+      setRecommendations(processedResult);
+      setRetryCount(0);
+      toast.success(`${processedResult.recommendations.length} recommandations générées avec succès !`);
       
     } catch (error) {
-      console.error('Erreur lors de la génération de recommandations:', error);
-      toast.error("Impossible de générer les recommandations. Veuillez réessayer.");
+      console.error('Erreur lors de la génération:', error);
+      
+      // Gestion des erreurs avec retry automatique et timeout progressif
+      if (!isRetry && retryCount < 2 && error instanceof Error && error.message === 'Timeout') {
+        setRetryCount(prev => prev + 1);
+        toast.warning(`Délai dépassé, nouvelle tentative ${retryCount + 1}/3...`);
+        
+        // Attendre un peu plus longtemps entre les tentatives
+        const waitTime = (retryCount + 1) * 2000; // 2s, 4s, 6s
+        setTimeout(() => generateRecommendations(true), waitTime);
+        return;
+      }
+
+      // Si toutes les tentatives échouent, utiliser les recommandations de fallback
+      if (retryCount >= 1 || isRetry) {
+        const fallbackResponse: CoachRecommendationResponse = {
+          recommendations: generateFallbackRecommendations(),
+          explanation: "Nous avons généré des recommandations par défaut adaptées à vos objectifs. L'IA n'est temporairement pas disponible.",
+          tips: [
+            "Variez vos sources de protéines entre animales et végétales",
+            "Préparez vos repas à l'avance pour gagner du temps",
+            "Hydratez-vous régulièrement tout au long de la journée"
+          ],
+          nutritionalInsights: [
+            "Ces repas couvrent environ 115g de protéines par jour",
+            "L'équilibre entre les macronutriments est respecté",
+            "Les fibres présentes favorisent la satiété"
+          ],
+          weeklyGoalProgress: {
+            proteinProgress: 85,
+            calorieProgress: 90,
+            balanceScore: 88
+          }
+        };
+        
+        setRecommendations(fallbackResponse);
+        setError("Recommandations par défaut chargées. L'IA n'est pas disponible actuellement.");
+        toast.warning("Mode hors ligne activé - Recommandations par défaut");
+      } else {
+        setError("Impossible de charger les recommandations. Veuillez réessayer.");
+        toast.error("Erreur lors de la génération des recommandations");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -283,7 +353,7 @@ export default function Recommendations() {
   };
 
   const filteredRecommendations = recommendations?.recommendations ? 
-    ensureCategoriesInRecommendations(recommendations.recommendations)
+    recommendations.recommendations
       .filter(meal => activeCategory === 'all' || meal.categorie === activeCategory)
       .sort((a, b) => {
         switch (sortBy) {
@@ -315,6 +385,11 @@ export default function Recommendations() {
             <p className="text-base text-muted-foreground">
               Notre chef IA prépare vos recommandations personnalisées...
             </p>
+            {retryCount > 0 && (
+              <p className="text-sm text-yellow-600 mt-2">
+                Tentative {retryCount + 1}/3...
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -343,16 +418,30 @@ export default function Recommendations() {
           <Button
             variant="outline"
             size="icon"
-            onClick={generateRecommendations}
+            onClick={() => generateRecommendations()}
             className="rounded-2xl h-10 w-10"
+            disabled={isLoading}
           >
-            <Plus className="h-5 w-5" />
+            {isLoading ? (
+              <RefreshCw className="h-5 w-5 animate-spin" />
+            ) : (
+              <Plus className="h-5 w-5" />
+            )}
           </Button>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto p-4 space-y-6">
         
+        {/* Error Alert */}
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Attention</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
         {/* Progress Overview */}
         {recommendations?.weeklyGoalProgress && (
           <div className="grid grid-cols-3 gap-3">
@@ -430,6 +519,11 @@ export default function Recommendations() {
                           <Badge variant="secondary" className="text-xs rounded-xl">
                             {categoryLabels[meal.categorie]}
                           </Badge>
+                          {meal.source === 'fallback' && (
+                            <Badge variant="outline" className="text-xs rounded-xl">
+                              Hors ligne
+                            </Badge>
+                          )}
                         </div>
                         <h3 className="font-bold text-base leading-tight mb-1">
                           {meal.titre}
@@ -441,11 +535,11 @@ export default function Recommendations() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => toggleFavorite(meal.id)}
+                        onClick={() => toggleFavorite(meal.id!)}
                         className="rounded-full h-8 w-8 ml-2"
                       >
                         <Heart 
-                          className={`h-4 w-4 ${favorites.has(meal.id) ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} 
+                          className={`h-4 w-4 ${favorites.has(meal.id!) ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} 
                         />
                       </Button>
                     </div>

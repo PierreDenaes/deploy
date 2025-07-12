@@ -729,6 +729,33 @@ export class AIService {
     cleaned = cleaned.replace(/:\s*(\d+g)\b/g, ': "$1"');
     cleaned = cleaned.replace(/:\s*(\d+)\s*$\s*/gm, ': $1');
     
+    // Corrections spécifiques pour les termes français de nutrition
+    cleaned = cleaned.replace(/"protéines"/g, '"proteines"');
+    cleaned = cleaned.replace(/"calories"/g, '"calories"');
+    cleaned = cleaned.replace(/"glucides"/g, '"glucides"');
+    cleaned = cleaned.replace(/"lipides"/g, '"lipides"');
+    cleaned = cleaned.replace(/"fibres"/g, '"fibres"');
+    
+    // Corriger les catégories anglaises vers françaises si présentes
+    cleaned = cleaned.replace(/"breakfast"/g, '"petit-dejeuner"');
+    cleaned = cleaned.replace(/"lunch"/g, '"dejeuner"');
+    cleaned = cleaned.replace(/"dinner"/g, '"diner"');
+    cleaned = cleaned.replace(/"snack"/g, '"collation"');
+    
+    // Corriger les champs de nutrition courants
+    cleaned = cleaned.replace(/"protein"/g, '"proteines"');
+    cleaned = cleaned.replace(/"carbs"/g, '"glucides"');
+    cleaned = cleaned.replace(/"fat"/g, '"lipides"');
+    cleaned = cleaned.replace(/"fiber"/g, '"fibres"');
+    
+    // Corriger les autres champs courants en français
+    cleaned = cleaned.replace(/"title"/g, '"titre"');
+    cleaned = cleaned.replace(/"category"/g, '"categorie"');
+    cleaned = cleaned.replace(/"difficulty"/g, '"difficulte"');
+    cleaned = cleaned.replace(/"quantity"/g, '"quantite"');
+    cleaned = cleaned.replace(/"unit"/g, '"unite"');
+    cleaned = cleaned.replace(/"name"/g, '"nom"');
+    
     return cleaned;
   }
 

@@ -124,37 +124,43 @@ PRINCIPES :
 - Respect des contraintes individuelles
 - Ton professionnel mais accessible et encourageant
 
-RÉPONSE FORMAT :
-Réponds UNIQUEMENT en JSON valide avec cette structure exacte :
+RÉPONSE FORMAT OBLIGATOIRE :
+Réponds UNIQUEMENT en JSON valide avec cette structure exacte EN FRANÇAIS :
 {
   "recommendations": [
     {
       "id": "rec_1",
-      "title": "string",
+      "titre": "string",
       "description": "string", 
-      "category": "breakfast|lunch|dinner|snack",
+      "categorie": "petit-dejeuner|dejeuner|diner|collation",
       "nutrition": {
         "calories": number,
-        "protein": number,
-        "carbs": number,
-        "fat": number,
-        "fiber": number
+        "proteines": number,
+        "glucides": number,
+        "lipides": number,
+        "fibres": number
       },
-      "ingredients": [{"name": "string", "quantity": "string", "unit": "string"}],
+      "ingredients": [{"nom": "string", "quantite": "string", "unite": "string"}],
       "instructions": ["string"],
-      "prepTime": number,
-      "cookTime": number,
-      "servings": number,
-      "difficulty": "easy|medium|hard",
+      "tempsPreparation": number,
+      "tempsCuisson": number,
+      "portions": number,
+      "difficulte": "facile|moyen|difficile",
       "tags": ["string"],
-      "confidence": number,
+      "confiance": number,
       "source": "ai_generated"
     }
   ],
   "explanation": "string",
   "tips": ["string"],
   "nutritionalInsights": ["string"]
-}`;
+}
+
+IMPORTANT :
+- Utilise UNIQUEMENT les catégories : "petit-dejeuner", "dejeuner", "diner", "collation"
+- Tous les champs doivent être en français
+- Assure-toi que le JSON est valide
+- Inclus toujours 2-4 recommandations variées`;
 
     // Construire le prompt utilisateur avec les données contextuelles
     const userPrompt = req.body.userPrompt || buildNutritionCoachPrompt(userContext);
@@ -178,9 +184,27 @@ Réponds UNIQUEMENT en JSON valide avec cette structure exacte :
       cost: aiResponse.cost
     });
 
+    // Ensure the response has the expected structure for nutrition coach
+    let responseData = aiResponse.data;
+    
+    // If the AI response doesn't have the expected structure, try to fix it
+    if (!responseData.recommendations && responseData.response) {
+      // Handle case where AI returned non-structured response
+      console.warn('AI returned non-structured response, attempting fallback');
+      responseData = {
+        recommendations: [],
+        explanation: responseData.response || 'Recommandations générées par IA',
+        tips: [],
+        nutritionalInsights: []
+      };
+    } else if (!responseData.recommendations) {
+      // Add empty recommendations array if missing
+      responseData.recommendations = [];
+    }
+    
     res.json({
       success: true,
-      data: aiResponse.data,
+      data: responseData,
       usage: {
         tokensUsed: aiResponse.tokensUsed,
         cost: aiResponse.cost
