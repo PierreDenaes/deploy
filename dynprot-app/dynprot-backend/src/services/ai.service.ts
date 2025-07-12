@@ -1374,6 +1374,7 @@ export class AIService {
         const cost = this.calculateCost(tokensUsed, AI_CONFIG.textModel);
 
         console.log(`✅ Chat completion réussie (tokens: ${tokensUsed}, coût: $${cost.toFixed(4)})`);
+        console.log('🎯 Réponse AI raw sample:', JSON.stringify(parsedResponse).substring(0, 300));
         
         return {
           data: parsedResponse,

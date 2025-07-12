@@ -268,6 +268,35 @@ IMPORTANT :
           count: responseData.recommendations.length,
           titles: responseData.recommendations.map((r: any) => r.titre)
         });
+      } else if (responseData.meal_plan && Array.isArray(responseData.meal_plan)) {
+        console.log('🔄 Converting meal_plan to recommendations format');
+        responseData.recommendations = responseData.meal_plan.map((meal: any, index: number) => ({
+          id: `plan_${index}_${Date.now()}`,
+          titre: meal.nom || meal.name || meal.title || `${meal.meal || 'Repas'} ${index + 1}`,
+          description: meal.description || `Repas pour ${meal.meal || 'la journée'}`,
+          categorie: extractCategory(meal.meal || meal.nom, index),
+          nutrition: {
+            calories: extractNumber(meal.calories) || extractNumber(meal.nutrition?.calories) || 300,
+            proteines: extractNumber(meal.proteines) || extractNumber(meal.protein) || extractNumber(meal.nutrition?.proteines) || 20,
+            glucides: extractNumber(meal.glucides) || extractNumber(meal.carbs) || extractNumber(meal.nutrition?.glucides) || 30,
+            lipides: extractNumber(meal.lipides) || extractNumber(meal.fat) || extractNumber(meal.nutrition?.lipides) || 10,
+            fibres: extractNumber(meal.fibres) || extractNumber(meal.fiber) || extractNumber(meal.nutrition?.fibres) || 5
+          },
+          ingredients: convertIngredients(meal.ingredients || meal.ingrédients || []),
+          instructions: Array.isArray(meal.instructions) ? meal.instructions : ['Instructions disponibles'],
+          tempsPreparation: extractNumber(meal.prep_time) || extractNumber(meal.tempsPreparation) || 15,
+          tempsCuisson: extractNumber(meal.cook_time) || extractNumber(meal.tempsCuisson) || 15,
+          portions: extractNumber(meal.servings) || extractNumber(meal.portions) || 1,
+          difficulte: 'facile' as const,
+          tags: Array.isArray(meal.tags) ? meal.tags : ['équilibré', 'protéiné'],
+          confiance: 0.8,
+          source: 'ai_generated' as const
+        }));
+        
+        console.log('✅ Converted meal_plan:', {
+          count: responseData.recommendations.length,
+          titles: responseData.recommendations.map((r: any) => r.titre)
+        });
       } else {
         // Add empty recommendations array if missing
         console.warn('⚠️ Aucun array recommendations trouvé, création array vide');
@@ -926,7 +955,7 @@ function convertIngredients(ingredients: any[]): Array<{nom: string, quantite: s
     
     if (typeof ingredient === 'object' && ingredient !== null) {
       return {
-        nom: ingredient.nom || ingredient.name || ingredient.ingredient || `Ingrédient ${index + 1}`,
+        nom: ingredient.nom || ingredient.name || ingredient.ingredient || ingredient.item || `Ingrédient ${index + 1}`,
         quantite: ingredient.quantite || ingredient.quantity || ingredient.amount || '1',
         unite: ingredient.unite || ingredient.unit || ingredient.mesure || 'portion'
       };
