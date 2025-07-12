@@ -47,34 +47,34 @@ export interface RecommendationRequest {
 // Recommandation de repas
 export interface MealRecommendation {
   id: string;
-  title: string;
+  titre: string;
   description: string;
-  category: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  categorie: 'petit-dejeuner' | 'dejeuner' | 'diner' | 'collation';
   nutrition: {
     calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-    fiber?: number;
+    proteines: number;
+    glucides: number;
+    lipides: number;
+    fibres?: number;
   };
   ingredients: Array<{
-    name: string;
-    quantity: string;
-    unit: string;
+    nom: string;
+    quantite: string;
+    unite: string;
   }>;
   instructions: string[];
-  prepTime: number; // minutes
-  cookTime: number; // minutes
-  servings: number;
-  difficulty: 'easy' | 'medium' | 'hard';
-  tags: string[]; // 'vegetarian', 'gluten-free', etc.
-  tips?: string[];
-  variations?: string[];
-  cost?: 'low' | 'medium' | 'high';
-  seasonality?: string[]; // ['spring', 'summer']
-  equipment?: string[];
-  confidence: number; // 0-1
-  source: 'ai_generated' | 'adapted_recipe';
+  tempsPreparation: number; // minutes
+  tempsCuisson: number; // minutes
+  portions: number;
+  difficulte: 'facile' | 'moyen' | 'difficile';
+  tags: string[]; // 'végétarien', 'sans-gluten', etc.
+  conseils?: string[];
+  variantes?: string[];
+  cout?: 'faible' | 'moyen' | 'eleve';
+  saison?: string[]; // ['printemps', 'été']
+  equipement?: string[];
+  confiance: number; // 0-1
+  source: 'ai_generated' | 'recette_adaptee';
 }
 
 // Réponse du service
@@ -239,8 +239,6 @@ export class NutritionCoachService {
         temperature: 0.7,
       });
 
-      console.log('API Response:', response);
-
       // Extraire les données de la réponse
       let rawData: any;
       
@@ -256,17 +254,11 @@ export class NutritionCoachService {
         throw new Error('Format de réponse API invalide');
       }
 
-      console.log('Extracted raw data:', rawData);
-
-      // Transformer la réponse française en format anglais attendu
-      const recommendationsData: CoachRecommendationResponse = this.transformFrenchResponse(rawData);
-
-      console.log('After transformation:', JSON.stringify(recommendationsData, null, 2));
+      // Transformer la réponse française en format français attendu
+      const recommendationsData: CoachRecommendationResponse = this.extractDataUniversal(rawData);
 
       // Validation et enrichissement de la réponse
-      console.log('Before validation - recommendations count:', recommendationsData.recommendations.length);
       const recommendations = this.validateAndEnrichRecommendations(recommendationsData);
-      console.log('After validation - recommendations count:', recommendations.recommendations.length);
       
       return recommendations;
 
@@ -354,236 +346,591 @@ export class NutritionCoachService {
   // =====================================================
 
   /**
-   * Transformer la réponse française de l'IA en format anglais attendu
+   * Extraction numérique universelle
    */
-  private transformFrenchResponse(frenchData: any): CoachRecommendationResponse {
-    console.log('Transforming French response:', frenchData);
+
+  /**
+   * Transformer la réponse française de l'IA en format français attendu
+   */
+  /**
+   * Extraction universelle des données depuis n'importe quelle structure API
+   */
+  private extractDataUniversal(rawData: any): CoachRecommendationResponse {
+    // Extract recommendations list from various possible structures
+    const recList = this.extractRecommendationsList(rawData);
     
-    // Handle JSON parsing if the response is wrapped in markdown code blocks
-    let parsedData = frenchData;
-    if (typeof frenchData.response === 'string' && frenchData.response.includes('```json')) {
-      try {
-        // Extract JSON from markdown code blocks
-        const jsonMatch = frenchData.response.match(/```json\s*([\s\S]*?)\s*```/);
-        if (jsonMatch && jsonMatch[1]) {
-          let jsonString = jsonMatch[1].trim();
-          
-          // Clean up common JSON formatting issues from AI responses
-          jsonString = jsonString
-            // Fix unquoted values with units (e.g., 25g -> "25g")
-            .replace(/:\s*(\d+g)\b/g, ': "$1"')
-            .replace(/:\s*(\d+mg)\b/g, ': "$1"')
-            .replace(/:\s*(\d+ml)\b/g, ': "$1"')
-            .replace(/:\s*(\d+kg)\b/g, ': "$1"')
-            .replace(/:\s*(\d+min)\b/g, ': "$1"')
-            // Fix unquoted difficulty levels
-            .replace(/:\s*(facile|moyen|difficile)\b/g, ': "$1"')
-            .replace(/:\s*(easy|medium|hard)\b/g, ': "$1"')
-            // Fix other common unquoted strings
-            .replace(/:\s*([a-zA-Z][a-zA-Z0-9_]*)\s*([,}])/g, ': "$1"$2');
-          
-          console.log('Cleaned JSON string:', jsonString);
-          parsedData = JSON.parse(jsonString);
-          console.log('Successfully parsed JSON from markdown:', parsedData);
-        }
-      } catch (parseError) {
-        console.error('Failed to parse JSON from markdown:', parseError);
-        console.log('Raw response string:', frenchData.response);
-        
-        // Try alternative: use regex to extract data manually
-        try {
-          parsedData = this.extractDataWithRegex(frenchData.response);
-          console.log('Fallback: extracted data with regex:', parsedData);
-        } catch (regexError) {
-          console.error('Regex extraction also failed:', regexError);
-          // Fall back to using the original data
-        }
-      }
-    }
-    
-    console.log('Total nutrition from API:', parsedData.total_nutrition);
-    
-    // Mapper les recommandations vers le format attendu
     const recommendations: MealRecommendation[] = [];
-    
-    // Support à la fois de l'ancien format (recommandations) et du nouveau (recommendations)
-    const recList = parsedData.recommendations || parsedData.recommandations || parsedData.repas_recommandations || parsedData.meal_recommendations || parsedData.recommandations_de_repas || parsedData.recommandations_repas || parsedData.repas;
-    
-    console.log('Looking for recommendations in fields:', Object.keys(parsedData));
-    console.log('Found recommendations field with', recList?.length || 0, 'items');
     
     if (recList && Array.isArray(recList)) {
       recList.forEach((item: any, index: number) => {
-        console.log('Processing recommendation:', item);
+        const recommendation = this.transformToMealRecommendation(item, index);
         
-        // L'API renvoie maintenant nutrition: {calories, proteins, carbs, fats} OU directement sur l'item
-        const nutritionValues = item.nutritional_info || item.recipe?.nutrition || item.nutrition || item.informations_nutritionnelles || item.apport_nutritionnel || item.valeurs_nutritionnelles || item || {};
-        console.log('Raw nutritionValues object:', nutritionValues);
-        console.log('All available keys in nutritionValues:', Object.keys(nutritionValues));
-        console.log('Type of nutritionValues:', typeof nutritionValues);
-        
-        // Extraire les valeurs numériques en supprimant les unités (ex: "350 kcal" -> 350)
-        const extractNumber = (value: any): number => {
-          console.log('extractNumber called with:', value, 'type:', typeof value);
-          if (typeof value === 'number') {
-            console.log('extractNumber returning number:', value);
-            return value;
-          }
-          if (typeof value === 'string') {
-            const match = value.match(/(\d+(?:\.\d+)?)/);
-            const result = match ? parseFloat(match[1]) : 0;
-            console.log('extractNumber parsed string:', value, '-> result:', result);
-            return result;
-          }
-          console.log('extractNumber fallback to 0 for:', value);
-          return 0;
-        };
-        
-        // Try all possible field names for each nutrition value
-        const caloriesValue = extractNumber(nutritionValues.calories) || 
-                             extractNumber(nutritionValues.kcal) || 
-                             extractNumber(nutritionValues.calorie) || 
-                             extractNumber(nutritionValues.energie) || 
-                             extractNumber(nutritionValues.energy) || 0;
-                             
-        const proteinsValue = extractNumber(nutritionValues.proteins) || 
-                             extractNumber(nutritionValues.protein) || 
-                             extractNumber(nutritionValues.protéines) || 
-                             extractNumber(nutritionValues.proteine) || 0;
-                             
-        const carbsValue = extractNumber(nutritionValues.carbs) || 
-                          extractNumber(nutritionValues.carbohydrates) || 
-                          extractNumber(nutritionValues.glucides) || 
-                          extractNumber(nutritionValues.glucide) || 0;
-                          
-        const fatsValue = extractNumber(nutritionValues.fats) || 
-                         extractNumber(nutritionValues.fat) || 
-                         extractNumber(nutritionValues.lipides) || 
-                         extractNumber(nutritionValues.lipide) || 0;
-
-        // Mapper les valeurs anglaises vers françaises pour la suite du code
-        const mappedNutrition = {
-          calories: caloriesValue,
-          protéines: proteinsValue,
-          glucides: carbsValue,
-          lipides: fatsValue
-        };
-        
-        console.log('Individual nutrition extractions:');
-        console.log('  calories:', caloriesValue, 'from fields:', ['calories', 'kcal', 'calorie', 'energie', 'energy']);
-        console.log('  proteins:', proteinsValue, 'from fields:', ['proteins', 'protein', 'protéines', 'proteine']);
-        console.log('  carbs:', carbsValue, 'from fields:', ['carbs', 'carbohydrates', 'glucides', 'glucide']);
-        console.log('  fats:', fatsValue, 'from fields:', ['fats', 'fat', 'lipides', 'lipide']);
-        console.log('Final mapped nutrition:', mappedNutrition);
-        
-        // Validation warning
-        if (mappedNutrition.calories === 0 && mappedNutrition.protéines === 0 && mappedNutrition.glucides === 0 && mappedNutrition.lipides === 0) {
-          console.warn('WARNING: All nutrition values are 0 for item:', item.recipe?.name || item.title || 'Unknown recipe');
-          console.warn('Raw nutrition object was:', nutritionValues);
-          console.warn('Available keys were:', Object.keys(nutritionValues));
+        // Validate recommendation before adding
+        if (this.isValidRecommendation(recommendation)) {
+          recommendations.push(recommendation);
+        } else {
+          console.warn(`Invalid recommendation skipped at index ${index}:`, recommendation.titre);
         }
-        
-        console.log('Nutrition values:', mappedNutrition);
-        console.log('Full item structure:', JSON.stringify(item, null, 2));
-        
-        // Préparer les instructions d'abord pour pouvoir extraire les ingrédients si nécessaire
-        const instructions = Array.isArray(item.recipe?.instructions) ? item.recipe.instructions.map(String) : Array.isArray(item.recette?.instructions) ? item.recette.instructions.map(String) : Array.isArray(item.instructions) ? item.instructions.map(String) : (item.instructions ? [String(item.instructions)] : ['Instructions détaillées disponibles']);
-        
-        // Essayer d'abord de mapper les ingrédients existants
-        let mappedIngredients = this.mapIngredients(item.recipe?.ingredients || item.ingredients || item.ingrédients || item.recette?.ingrédients || []);
-        
-        // Si aucun ingrédient trouvé, extraire des instructions
-        if (mappedIngredients.length === 0 && instructions.length > 0) {
-          console.log('No explicit ingredients found, extracting from instructions');
-          mappedIngredients = this.extractIngredientsFromInstructions(instructions);
-        }
-        
-        const recommendation: MealRecommendation = {
-          id: `rec_${index + 1}`,
-          title: String(item.recipe || item.nom || item.recipe?.name || item.nom_du_repas || item.nom_repas || item.title || item.meal_name || `Repas ${index + 1}`),
-          description: String(item.description || this.generateDescription(item.meal || item.meal_name, item.meal || item.meal_name || item.nom || item.recipe?.name)),
-          category: this.mapMealCategory(item.meal || item.meal_name || item.nom || item.nom_du_repas || item.nom_repas || ''),
-          nutrition: {
-            calories: mappedNutrition.calories || 0,
-            protein: mappedNutrition.protéines || 0,
-            carbs: mappedNutrition.glucides || this.estimateCarbs(mappedNutrition),
-            fat: mappedNutrition.lipides || this.estimateFat(mappedNutrition),
-            fiber: 0, // No fiber in nutritionValues, fallback to 0
-          },
-          ingredients: mappedIngredients,
-          instructions: instructions,
-          prepTime: item.temps_préparation || item.prepTime || 15,
-          cookTime: item.temps_cuisson || item.cookTime || 15,
-          servings: item.portions || item.servings || 1,
-          difficulty: this.mapDifficulty(item.difficulté || item.difficulty || 'easy'),
-          tags: this.generateTags(item),
-          confidence: 0.85,
-          source: 'ai_generated' as const
-        };
-        
-        console.log('Created recommendation:', recommendation);
-        recommendations.push(recommendation);
       });
     }
 
-    // S'assurer qu'il y a au moins une recommandation de chaque catégorie
+    // Ensure we have at least one recommendation of each category
     this.ensureAllCategoriesRepresented(recommendations);
 
-    // Collecter les tips depuis les recommandations individuelles OU depuis la structure globale
-    const globalTips = parsedData.conseils_pratiques || parsedData.astuces || parsedData.tips || [];
-    const individualTips = recommendations.map(rec => rec.tags).filter(Boolean).flat();
-    const mealTips = recList?.map((item: any) => item.tips).filter(Boolean) || [];
-    const tips = Array.isArray(globalTips) ? globalTips : (globalTips ? [globalTips] : mealTips);
-    
-    // Calculer les totaux depuis les recommandations individuelles ou utiliser ceux de l'API
-    console.log('Calculating totals from', recommendations.length, 'recommendations');
-    console.log('First recommendation nutrition:', recommendations[0]?.nutrition);
-    
-    // Utiliser les totaux fournis par l'API dans total_nutrition ou total_journalier
-    const apiTotals = parsedData.total_nutrition || parsedData.total_journalier || parsedData.total_daily_nutrition || {};
-    
-    const totalProteins = apiTotals.proteins || apiTotals.protéines ||
-                         parsedData.total_protéines_journalières || 
-                         parsedData.total_protéines || 
-                         recommendations.reduce((sum, rec) => sum + (rec.nutrition.protein || 0), 0);
-    const totalCalories = apiTotals.calories || apiTotals.kcal ||
-                         parsedData.total_calories_journalières || 
-                         parsedData.total_calories || 
-                         recommendations.reduce((sum, rec) => sum + (rec.nutrition.calories || 0), 0);
-    const totalCarbs = apiTotals.carbs || apiTotals.glucides ||
-                      parsedData.total_glucides_journalières || 
-                      parsedData.total_glucides || 
-                      recommendations.reduce((sum, rec) => sum + (rec.nutrition.carbs || 0), 0);
-    const totalFats = apiTotals.fats || apiTotals.lipides ||
-                     parsedData.total_lipides_journalières || 
-                     parsedData.total_lipides || 
-                     recommendations.reduce((sum, rec) => sum + (rec.nutrition.fat || 0), 0);
-    
-    console.log('Totals - Proteins:', totalProteins, 'Calories:', totalCalories, 'Carbs:', totalCarbs, 'Fats:', totalFats);
-    console.log('API totals object:', apiTotals);
-    console.log('Calculating progress with totalProteins:', totalProteins, 'totalCalories:', totalCalories);
-    
-    const proteinPercent = totalProteins > 0 ? Math.round((totalProteins) / 195 * 100) : 0;
-    const caloriePercent = totalCalories > 0 ? Math.round((totalCalories) / 2140 * 100) : 0;
-    
-    console.log('Calculated progress - Protein:', proteinPercent + '%', 'Calorie:', caloriePercent + '%');
-    
+    // Extract tips and metadata
+    const tips = this.extractTips(rawData, recList);
+    const explanation = this.extractExplanation(rawData);
+    const nutritionalInsights = this.generateNutritionalInsights(recommendations);
+    const weeklyGoalProgress = this.calculateWeeklyProgress(recommendations);
+
     return {
       recommendations,
-      explanation: parsedData.notes || parsedData.conseils || parsedData.commentaires || parsedData.explanation || 'Voici vos recommandations de repas personnalisées, conçues pour vous aider à atteindre vos objectifs nutritionnels.',
-      tips: Array.isArray(tips) ? tips : [],
-      nutritionalInsights: parsedData.insights || parsedData.nutritionalInsights || [
-        `Total protéines : ${totalProteins}g`,
-        `Total calories : ${totalCalories} kcal`,
-        `Total glucides : ${totalCarbs}g`,
-        `Total lipides : ${totalFats}g`
-      ],
-      weeklyGoalProgress: {
-        proteinProgress: proteinPercent,
-        calorieProgress: caloriePercent,
-        balanceScore: 88
-      }
+      explanation,
+      tips,
+      nutritionalInsights,
+      weeklyGoalProgress
     };
+  }
+
+  private extractRecommendationsList(data: any): any[] {
+    // Try all possible field names for recommendations
+    const possibleFields = [
+      'recommendations', 'recommandations', 'repas_recommandés', 'repas',
+      'meal_recommendations', 'recommandations_de_repas', 'recommandations_repas'
+    ];
+    
+    for (const field of possibleFields) {
+      if (data[field] && Array.isArray(data[field])) {
+        return data[field];
+      }
+    }
+    
+    // Handle nested structures
+    if (data.data?.recommendations) return data.data.recommendations;
+    if (data.response?.recommendations) return data.response.recommendations;
+    
+    return [];
+  }
+
+  private transformToMealRecommendation(item: any, index: number): MealRecommendation {
+    return {
+      id: `rec_${index + 1}_${Date.now()}`,
+      titre: this.extractTitre(item, index),
+      description: this.extractDescription(item, index),
+      categorie: this.extractCategorie(item, index),
+      nutrition: this.extractNutrition(item),
+      ingredients: this.extractIngredients(item),
+      instructions: this.extractInstructions(item),
+      tempsPreparation: this.extractTempsPrepration(item),
+      tempsCuisson: this.extractTempsCuisson(item),
+      portions: this.extractPortions(item),
+      difficulte: this.extractDifficulte(item),
+      tags: this.extractTags(item),
+      conseils: this.extractConseils(item),
+      variantes: this.extractVariantes(item),
+      cout: this.extractCout(item),
+      saison: this.extractSaison(item),
+      equipement: this.extractEquipement(item),
+      confiance: 0.85,
+      source: 'ai_generated' as const
+    };
+  }
+
+  private isValidRecommendation(rec: MealRecommendation): boolean {
+    // Check for valid title (be more permissive)
+    if (!rec.titre || rec.titre.trim() === '') return false;
+    
+    // Allow "Repas X" titles if they have good content otherwise
+    const hasGenericTitle = rec.titre.match(/^Repas \d+$/);
+    
+    // Check for fallback ingredients indicating invalid data
+    const hasFallbackIngredients = rec.ingredients.some(ing => 
+      ing.nom === "Protéine au choix" || 
+      ing.nom === "Légumes" || 
+      ing.nom === "Féculents" ||
+      ing.nom === "Ingrédients à préciser" ||
+      ing.nom === "Ingrédients détaillés disponibles"
+    );
+    
+    // If we have generic title AND fallback ingredients, reject
+    if (hasGenericTitle && hasFallbackIngredients) return false;
+    
+    // If we have fallback ingredients but a specific title, check if nutrition is reasonable
+    if (hasFallbackIngredients) {
+      const nutrition = rec.nutrition;
+      // Reject if both title is generic AND nutrition is poor
+      return nutrition.calories > 100 && nutrition.proteines > 5;
+    }
+    
+    // Check for reasonable nutrition values (be more permissive)
+    const nutrition = rec.nutrition;
+    if (nutrition.calories <= 50 && nutrition.proteines <= 2) return false;
+    
+    // Accept if we have specific ingredients or reasonable nutrition
+    return !hasFallbackIngredients || (nutrition.calories > 100 && nutrition.proteines > 5);
+  }
+
+  private extractTitre(item: any, index: number): string {
+    const possibleFields = [
+      'nom_du_repas', 'nom', 'nom_repas', 'titre', 'title', 
+      'meal_name', 'name', 'plat', 'nom_plat'
+    ];
+    
+    for (const field of possibleFields) {
+      const value = item[field];
+      if (value && typeof value === 'string' && value.trim() !== '') {
+        return value.trim();
+      }
+    }
+    
+    return `Repas ${index + 1}`;
+  }
+
+  private extractDescription(item: any, index: number): string {
+    return item.description || 
+           item.desc || 
+           `Repas équilibré ${index + 1} riche en protéines`;
+  }
+
+  private extractCategorie(item: any, index: number): 'petit-dejeuner' | 'dejeuner' | 'diner' | 'collation' {
+    const category = item.categorie || item.category || item.type_repas || item.meal_type;
+    
+    if (category) {
+      const normalized = category.toLowerCase();
+      
+      // Direct French mappings
+      if (normalized === 'petit-dejeuner' || normalized === 'petit dejeuner') return 'petit-dejeuner';
+      if (normalized === 'dejeuner' || normalized === 'déjeuner') return 'dejeuner';
+      if (normalized === 'diner' || normalized === 'dîner') return 'diner';
+      if (normalized === 'collation') return 'collation';
+      
+      // English mappings
+      if (normalized.includes('breakfast')) return 'petit-dejeuner';
+      if (normalized.includes('lunch')) return 'dejeuner';
+      if (normalized.includes('dinner')) return 'diner';
+      if (normalized.includes('snack')) return 'collation';
+    }
+
+    // Smart assignment based on title and content analysis
+    const title = this.extractTitre(item, index).toLowerCase();
+    const description = (item.description || '').toLowerCase();
+    const text = title + ' ' + description;
+    
+    // Explicit meal type keywords
+    if (text.includes('petit-déjeuner') || text.includes('breakfast')) return 'petit-dejeuner';
+    if (text.includes('déjeuner') || text.includes('lunch')) return 'dejeuner';
+    if (text.includes('dîner') || text.includes('dinner')) return 'diner';
+    if (text.includes('snack') || text.includes('collation')) return 'collation';
+
+    // Content-based intelligent categorization
+    return this.smartCategoryAssignmentByContent(text, index);
+  }
+
+  private smartCategoryAssignmentByContent(text: string, index: number): 'petit-dejeuner' | 'dejeuner' | 'diner' | 'collation' {
+    // Breakfast indicators
+    const breakfastKeywords = [
+      'omelette', 'œuf', 'œufs', 'pain', 'toast', 'céréales', 'yaourt', 'muesli', 
+      'granola', 'confiture', 'miel', 'café', 'thé', 'tartine', 'croissant', 'pancake'
+    ];
+    
+    // Dinner indicators (more substantial proteins and cooking methods)
+    const dinnerKeywords = [
+      'rôti', 'grillé', 'braisé', 'saumon', 'poisson', 'bœuf', 'agneau', 'canard',
+      'curry', 'risotto', 'ragoût', 'mijot', 'four', 'papillote', 'confit'
+    ];
+    
+    // Lunch indicators
+    const lunchKeywords = [
+      'salade', 'sandwich', 'wrap', 'bowl', 'quinoa', 'riz', 'pâtes', 'soupe',
+      'poulet grillé', 'légumes sautés', 'stir-fry'
+    ];
+    
+    // Snack indicators
+    const snackKeywords = [
+      'smoothie', 'fruits', 'noix', 'amandes', 'avocat toast', 'houmous', 
+      'barre', 'encas', 'collation', 'fruits rouges'
+    ];
+
+    // Score each category
+    let breakfastScore = 0;
+    let lunchScore = 0;
+    let dinnerScore = 0;
+    let snackScore = 0;
+
+    breakfastKeywords.forEach(keyword => {
+      if (text.includes(keyword)) breakfastScore++;
+    });
+
+    lunchKeywords.forEach(keyword => {
+      if (text.includes(keyword)) lunchScore++;
+    });
+
+    dinnerKeywords.forEach(keyword => {
+      if (text.includes(keyword)) dinnerScore++;
+    });
+
+    snackKeywords.forEach(keyword => {
+      if (text.includes(keyword)) snackScore++;
+    });
+
+    // Special rules for specific patterns
+    if (text.includes('poulet') && text.includes('rôti')) dinnerScore += 2;
+    if (text.includes('saumon') || text.includes('poisson')) dinnerScore += 2;
+    if (text.includes('légumes') && text.includes('grillé')) {
+      // Could be lunch or dinner, slight preference for dinner if roasted
+      if (text.includes('rôti')) dinnerScore += 1;
+      else lunchScore += 1;
+    }
+
+    // Find the highest score
+    const maxScore = Math.max(breakfastScore, lunchScore, dinnerScore, snackScore);
+    
+    if (maxScore === 0) {
+      // If no keywords match, distribute cyclically but with some intelligence
+      // High-calorie or high-protein items are more likely to be main meals
+      const categories: Array<'petit-dejeuner' | 'dejeuner' | 'diner' | 'collation'> = ['dejeuner', 'diner', 'dejeuner', 'collation'];
+      return categories[index % 4];
+    }
+
+    if (dinnerScore === maxScore) return 'diner';
+    if (lunchScore === maxScore) return 'dejeuner';
+    if (breakfastScore === maxScore) return 'petit-dejeuner';
+    if (snackScore === maxScore) return 'collation';
+
+    // Fallback
+    return 'dejeuner';
+  }
+
+  private extractNutrition(item: any): { calories: number; proteines: number; glucides: number; lipides: number; fibres?: number } {
+    // Try to find nutrition data in various nested structures
+    const nutritionSources = [
+      item.valeur_nutritionnelle,
+      item.nutrition,
+      item.nutritional_info,
+      item.apports_nutritionnels,
+      item.informations_nutritionnelles,
+      item // Direct on item
+    ];
+
+    const extractNumber = (value: any): number => {
+      if (typeof value === 'number') return value;
+      if (typeof value === 'string') {
+        const match = value.match(/(\d+(?:\.\d+)?)/);
+        return match ? parseFloat(match[1]) : 0;
+      }
+      return 0;
+    };
+
+    let calories = 0, proteines = 0, glucides = 0, lipides = 0, fibres = 0;
+
+    for (const source of nutritionSources) {
+      if (!source) continue;
+
+      // Try different field names for each nutrient
+      if (!calories) {
+        calories = extractNumber(source.calories) || 
+                  extractNumber(source.kcal) || 
+                  extractNumber(source.energie) || 
+                  extractNumber(source.energy);
+      }
+
+      if (!proteines) {
+        proteines = extractNumber(source.proteines) || 
+                   extractNumber(source.proteins) || 
+                   extractNumber(source.protein) || 
+                   extractNumber(source.protéines);
+      }
+
+      if (!glucides) {
+        glucides = extractNumber(source.glucides) || 
+                  extractNumber(source.carbs) || 
+                  extractNumber(source.carbohydrates) || 
+                  extractNumber(source.glucide);
+      }
+
+      if (!lipides) {
+        lipides = extractNumber(source.lipides) || 
+                 extractNumber(source.fats) || 
+                 extractNumber(source.fat) || 
+                 extractNumber(source.lipide);
+      }
+
+      if (!fibres) {
+        fibres = extractNumber(source.fibres) || 
+                extractNumber(source.fiber) || 
+                extractNumber(source.fibre);
+      }
+    }
+
+    // Estimate missing values if some are present
+    if (calories > 0 && proteines === 0) proteines = Math.round(calories * 0.15 / 4);
+    if (calories > 0 && glucides === 0) glucides = Math.round(calories * 0.45 / 4);
+    if (calories > 0 && lipides === 0) lipides = Math.round(calories * 0.30 / 9);
+
+    return { calories, proteines, glucides, lipides, fibres };
+  }
+
+  private extractIngredients(item: any): Array<{ nom: string; quantite: string; unite: string }> {
+    const ingredientsSources = [
+      item.ingrédients,
+      item.ingredients,
+      item.recipe?.ingredients,
+      item.recette?.ingrédients
+    ];
+
+    for (const source of ingredientsSources) {
+      if (Array.isArray(source) && source.length > 0) {
+        return source.map((ing: any) => this.parseIngredient(ing));
+      }
+    }
+
+    return [{ nom: 'Ingrédients détaillés disponibles', quantite: '1', unite: 'portion' }];
+  }
+
+  private parseIngredient(ing: any): { nom: string; quantite: string; unite: string } {
+    // If it's already a structured object
+    if (typeof ing === 'object' && ing !== null) {
+      return {
+        nom: ing.nom || ing.name || ing.ingredient || 'Ingrédient',
+        quantite: String(ing.quantite || ing.quantity || ing.amount || '1'),
+        unite: ing.unite || ing.unit || ing.unité || this.guessUnit(ing.nom || ing.name || '')
+      };
+    }
+    
+    // If it's a string, try to parse it intelligently
+    if (typeof ing === 'string') {
+      return this.parseIngredientString(ing.trim());
+    }
+    
+    return { nom: String(ing), quantite: '1', unite: 'portion' };
+  }
+
+  private parseIngredientString(ingredient: string): { nom: string; quantite: string; unite: string } {
+    // Try different patterns for ingredient strings
+    
+    // Pattern 1: "200g de blanc de poulet"
+    const pattern1 = ingredient.match(/^(\d+(?:\.\d+)?)\s*([a-zA-ZÀ-ÿ]+)\s+(?:de\s+|d')?(.+)$/);
+    if (pattern1) {
+      return {
+        quantite: pattern1[1],
+        unite: pattern1[2],
+        nom: pattern1[3].trim()
+      };
+    }
+    
+    // Pattern 2: "1 cuillère à soupe d'huile d'olive"
+    const pattern2 = ingredient.match(/^(\d+(?:\.\d+)?)\s+(cuillère[s]?.*?|tasse[s]?.*?|verre[s]?.*?)\s+(?:de\s+|d')?(.+)$/i);
+    if (pattern2) {
+      return {
+        quantite: pattern2[1],
+        unite: pattern2[2].trim(),
+        nom: pattern2[3].trim()
+      };
+    }
+    
+    // Pattern 3: "200g blanc de poulet" (sans "de")
+    const pattern3 = ingredient.match(/^(\d+(?:\.\d+)?)\s*([a-zA-ZÀ-ÿ]+)\s+(.+)$/);
+    if (pattern3) {
+      return {
+        quantite: pattern3[1],
+        unite: pattern3[2],
+        nom: pattern3[3].trim()
+      };
+    }
+    
+    // Pattern 4: "Herbes de Provence" (no quantity)
+    const pattern4 = ingredient.match(/^([A-ZÀ-ÿ].*)/);
+    if (pattern4) {
+      return {
+        quantite: this.guessQuantity(ingredient),
+        unite: this.guessUnit(ingredient),
+        nom: ingredient
+      };
+    }
+    
+    // Fallback
+    return {
+      nom: ingredient,
+      quantite: '1',
+      unite: this.guessUnit(ingredient)
+    };
+  }
+
+  private guessQuantity(ingredient: string): string {
+    const name = ingredient.toLowerCase();
+    
+    // Spices and seasonings
+    if (name.includes('sel') || name.includes('poivre') || name.includes('herbes') || 
+        name.includes('épices') || name.includes('poudre')) {
+      return '1';
+    }
+    
+    // Oils
+    if (name.includes('huile')) {
+      return '1';
+    }
+    
+    return '1';
+  }
+
+  private guessUnit(ingredient: string): string {
+    const name = ingredient.toLowerCase();
+    
+    // Spices and seasonings
+    if (name.includes('sel') || name.includes('poivre') || name.includes('herbes') || 
+        name.includes('épices') || name.includes('poudre')) {
+      return 'pincée';
+    }
+    
+    // Oils
+    if (name.includes('huile')) {
+      return 'cuillère à soupe';
+    }
+    
+    // Liquids
+    if (name.includes('eau') || name.includes('lait') || name.includes('jus')) {
+      return 'ml';
+    }
+    
+    // Default
+    return 'portion';
+  }
+
+  private extractInstructions(item: any): string[] {
+    const instructionSources = [
+      item.instructions,
+      item.preparation,
+      item.préparation,
+      item.recipe?.instructions,
+      item.recette?.instructions
+    ];
+
+    for (const source of instructionSources) {
+      if (Array.isArray(source)) {
+        return source.map(String);
+      } else if (typeof source === 'string') {
+        return [source];
+      }
+    }
+
+    return ['Instructions détaillées disponibles'];
+  }
+
+  private extractTempsPrepration(item: any): number {
+    return item.temps_préparation || item.prepTime || item.temps_preparation || 15;
+  }
+
+  private extractTempsCuisson(item: any): number {
+    return item.temps_cuisson || item.cookTime || item.temps_cuisson || 15;
+  }
+
+  private extractPortions(item: any): number {
+    return item.portions || item.servings || item.nb_portions || 1;
+  }
+
+  private extractDifficulte(item: any): 'facile' | 'moyen' | 'difficile' {
+    const difficulty = item.difficulté || item.difficulty || item.niveau;
+    if (typeof difficulty === 'string') {
+      const normalized = difficulty.toLowerCase();
+      if (normalized.includes('facile') || normalized.includes('easy')) return 'facile';
+      if (normalized.includes('moyen') || normalized.includes('medium')) return 'moyen';
+      if (normalized.includes('difficile') || normalized.includes('hard')) return 'difficile';
+    }
+    return 'facile';
+  }
+
+  private extractTags(item: any): string[] {
+    const tags = item.tags || item.étiquettes || [];
+    if (Array.isArray(tags)) return tags.map(String);
+    return ['équilibré', 'protéiné'];
+  }
+
+  private extractConseils(item: any): string[] | undefined {
+    const conseils = item.conseils || item.tips || item.astuces;
+    if (Array.isArray(conseils)) return conseils.map(String);
+    if (typeof conseils === 'string') return [conseils];
+    return undefined;
+  }
+
+  private extractVariantes(item: any): string[] | undefined {
+    const variantes = item.variantes || item.variations || item.alternatives;
+    if (Array.isArray(variantes)) return variantes.map(String);
+    if (typeof variantes === 'string') return [variantes];
+    return undefined;
+  }
+
+  private extractCout(item: any): 'faible' | 'moyen' | 'eleve' | undefined {
+    const cost = item.cout || item.cost || item.prix;
+    if (typeof cost === 'string') {
+      const normalized = cost.toLowerCase();
+      if (normalized.includes('faible') || normalized.includes('low')) return 'faible';
+      if (normalized.includes('moyen') || normalized.includes('medium')) return 'moyen';
+      if (normalized.includes('eleve') || normalized.includes('élevé') || normalized.includes('high')) return 'eleve';
+    }
+    return undefined;
+  }
+
+  private extractSaison(item: any): string[] | undefined {
+    const saison = item.saison || item.season || item.saisons;
+    if (Array.isArray(saison)) return saison.map(String);
+    if (typeof saison === 'string') return [saison];
+    return undefined;
+  }
+
+  private extractEquipement(item: any): string[] | undefined {
+    const equipement = item.equipement || item.equipment || item.équipement;
+    if (Array.isArray(equipement)) return equipement.map(String);
+    if (typeof equipement === 'string') return [equipement];
+    return undefined;
+  }
+
+  private extractTips(rawData: any, recList: any[]): string[] {
+    const globalTips = rawData.conseils_pratiques || rawData.astuces || rawData.astuces_de_chef || rawData.tips || [];
+    const mealTips = recList?.map((item: any) => item.tips).filter(Boolean) || [];
+    const tips = Array.isArray(globalTips) ? globalTips : (globalTips ? [globalTips] : mealTips);
+    return Array.isArray(tips) ? tips.map(String) : [];
+  }
+
+  private extractExplanation(rawData: any): string {
+    return rawData.notes || rawData.conseils || rawData.commentaires || rawData.explanation || 
+           'Voici vos recommandations de repas personnalisées, conçues pour vous aider à atteindre vos objectifs nutritionnels.';
+  }
+
+  private generateNutritionalInsights(recommendations: MealRecommendation[]): string[] {
+    const totalCalories = recommendations.reduce((sum, rec) => sum + rec.nutrition.calories, 0);
+    const totalProteines = recommendations.reduce((sum, rec) => sum + rec.nutrition.proteines, 0);
+    const totalGlucides = recommendations.reduce((sum, rec) => sum + rec.nutrition.glucides, 0);
+    const totalLipides = recommendations.reduce((sum, rec) => sum + rec.nutrition.lipides, 0);
+
+    return [
+      `Total protéines : ${totalProteines}g`,
+      `Total calories : ${totalCalories} kcal`,
+      `Total glucides : ${totalGlucides}g`,
+      `Total lipides : ${totalLipides}g`
+    ];
+  }
+
+  private calculateWeeklyProgress(recommendations: MealRecommendation[]): any {
+    const totalProteines = recommendations.reduce((sum, rec) => sum + rec.nutrition.proteines, 0);
+    const totalCalories = recommendations.reduce((sum, rec) => sum + rec.nutrition.calories, 0);
+    
+    const proteinProgress = totalProteines > 0 ? Math.round(totalProteines / 195 * 100) : 0;
+    const calorieProgress = totalCalories > 0 ? Math.round(totalCalories / 2140 * 100) : 0;
+    
+    return {
+      proteinProgress,
+      calorieProgress,
+      balanceScore: 88
+    };
+  }
+
+  private extractNumber(value: any): number {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const match = value.match(/(\d+(?:\.\d+)?)/);
+      return match ? parseFloat(match[1]) : 0;
+    }
+    return 0;
   }
 
   /**
@@ -601,46 +948,7 @@ export class NutritionCoachService {
     return descriptions[meal as keyof typeof descriptions] || `${recipeName || 'Repas'} équilibré riche en protéines`;
   }
 
-  /**
-   * Extraire les ingrédients depuis le champ recette
-   */
-  private extractIngredientsFromRecette(recette: any[]): Array<{ name: string; quantity: string; unit: string }> {
-    if (!Array.isArray(recette) || recette.length === 0) return [];
-    
-    // Essayer de trouver la section ingrédients dans la recette
-    const recetteText = recette.join(' ').toLowerCase();
-    const ingredients: Array<{ name: string; quantity: string; unit: string }> = [];
-    
-    // Rechercher des patterns d'ingrédients courants
-    const commonIngredients = [
-      'poulet', 'saumon', 'thon', 'œufs', 'yaourt', 'fromage', 'lait', 'avocat',
-      'quinoa', 'riz', 'pâtes', 'pain', 'légumes', 'tomates', 'concombre',
-      'huile', 'beurre', 'sel', 'poivre', 'ail', 'oignon'
-    ];
-    
-    commonIngredients.forEach(ingredient => {
-      if (recetteText.includes(ingredient)) {
-        ingredients.push({
-          name: ingredient,
-          quantity: '1',
-          unit: 'portion'
-        });
-      }
-    });
-    
-    return ingredients.length > 0 ? ingredients : [
-      { name: 'Ingrédients variés', quantity: '1', unit: 'portion' }
-    ];
-  }
 
-  /**
-   * Extraire les instructions depuis le champ recette
-   */
-  private extractInstructionsFromRecette(recette: any[]): string[] {
-    if (!Array.isArray(recette)) return ['Instructions détaillées disponibles'];
-    
-    return recette.length > 0 ? recette.map(String) : ['Instructions détaillées disponibles'];
-  }
 
   /**
    * Générer des tags automatiques basé sur le repas
@@ -665,28 +973,58 @@ export class NutritionCoachService {
     return tags;
   }
 
+
   /**
-   * Mapper le nom du repas vers une catégorie
+   * Assignation intelligente de catégorie basée sur l'analyse du contenu
    */
-  private mapMealCategory(name: string): 'breakfast' | 'lunch' | 'dinner' | 'snack' {
-    const lowerName = name.toLowerCase();
+  private smartCategoryAssignment(title: string, description: string): 'breakfast' | 'lunch' | 'dinner' | 'snack' {
+    const text = (title + ' ' + description).toLowerCase();
     
-    // Mots-clés explicites pour les repas
-    if (lowerName.includes('petit-déjeuner') || lowerName.includes('petit déjeuner') || lowerName.includes('breakfast')) return 'breakfast';
-    if (lowerName.includes('déjeuner') && !lowerName.includes('petit')) return 'lunch';
-    if (lowerName.includes('lunch')) return 'lunch';
-    if (lowerName.includes('dîner') || lowerName.includes('diner') || lowerName.includes('dinner')) return 'dinner';
-    if (lowerName.includes('snack') || lowerName.includes('collation')) return 'snack';
+    // Système de scoring pour chaque catégorie
+    const scores = {
+      breakfast: 0,
+      lunch: 0,
+      dinner: 0,
+      snack: 0
+    };
     
-    // Détection intelligente basée sur les ingrédients et types de plats
-    if (lowerName.includes('omelette') || lowerName.includes('œufs') || lowerName.includes('céréales') || lowerName.includes('porridge') || lowerName.includes('yaourt')) return 'breakfast';
-    if (lowerName.includes('salade') || lowerName.includes('soupe') || lowerName.includes('sandwich') || lowerName.includes('quinoa')) return 'lunch';
-    if (lowerName.includes('rôti') || lowerName.includes('grillé') || lowerName.includes('saumon') || lowerName.includes('poulet') || lowerName.includes('purée')) return 'dinner';
+    // Mots-clés pour petit-déjeuner
+    const breakfastKeywords = ['petit-déjeuner', 'smoothie', 'yaourt', 'œuf', 'omelette', 'céréales', 'pain', 'confiture', 'miel', 'café', 'thé'];
+    const dinnerKeywords = ['dîner', 'poulet', 'saumon', 'bœuf', 'rôti', 'grillé', 'purée', 'risotto', 'pâtes', 'curry'];
+    const lunchKeywords = ['déjeuner', 'salade', 'sandwich', 'soupe', 'quinoa', 'bowl', 'wrap'];
+    const snackKeywords = ['collation', 'snack', 'smoothie', 'fruits', 'noix', 'barre', 'protéiné aux fruits'];
     
-    // Distribution cyclique pour éviter que tout soit "lunch"
-    const categories: ('breakfast' | 'lunch' | 'dinner' | 'snack')[] = ['breakfast', 'lunch', 'dinner', 'snack'];
-    const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return categories[hash % categories.length];
+    // Calculer les scores
+    breakfastKeywords.forEach(keyword => {
+      if (text.includes(keyword)) scores.breakfast += 1;
+    });
+    lunchKeywords.forEach(keyword => {
+      if (text.includes(keyword)) scores.lunch += 1;
+    });
+    dinnerKeywords.forEach(keyword => {
+      if (text.includes(keyword)) scores.dinner += 1;
+    });
+    snackKeywords.forEach(keyword => {
+      if (text.includes(keyword)) scores.snack += 1;
+    });
+    
+    // Règles spéciales
+    if (text.includes('smoothie') && text.includes('fruits')) {
+      scores.snack += 2; // Bonus pour smoothie aux fruits
+    }
+    
+    // Trouver la catégorie avec le score le plus élevé
+    const maxScore = Math.max(...Object.values(scores));
+    if (maxScore === 0) {
+      // Si aucun score, distribution cyclique
+      const categories: ('breakfast' | 'lunch' | 'dinner' | 'snack')[] = ['breakfast', 'lunch', 'dinner', 'snack'];
+      const hash = title.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      return categories[hash % categories.length];
+    }
+    
+    // Retourner la catégorie avec le meilleur score
+    const bestCategory = Object.entries(scores).find(([_, score]) => score === maxScore)?.[0] as 'breakfast' | 'lunch' | 'dinner' | 'snack';
+    return bestCategory || 'lunch';
   }
 
   /**
@@ -716,15 +1054,10 @@ export class NutritionCoachService {
    */
   private mapIngredients(ingredients: any[]): Array<{ name: string; quantity: string; unit: string }> {
     if (!Array.isArray(ingredients)) {
-      console.log('mapIngredients: not an array, got:', ingredients);
       return [];
     }
     
-    console.log('mapIngredients: processing', ingredients.length, 'ingredients');
-    console.log('mapIngredients: raw ingredients data:', ingredients);
-    
-    const mapped = ingredients.map((ingredient: any, index: number) => {
-      console.log(`mapIngredients: processing ingredient ${index}:`, ingredient, 'type:', typeof ingredient);
+    const mapped = ingredients.map((ingredient: any) => {
       if (typeof ingredient === 'string') {
         // Parser intelligent pour les formats français
         
@@ -814,7 +1147,6 @@ export class NutritionCoachService {
       }
       
       // Fallback: if we can't parse the ingredient, at least keep the raw text
-      console.log('mapIngredients: fallback for ingredient:', ingredient);
       return {
         name: String(ingredient).trim() || 'Ingrédient',
         quantity: '1',
@@ -822,12 +1154,8 @@ export class NutritionCoachService {
       };
     });
     
-    console.log('Mapped ingredients:', mapped);
-    console.log('mapIngredients: returning', mapped.length, 'mapped ingredients');
-    
     // Safety check: if we had ingredients but mapped to empty, create fallback
     if (ingredients.length > 0 && mapped.length === 0) {
-      console.log('mapIngredients: WARNING - had ingredients but mapped to empty, creating fallback');
       return [{
         name: 'Ingrédients disponibles (voir instructions)',
         quantity: '1',
@@ -877,7 +1205,6 @@ export class NutritionCoachService {
       });
     });
 
-    console.log('Extracted ingredients from instructions:', ingredients);
     return ingredients;
   }
 
@@ -1111,9 +1438,9 @@ export class NutritionCoachService {
     // Valider et nettoyer les recommandations
     const validRecommendations = response.recommendations.filter(rec => {
       const isValid = rec &&
-        rec.title && 
+        rec.titre && 
         rec.nutrition &&
-        rec.nutrition.protein >= 0 && 
+        rec.nutrition.proteines >= 0 && 
         rec.nutrition.calories >= 0 &&
         rec.ingredients &&
         Array.isArray(rec.ingredients) &&
@@ -1121,20 +1448,6 @@ export class NutritionCoachService {
         Array.isArray(rec.instructions) &&
         rec.instructions.length > 0;
       
-      if (!isValid) {
-        console.log('Rejected recommendation:', {
-          title: rec?.title,
-          hasNutrition: !!rec?.nutrition,
-          protein: rec?.nutrition?.protein,
-          calories: rec?.nutrition?.calories,
-          hasIngredients: !!rec?.ingredients,
-          ingredientsIsArray: Array.isArray(rec?.ingredients),
-          ingredientsLength: rec?.ingredients?.length,
-          hasInstructions: !!rec?.instructions,
-          instructionsIsArray: Array.isArray(rec?.instructions),
-          instructionsLength: rec?.instructions?.length
-        });
-      }
       
       return isValid;
     });
@@ -1142,14 +1455,14 @@ export class NutritionCoachService {
     // Enrichir avec des données calculées
     validRecommendations.forEach(rec => {
       // Calculer la densité protéique
-      if (!rec.confidence) {
-        rec.confidence = rec.nutrition.protein / rec.nutrition.calories > 0.1 ? 0.8 : 0.6;
+      if (!rec.confiance) {
+        rec.confiance = rec.nutrition.proteines / rec.nutrition.calories > 0.1 ? 0.8 : 0.6;
       }
       
       // Ajouter des tags automatiques
       if (!rec.tags) rec.tags = [];
-      if (rec.prepTime + rec.cookTime < 30) rec.tags.push('rapide');
-      if (rec.nutrition.protein > 25) rec.tags.push('riche-en-protéines');
+      if (rec.tempsPreparation + rec.tempsCuisson < 30) rec.tags.push('rapide');
+      if (rec.nutrition.proteines > 25) rec.tags.push('riche-en-protéines');
       if (rec.nutrition.calories < 400) rec.tags.push('léger');
     });
 
@@ -1159,72 +1472,43 @@ export class NutritionCoachService {
     };
   }
 
+
   /**
-   * S'assurer qu'il y a exactement 5 recommandations avec au moins une de chaque catégorie
+   * S'assurer qu'il y a exactement 4 recommandations avec au moins une de chaque catégorie
    */
   private ensureAllCategoriesRepresented(recommendations: MealRecommendation[]): void {
-    if (recommendations.length < 4) return; // Pas assez de recommandations
-
-    const categories: ('breakfast' | 'lunch' | 'dinner' | 'snack')[] = ['breakfast', 'lunch', 'dinner', 'snack'];
+    const categories: ('petit-dejeuner' | 'dejeuner' | 'diner' | 'collation')[] = 
+      ['petit-dejeuner', 'dejeuner', 'diner', 'collation'];
     
-    console.log('Initial distribution:', recommendations.map(r => `${r.title} -> ${r.category}`));
+    // Check which categories are missing
+    const existingCategories = new Set(recommendations.map(r => r.categorie));
+    const missingCategories = categories.filter(cat => !existingCategories.has(cat));
     
-    // Stratégie pour 5 recommandations: assigner les 4 premières aux catégories obligatoires
-    // La 5ème peut être n'importe quelle catégorie (favorise la diversité)
-    if (recommendations.length >= 5) {
-      // Assigner les 4 catégories principales aux 4 premières recommandations
-      categories.forEach((category, index) => {
-        if (index < 4 && recommendations[index]) {
-          const oldCategory = recommendations[index].category;
-          recommendations[index].category = category;
-          console.log(`Category assignment: ${recommendations[index].title} from ${oldCategory} to ${category}`);
-        }
+    if (missingCategories.length > 0 && recommendations.length >= 4) {
+      // Find recommendations that have duplicate categories
+      const categoryCount = new Map<string, number>();
+      recommendations.forEach(rec => {
+        categoryCount.set(rec.categorie, (categoryCount.get(rec.categorie) || 0) + 1);
       });
       
-      // La 5ème recommandation : choisir une catégorie qui n'est pas déjà utilisée 2 fois
-      if (recommendations[4]) {
-        const categoryCounts = recommendations.slice(0, 4).reduce((counts, rec) => {
-          counts[rec.category] = (counts[rec.category] || 0) + 1;
-          return counts;
-        }, {} as Record<string, number>);
+      // Reassign duplicate categories to missing ones
+      let missingIndex = 0;
+      for (let i = 0; i < recommendations.length && missingIndex < missingCategories.length; i++) {
+        const currentCategory = recommendations[i].categorie;
+        const count = categoryCount.get(currentCategory) || 0;
         
-        // Trouver une catégorie qui n'a qu'une seule occurrence parmi les 4 premières
-        const availableCategories = categories.filter(cat => (categoryCounts[cat] || 0) < 2);
-        
-        if (availableCategories.length > 0) {
-          // Utiliser la première catégorie disponible
-          recommendations[4].category = availableCategories[0];
-          console.log(`Fifth recommendation assigned to: ${availableCategories[0]} (available: ${availableCategories.join(', ')})`);
-        } else {
-          // Fallback: utiliser une catégorie aléatoire
-          recommendations[4].category = categories[Math.floor(Math.random() * categories.length)];
-          console.log(`Fifth recommendation assigned randomly to: ${recommendations[4].category}`);
+        // If this category has more than one recommendation, reassign it
+        if (count > 1) {
+          recommendations[i].categorie = missingCategories[missingIndex];
+          categoryCount.set(currentCategory, count - 1);
+          missingIndex++;
         }
       }
-    } else {
-      // Pour moins de 5 recommandations, utiliser l'ancienne logique
-      const existingCategories = new Set(recommendations.map(r => r.category));
-      const missingCategories = categories.filter(cat => !existingCategories.has(cat));
-      
-      if (missingCategories.length > 0) {
-        console.log('Missing categories:', missingCategories);
-        
-        missingCategories.forEach((missingCategory, index) => {
-          if (index < recommendations.length) {
-            const oldCategory = recommendations[index].category;
-            recommendations[index].category = missingCategory;
-            console.log(`Forced category change: ${recommendations[index].title} from ${oldCategory} to ${missingCategory}`);
-          }
-        });
-      }
     }
-    
-    console.log('Final distribution:', recommendations.map(r => `${r.title} -> ${r.category}`));
   }
 
   private extractDataWithRegex(responseString: string): any {
     // Fallback method to extract data when JSON parsing fails
-    console.log('Attempting regex extraction from:', responseString);
     
     // Try to extract basic meal recommendation structure
     const mealRecommendations: any[] = [];
@@ -1299,6 +1583,25 @@ export class NutritionCoachService {
     
     return {
       meal_recommendations: mealRecommendations
+    };
+  }
+
+  /**
+   * Extraction des métadonnées globales
+   */
+  private extractMetadata(parsedData: any) {
+    return {
+      explanation: parsedData.notes || parsedData.conseils || parsedData.commentaires || 
+                  parsedData.explanation || 'Recommandations personnalisées générées',
+      tips: Array.isArray(parsedData.tips) ? parsedData.tips : 
+            Array.isArray(parsedData.astuces) ? parsedData.astuces : [],
+      nutritionalInsights: parsedData.insights || parsedData.nutritionalInsights || 
+                          ['Recommandations adaptées à vos objectifs'],
+      weeklyGoalProgress: {
+        proteinProgress: 75,
+        calorieProgress: 80,
+        balanceScore: 85
+      }
     };
   }
 }

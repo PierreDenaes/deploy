@@ -725,6 +725,10 @@ export class AIService {
     // Supprimer les éventuels caractères de contrôle
     cleaned = cleaned.replace(/[\x00-\x1F\x7F]/g, '');
     
+    // Corriger les valeurs nutritionnelles non-quotées (ex: 50g -> "50g")
+    cleaned = cleaned.replace(/:\s*(\d+g)\b/g, ': "$1"');
+    cleaned = cleaned.replace(/:\s*(\d+)\s*$\s*/gm, ': $1');
+    
     return cleaned;
   }
 

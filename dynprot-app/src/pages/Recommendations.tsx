@@ -13,29 +13,59 @@ import type { MealRecommendation, CoachRecommendationResponse } from '@/services
 import { toast } from 'sonner';
 
 const categoryLabels = {
-  breakfast: 'Petit-déjeuner',
-  lunch: 'Déjeuner', 
-  dinner: 'Dîner',
-  snack: 'Collation'
+  'petit-dejeuner': 'Petit-déjeuner',
+  'dejeuner': 'Déjeuner', 
+  'diner': 'Dîner',
+  'collation': 'Collation'
 };
 
 const categoryEmojis = {
-  breakfast: '☀️',
-  lunch: '🥗',
-  dinner: '🍽️',
-  snack: '🍎'
+  'petit-dejeuner': '☀️',
+  'dejeuner': '🥗',
+  'diner': '🍽️',
+  'collation': '🍎'
 };
 
 const difficultyColors = {
-  easy: 'bg-green-100 text-green-800 border-green-200',
-  medium: 'bg-yellow-100 text-yellow-800 border-yellow-200', 
-  hard: 'bg-red-100 text-red-800 border-red-200'
+  facile: 'bg-green-100 text-green-800 border-green-200',
+  moyen: 'bg-yellow-100 text-yellow-800 border-yellow-200', 
+  difficile: 'bg-red-100 text-red-800 border-red-200'
 };
 
 const difficultyLabels = {
-  easy: 'Facile',
-  medium: 'Moyen',
-  hard: 'Difficile'
+  facile: 'Facile',
+  moyen: 'Moyen',
+  difficile: 'Difficile'
+};
+
+// Helper function to ensure all categories are represented
+const ensureCategoriesInRecommendations = (recommendations: MealRecommendation[]): MealRecommendation[] => {
+  const categories: ('petit-dejeuner' | 'dejeuner' | 'diner' | 'collation')[] = 
+    ['petit-dejeuner', 'dejeuner', 'diner', 'collation'];
+  
+  // If we have at least 4 recommendations, ensure each category is represented
+  if (recommendations.length >= 4) {
+    const result = [...recommendations];
+    const existingCategories = new Set(result.map(r => r.categorie));
+    
+    categories.forEach((category, index) => {
+      if (!existingCategories.has(category) && index < result.length) {
+        // Find a recommendation that doesn't have a unique category and reassign it
+        const duplicateIndex = result.findIndex((rec, idx) => {
+          const cat = rec.categorie;
+          return result.filter(r => r.categorie === cat).length > 1;
+        });
+        
+        if (duplicateIndex !== -1) {
+          result[duplicateIndex].categorie = category;
+        }
+      }
+    });
+    
+    return result.slice(0, 4); // Return only 4 recommendations
+  }
+  
+  return recommendations;
 };
 
 export default function Recommendations() {
@@ -43,8 +73,8 @@ export default function Recommendations() {
   const { state } = useAppContext();
   const [recommendations, setRecommendations] = useState<CoachRecommendationResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<'all' | 'breakfast' | 'lunch' | 'dinner' | 'snack'>('all');
-  const [sortBy, setSortBy] = useState<'protein' | 'calories' | 'time' | 'difficulty'>('protein');
+  const [activeCategory, setActiveCategory] = useState<'all' | 'petit-dejeuner' | 'dejeuner' | 'diner' | 'collation'>('all');
+  const [sortBy, setSortBy] = useState<'proteines' | 'calories' | 'time' | 'difficulty'>('proteines');
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
 
   // Charger les recommandations au montage
@@ -71,9 +101,6 @@ export default function Recommendations() {
   };
 
   const generateRecommendations = async () => {
-    console.log('=== DEBUG: Starting generateRecommendations ===');
-    console.log('State user:', !!state.user);
-    console.log('State userSettings:', !!state.userSettings);
     
     // No need to check for state.user.profile, just check for required fields
     if (!state.user || !state.userSettings) {
@@ -102,10 +129,8 @@ export default function Recommendations() {
         equipment: ['four', 'plaques', 'mixeur']
       };
 
-      console.log('=== DEBUG: UserProfile created ===', userProfile);
 
       // Make a single API call to get all recommendations
-      console.log('=== DEBUG: Making single API call for all recommendations ===');
       
       const request = {
         type: 'meal' as const,
@@ -128,84 +153,48 @@ export default function Recommendations() {
       let apiSucceeded = false;
       
       try {
-        console.log('=== DEBUG: Making API call without timeout race ===');
         const result = await nutritionCoach.getRecommendations(userProfile, request, state.meals.slice(-7));
-        console.log('=== DEBUG: API result ===', result);
         
-        // Use the recommendations directly from the API response
-        if (result?.recommendations && result.recommendations.length > 0) {
-          console.log(`=== DEBUG: Got ${result.recommendations.length} recommendations from API ===`);
-          apiSucceeded = true;
-          
-          // Store API metadata
-          apiMetadata = {
-            explanation: result.explanation || apiMetadata.explanation,
-            tips: result.tips || apiMetadata.tips,
-            nutritionalInsights: result.nutritionalInsights || apiMetadata.nutritionalInsights,
-            weeklyGoalProgress: result.weeklyGoalProgress || apiMetadata.weeklyGoalProgress
-          };
-          
-          // Define correct category mapping based on index
-          const categoryMapping: Array<'breakfast' | 'lunch' | 'dinner' | 'snack'> = [
-            'breakfast', 'lunch', 'dinner', 'snack', 'snack'  // 5th item also becomes snack
-          ];
-          
-          // Map API recommendations with unique IDs and correct categories
-          allRecommendations = result.recommendations.slice(0, 4).map((rec: any, index: number) => {
-            console.log(`=== DEBUG: Processing recommendation ${index} ===`, {
-              title: rec.title,
-              description: rec.description,
-              originalCategory: rec.category,
-              newCategory: categoryMapping[index],
-              fullRec: rec
-            });
+        // Check if we have valid recommendations from the transformed response
+        if (result?.recommendations && Array.isArray(result.recommendations) && result.recommendations.length > 0) {
+          // Verify that recommendations have valid data (check if we have fallback ingredients vs real ones)
+          const validRecommendations = result.recommendations.filter(rec => {
+            // Check if this is real AI data vs fallback data
+            const hasRealIngredients = rec.ingredients && rec.ingredients.length > 0 && 
+              !rec.ingredients.some((ing: any) => ing.nom === "Protéine au choix" || ing.nom === "Ingrédients à préciser");
             
-            return {
-              // Preserve original AI data
-              title: rec.title || `Repas ${index + 1}`,
-              description: rec.description || `Repas équilibré et nutritif`,
-              // Force correct category mapping
-              category: categoryMapping[index],
-              // Generate unique ID
-              id: rec.id || `ai_rec_${index}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-              // Preserve nutrition data from AI
-              nutrition: {
-                calories: Number(rec.nutrition?.calories) || 300,
-                protein: Number(rec.nutrition?.protein) || 20,
-                carbs: Number(rec.nutrition?.carbs) || 30,
-                fat: Number(rec.nutrition?.fat) || 10,
-                fiber: Number(rec.nutrition?.fiber) || 5
-              },
-              // Preserve ingredients from AI
-              ingredients: Array.isArray(rec.ingredients) && rec.ingredients.length > 0 ? rec.ingredients : [
-                { name: "Ingrédients à préciser", quantity: "1", unit: "portion" }
-              ],
-              // Preserve instructions from AI
-              instructions: Array.isArray(rec.instructions) && rec.instructions.length > 0 ? rec.instructions : [
-                "Instructions de préparation à définir"
-              ],
-              // Preserve timing and other metadata
-              prepTime: Number(rec.prepTime) || 15,
-              cookTime: Number(rec.cookTime) || 15,
-              servings: Number(rec.servings) || 1,
-              difficulty: rec.difficulty || 'easy',
-              tags: Array.isArray(rec.tags) && rec.tags.length > 0 ? rec.tags : ['équilibré'],
-              confidence: Number(rec.confidence) || 0.85,
-              source: rec.source || 'ai_generated'
-            };
+            const hasValidTitle = rec && rec.titre && rec.titre.trim() !== '';
+            
+            // Accept any recommendation with a valid title (including "Repas X" if that's what AI returned)
+            return hasValidTitle && (hasRealIngredients || rec.source === 'ai_generated');
           });
           
-          console.log('=== DEBUG: Final allRecommendations ===', allRecommendations.map(r => ({
-            id: r.id,
-            title: r.title,
-            category: r.category,
-            description: r.description
-          })));
+          if (validRecommendations.length > 0) {
+            apiSucceeded = true;
+            
+            // Store API metadata
+            apiMetadata = {
+              explanation: result.explanation || apiMetadata.explanation,
+              tips: result.tips || apiMetadata.tips,
+              nutritionalInsights: result.nutritionalInsights || apiMetadata.nutritionalInsights,
+              weeklyGoalProgress: result.weeklyGoalProgress || apiMetadata.weeklyGoalProgress
+            };
+            
+            // Use the API recommendations directly (they're already processed by transformFrenchResponse)
+            allRecommendations = result.recommendations.slice(0, 4).map((rec: any, index: number) => {
+              // Generate unique ID if not present
+              const uniqueId = rec.id || `ai_rec_${index}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+              
+              return {
+                ...rec, // Keep all original data from the transformation
+                id: uniqueId // Ensure unique ID
+              };
+            });
           
-          toast.success(`${allRecommendations.length} recommandations AI générées !`);
-        } else {
-          console.warn('API returned empty recommendations');
-          apiSucceeded = false;
+            toast.success(`${allRecommendations.length} recommandations AI générées !`);
+          } else {
+            apiSucceeded = false;
+          }
         }
       } catch (error) {
         console.error('API call failed:', error);
@@ -214,7 +203,6 @@ export default function Recommendations() {
       
       // Use fallback only if API completely failed
       if (!apiSucceeded) {
-        console.log('=== DEBUG: Using fallback recommendations ===');
         toast.warning("Génération des recommandations par défaut");
         
         // Create fallback recommendations
@@ -228,35 +216,34 @@ export default function Recommendations() {
         
         allRecommendations = mealTypes.map((mealType, index) => ({
           id: `fallback_${mealType}_${index}_${Date.now()}`,
-          title: fallbackTitles[index],
+          titre: fallbackTitles[index],
           description: `Un ${mealType === 'breakfast' ? 'petit-déjeuner' : mealType === 'lunch' ? 'déjeuner' : mealType === 'dinner' ? 'dîner' : 'collation'} riche en protéines et équilibré`,
-          category: mealType,
+          categorie: mealType === 'breakfast' ? 'petit-dejeuner' : mealType === 'lunch' ? 'dejeuner' : mealType === 'dinner' ? 'diner' : 'collation',
           nutrition: {
             calories: 300 + (index * 50),
-            protein: 20 + (index * 5),
-            carbs: 30,
-            fat: 10,
-            fiber: 5
+            proteines: 20 + (index * 5),
+            glucides: 30,
+            lipides: 10,
+            fibres: 5
           },
           ingredients: [
-            { name: "Protéine au choix", quantity: "100", unit: "g" },
-            { name: "Légumes", quantity: "150", unit: "g" },
-            { name: "Féculents", quantity: "80", unit: "g" }
+            { nom: "Protéine au choix", quantite: "100", unite: "g" },
+            { nom: "Légumes", quantite: "150", unite: "g" },
+            { nom: "Féculents", quantite: "80", unite: "g" }
           ],
           instructions: ["Préparer les ingrédients", "Assembler le repas", "Servir frais"],
-          prepTime: 10,
-          cookTime: 15,
-          servings: 1,
-          difficulty: 'easy' as const,
+          tempsPreparation: 10,
+          tempsCuisson: 15,
+          portions: 1,
+          difficulte: 'facile' as const,
           tags: ['équilibré', 'protéiné'],
-          confidence: 0.8,
+          confiance: 0.8,
           source: 'fallback' as const
         }));
       }
 
       // Validate uniqueness of IDs
       const uniqueIds = new Set(allRecommendations.map(r => r.id));
-      console.log(`Generated ${allRecommendations.length} recommendations with ${uniqueIds.size} unique IDs`);
       if (allRecommendations.length !== uniqueIds.size) {
         console.warn('Duplicate IDs detected in recommendations!');
       }
@@ -270,8 +257,6 @@ export default function Recommendations() {
         weeklyGoalProgress: apiMetadata.weeklyGoalProgress
       };
       
-      console.log('=== DEBUG: Setting final recommendations ===', combinedResult);
-      console.log('=== DEBUG: Recommendations titles ===', combinedResult.recommendations.map(r => r.title));
       setRecommendations(combinedResult);
       
     } catch (error) {
@@ -296,23 +281,24 @@ export default function Recommendations() {
     });
   };
 
-  const filteredRecommendations = recommendations?.recommendations.filter(meal => 
-    activeCategory === 'all' || meal.category === activeCategory
-  ).sort((a, b) => {
-    switch (sortBy) {
-      case 'protein':
-        return b.nutrition.protein - a.nutrition.protein;
-      case 'calories':
-        return a.nutrition.calories - b.nutrition.calories;
-      case 'time':
-        return (a.prepTime + a.cookTime) - (b.prepTime + b.cookTime);
-      case 'difficulty':
-        const diffOrder = { easy: 1, medium: 2, hard: 3 };
-        return diffOrder[a.difficulty] - diffOrder[b.difficulty];
-      default:
-        return 0;
-    }
-  }) || [];
+  const filteredRecommendations = recommendations?.recommendations ? 
+    ensureCategoriesInRecommendations(recommendations.recommendations)
+      .filter(meal => activeCategory === 'all' || meal.categorie === activeCategory)
+      .sort((a, b) => {
+        switch (sortBy) {
+          case 'proteines':
+            return b.nutrition.proteines - a.nutrition.proteines;
+          case 'calories':
+            return a.nutrition.calories - b.nutrition.calories;
+          case 'time':
+            return (a.tempsPreparation + a.tempsCuisson) - (b.tempsPreparation + b.tempsCuisson);
+          case 'difficulty':
+            const diffOrder = { facile: 1, moyen: 2, difficile: 3 };
+            return diffOrder[a.difficulte] - diffOrder[b.difficulte];
+          default:
+            return 0;
+        }
+      }) : [];
 
   if (isLoading) {
     return (
@@ -401,10 +387,10 @@ export default function Recommendations() {
           <Tabs value={activeCategory} onValueChange={(value) => setActiveCategory(value as any)} className="flex-1">
             <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="all">Tous</TabsTrigger>
-              <TabsTrigger value="breakfast">☀️</TabsTrigger>
-              <TabsTrigger value="lunch">🥗</TabsTrigger>
-              <TabsTrigger value="dinner">🍽️</TabsTrigger>
-              <TabsTrigger value="snack">🍎</TabsTrigger>
+              <TabsTrigger value="petit-dejeuner">☀️</TabsTrigger>
+              <TabsTrigger value="dejeuner">🥗</TabsTrigger>
+              <TabsTrigger value="diner">🍽️</TabsTrigger>
+              <TabsTrigger value="collation">🍎</TabsTrigger>
             </TabsList>
           </Tabs>
           
@@ -413,7 +399,7 @@ export default function Recommendations() {
               <SelectValue placeholder="Trier par..." />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="protein">Protéines</SelectItem>
+              <SelectItem value="proteines">Protéines</SelectItem>
               <SelectItem value="calories">Calories</SelectItem>
               <SelectItem value="time">Temps de préparation</SelectItem>
               <SelectItem value="difficulty">Difficulté</SelectItem>
@@ -425,7 +411,7 @@ export default function Recommendations() {
         <div className="grid gap-4 sm:grid-cols-2">
           {filteredRecommendations.map((meal, index) => (
             <motion.div
-              key={`recommendation_${index}_${meal.category}`}
+              key={meal.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
@@ -438,14 +424,14 @@ export default function Recommendations() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-lg">
-                            {categoryEmojis[meal.category]}
+                            {categoryEmojis[meal.categorie]}
                           </span>
                           <Badge variant="secondary" className="text-xs rounded-xl">
-                            {categoryLabels[meal.category]}
+                            {categoryLabels[meal.categorie]}
                           </Badge>
                         </div>
                         <h3 className="font-bold text-base leading-tight mb-1">
-                          {meal.title}
+                          {meal.titre}
                         </h3>
                         <p className="text-sm text-muted-foreground">
                           {meal.description}
@@ -465,8 +451,8 @@ export default function Recommendations() {
                     
                     {/* Tags */}
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Badge className={`text-xs rounded-xl ${difficultyColors[meal.difficulty]}`}>
-                        {difficultyLabels[meal.difficulty]}
+                      <Badge className={`text-xs rounded-xl ${difficultyColors[meal.difficulte]}`}>
+                        {difficultyLabels[meal.difficulte]}
                       </Badge>
                       {meal.tags.map(tag => (
                         <Badge key={tag} variant="outline" className="text-xs rounded-xl">
@@ -484,15 +470,15 @@ export default function Recommendations() {
                         <div className="text-xs text-muted-foreground">kcal</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-lg font-bold text-primary">{meal.nutrition.protein}g</div>
+                        <div className="text-lg font-bold text-primary">{meal.nutrition.proteines}g</div>
                         <div className="text-xs text-muted-foreground">protéines</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-lg font-bold text-blue-600">{meal.nutrition.carbs}g</div>
+                        <div className="text-lg font-bold text-blue-600">{meal.nutrition.glucides}g</div>
                         <div className="text-xs text-muted-foreground">glucides</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-lg font-bold text-yellow-600">{meal.nutrition.fat}g</div>
+                        <div className="text-lg font-bold text-yellow-600">{meal.nutrition.lipides}g</div>
                         <div className="text-xs text-muted-foreground">lipides</div>
                       </div>
                     </div>
@@ -501,11 +487,11 @@ export default function Recommendations() {
                     <div className="flex items-center justify-center gap-4 mt-3 text-xs text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {meal.prepTime + meal.cookTime}min
+                        {meal.tempsPreparation + meal.tempsCuisson}min
                       </div>
                       <div className="flex items-center gap-1">
                         <Users className="h-3 w-3" />
-                        {meal.servings} pers.
+                        {meal.portions} pers.
                       </div>
                     </div>
                   </div>
@@ -520,9 +506,9 @@ export default function Recommendations() {
                       <div className="space-y-1">
                         {meal.ingredients.map((ingredient, i) => (
                           <div key={i} className="flex justify-between text-sm">
-                            <span className="truncate flex-1">{ingredient.name}</span>
+                            <span className="truncate flex-1">{ingredient.nom}</span>
                             <span className="text-muted-foreground text-xs ml-2">
-                              {ingredient.quantity} {ingredient.unit}
+                              {ingredient.quantite} {ingredient.unite}
                             </span>
                           </div>
                         ))}
