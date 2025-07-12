@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Home, Camera, BarChart3, User, Plus } from 'lucide-react';
+import { Home, Camera, BarChart3, User, Plus, Utensils } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppContext } from '../context/AppContext';
 import { motion } from 'framer-motion';
@@ -32,10 +32,16 @@ const BottomNavigation = () => {
       ariaLabel: 'Ajouter un repas par photo, scan ou saisie manuelle'
     },
     { 
-      name: 'Statistiques', 
+      name: 'Recommandations', 
+      path: '/recommendations', 
+      icon: <Utensils className="w-6 h-6" strokeWidth={2} />, 
+      ariaLabel: 'Voir les recommandations de repas'
+    },
+    { 
+      name: 'Analytics', 
       path: '/analytics', 
       icon: <BarChart3 className="w-6 h-6" strokeWidth={2} />, 
-      ariaLabel: 'Voir les statistiques et analyses',
+      ariaLabel: 'Voir les statistiques et insights nutritionnels',
       badgeCount: (() => {
         if (!state.lastAnalyticsViewed) {
           // Si jamais consulté, afficher le nombre total

@@ -52,9 +52,32 @@ export default function Recommendations() {
     generateRecommendations();
   }, []);
 
+  // Helper to map fitness goal values to expected schema
+  const mapFitnessGoal = (goal: string | undefined): 'weight_loss' | 'muscle_gain' | 'maintenance' | 'general_health' => {
+    switch (goal) {
+      case 'weight_loss':
+      case 'lose_weight':
+        return 'weight_loss';
+      case 'muscle_gain':
+      case 'gain_muscle':
+        return 'muscle_gain';
+      case 'maintenance':
+      case 'maintain_weight':
+        return 'maintenance';
+      case 'general_health':
+      default:
+        return 'general_health';
+    }
+  };
+
   const generateRecommendations = async () => {
+    console.log('=== DEBUG: Starting generateRecommendations ===');
+    console.log('State user:', !!state.user);
+    console.log('State userSettings:', !!state.userSettings);
+    
     // No need to check for state.user.profile, just check for required fields
     if (!state.user || !state.userSettings) {
+      console.error('Missing user data');
       toast.error("Profil utilisateur manquant");
       return;
     }
@@ -68,7 +91,7 @@ export default function Recommendations() {
         weight: Number(state.user.weightKg) || 75,
         height: Number(state.user.heightCm) || 175,
         activityLevel: state.user.activityLevel,
-        fitnessGoal: (state.userSettings.fitnessGoal as 'weight_loss' | 'muscle_gain' | 'maintenance' | 'general_health') || 'general_health',
+        fitnessGoal: mapFitnessGoal(state.userSettings.fitnessGoal),
         proteinGoal: Number(state.user.dailyProteinGoal) || 120,
         calorieGoal: Number(state.user.calorieGoal) || 2000,
         allergies: [],
@@ -79,14 +102,177 @@ export default function Recommendations() {
         equipment: ['four', 'plaques', 'mixeur']
       };
 
+      console.log('=== DEBUG: UserProfile created ===', userProfile);
+
+      // Make a single API call to get all recommendations
+      console.log('=== DEBUG: Making single API call for all recommendations ===');
+      
       const request = {
         type: 'meal' as const,
-        mealType: 'lunch' as const,
-        context: 'Page recommandations - génération complète de repas'
+        context: 'Générer 4 recommandations de repas : 1 petit-déjeuner, 1 déjeuner, 1 dîner, 1 collation. Chaque recommandation doit correspondre exactement à sa catégorie.'
       };
 
-      const result = await nutritionCoach.getRecommendations(userProfile, request, state.meals.slice(-7));
-      setRecommendations(result);
+      let allRecommendations: any[] = [];
+      let apiMetadata = {
+        explanation: "Recommandations personnalisées générées pour tous les types de repas",
+        tips: ["Variez vos sources de protéines", "Équilibrez vos macronutriments", "Adaptez les portions selon vos besoins"],
+        nutritionalInsights: ["Recommandations adaptées à vos objectifs nutritionnels", "Équilibre optimal entre les différents types de repas"],
+        weeklyGoalProgress: {
+          proteinProgress: 75,
+          calorieProgress: 80,
+          balanceScore: 85
+        }
+      };
+
+      // Try API call without aggressive timeout
+      let apiSucceeded = false;
+      
+      try {
+        console.log('=== DEBUG: Making API call without timeout race ===');
+        const result = await nutritionCoach.getRecommendations(userProfile, request, state.meals.slice(-7));
+        console.log('=== DEBUG: API result ===', result);
+        
+        // Use the recommendations directly from the API response
+        if (result?.recommendations && result.recommendations.length > 0) {
+          console.log(`=== DEBUG: Got ${result.recommendations.length} recommendations from API ===`);
+          apiSucceeded = true;
+          
+          // Store API metadata
+          apiMetadata = {
+            explanation: result.explanation || apiMetadata.explanation,
+            tips: result.tips || apiMetadata.tips,
+            nutritionalInsights: result.nutritionalInsights || apiMetadata.nutritionalInsights,
+            weeklyGoalProgress: result.weeklyGoalProgress || apiMetadata.weeklyGoalProgress
+          };
+          
+          // Define correct category mapping based on index
+          const categoryMapping: Array<'breakfast' | 'lunch' | 'dinner' | 'snack'> = [
+            'breakfast', 'lunch', 'dinner', 'snack', 'snack'  // 5th item also becomes snack
+          ];
+          
+          // Map API recommendations with unique IDs and correct categories
+          allRecommendations = result.recommendations.slice(0, 4).map((rec: any, index: number) => {
+            console.log(`=== DEBUG: Processing recommendation ${index} ===`, {
+              title: rec.title,
+              description: rec.description,
+              originalCategory: rec.category,
+              newCategory: categoryMapping[index],
+              fullRec: rec
+            });
+            
+            return {
+              // Preserve original AI data
+              title: rec.title || `Repas ${index + 1}`,
+              description: rec.description || `Repas équilibré et nutritif`,
+              // Force correct category mapping
+              category: categoryMapping[index],
+              // Generate unique ID
+              id: rec.id || `ai_rec_${index}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+              // Preserve nutrition data from AI
+              nutrition: {
+                calories: Number(rec.nutrition?.calories) || 300,
+                protein: Number(rec.nutrition?.protein) || 20,
+                carbs: Number(rec.nutrition?.carbs) || 30,
+                fat: Number(rec.nutrition?.fat) || 10,
+                fiber: Number(rec.nutrition?.fiber) || 5
+              },
+              // Preserve ingredients from AI
+              ingredients: Array.isArray(rec.ingredients) && rec.ingredients.length > 0 ? rec.ingredients : [
+                { name: "Ingrédients à préciser", quantity: "1", unit: "portion" }
+              ],
+              // Preserve instructions from AI
+              instructions: Array.isArray(rec.instructions) && rec.instructions.length > 0 ? rec.instructions : [
+                "Instructions de préparation à définir"
+              ],
+              // Preserve timing and other metadata
+              prepTime: Number(rec.prepTime) || 15,
+              cookTime: Number(rec.cookTime) || 15,
+              servings: Number(rec.servings) || 1,
+              difficulty: rec.difficulty || 'easy',
+              tags: Array.isArray(rec.tags) && rec.tags.length > 0 ? rec.tags : ['équilibré'],
+              confidence: Number(rec.confidence) || 0.85,
+              source: rec.source || 'ai_generated'
+            };
+          });
+          
+          console.log('=== DEBUG: Final allRecommendations ===', allRecommendations.map(r => ({
+            id: r.id,
+            title: r.title,
+            category: r.category,
+            description: r.description
+          })));
+          
+          toast.success(`${allRecommendations.length} recommandations AI générées !`);
+        } else {
+          console.warn('API returned empty recommendations');
+          apiSucceeded = false;
+        }
+      } catch (error) {
+        console.error('API call failed:', error);
+        apiSucceeded = false;
+      }
+      
+      // Use fallback only if API completely failed
+      if (!apiSucceeded) {
+        console.log('=== DEBUG: Using fallback recommendations ===');
+        toast.warning("Génération des recommandations par défaut");
+        
+        // Create fallback recommendations
+        const mealTypes: Array<'breakfast' | 'lunch' | 'dinner' | 'snack'> = ['breakfast', 'lunch', 'dinner', 'snack'];
+        const fallbackTitles = [
+          'Petit-déjeuner protéiné',
+          'Déjeuner équilibré', 
+          'Dîner nutritif',
+          'Collation énergétique'
+        ];
+        
+        allRecommendations = mealTypes.map((mealType, index) => ({
+          id: `fallback_${mealType}_${index}_${Date.now()}`,
+          title: fallbackTitles[index],
+          description: `Un ${mealType === 'breakfast' ? 'petit-déjeuner' : mealType === 'lunch' ? 'déjeuner' : mealType === 'dinner' ? 'dîner' : 'collation'} riche en protéines et équilibré`,
+          category: mealType,
+          nutrition: {
+            calories: 300 + (index * 50),
+            protein: 20 + (index * 5),
+            carbs: 30,
+            fat: 10,
+            fiber: 5
+          },
+          ingredients: [
+            { name: "Protéine au choix", quantity: "100", unit: "g" },
+            { name: "Légumes", quantity: "150", unit: "g" },
+            { name: "Féculents", quantity: "80", unit: "g" }
+          ],
+          instructions: ["Préparer les ingrédients", "Assembler le repas", "Servir frais"],
+          prepTime: 10,
+          cookTime: 15,
+          servings: 1,
+          difficulty: 'easy' as const,
+          tags: ['équilibré', 'protéiné'],
+          confidence: 0.8,
+          source: 'fallback' as const
+        }));
+      }
+
+      // Validate uniqueness of IDs
+      const uniqueIds = new Set(allRecommendations.map(r => r.id));
+      console.log(`Generated ${allRecommendations.length} recommendations with ${uniqueIds.size} unique IDs`);
+      if (allRecommendations.length !== uniqueIds.size) {
+        console.warn('Duplicate IDs detected in recommendations!');
+      }
+
+      // Create a combined result object matching the expected type
+      const combinedResult = {
+        recommendations: allRecommendations,
+        explanation: apiMetadata.explanation,
+        tips: apiMetadata.tips,
+        nutritionalInsights: apiMetadata.nutritionalInsights,
+        weeklyGoalProgress: apiMetadata.weeklyGoalProgress
+      };
+      
+      console.log('=== DEBUG: Setting final recommendations ===', combinedResult);
+      console.log('=== DEBUG: Recommendations titles ===', combinedResult.recommendations.map(r => r.title));
+      setRecommendations(combinedResult);
       
     } catch (error) {
       console.error('Erreur lors de la génération de recommandations:', error);
@@ -239,7 +425,7 @@ export default function Recommendations() {
         <div className="grid gap-4 sm:grid-cols-2">
           {filteredRecommendations.map((meal, index) => (
             <motion.div
-              key={meal.id}
+              key={`recommendation_${index}_${meal.category}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}

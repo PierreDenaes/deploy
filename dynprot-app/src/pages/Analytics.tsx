@@ -16,7 +16,9 @@ import {
   TrendingUp,
   Calendar,
   Target,
-  Award
+  Award,
+  Activity,
+  AlertCircle
 } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 import type { MealEntry } from "@/context/AppContext";
@@ -63,15 +65,45 @@ import DataExport from "@/components/DataExport";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
+import { nutritionalAnalysis } from "@/services/nutritionalAnalysis.service";
 
 type DateFilter = "all" | "today" | "week" | "month" | "custom";
 type SortDirection = "asc" | "desc";
 type SortField = "date" | "protein";
 
+// AI Analysis types
+interface NutritionalScore {
+  overall: number;
+  protein: number;
+  balance: number;
+  consistency: number;
+  variety: number;
+}
+
+interface NutritionalInsight {
+  type: 'success' | 'warning' | 'info' | 'error';
+  title: string;
+  description: string;
+  actionable?: string;
+}
+
+interface AIAnalysisData {
+  period: 'week' | 'month' | 'quarter';
+  scores: NutritionalScore;
+  insights: NutritionalInsight[];
+  recommendations: string[];
+  totalMeals: number;
+  avgDailyProtein: number;
+  avgDailyCalories: number;
+  proteinGoalAchievement: number;
+  bestDay: { date: string; protein: number };
+  improvementAreas: string[];
+}
+
 export default function Analytics() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { state, deleteMeal, addFavoriteMeal, markAnalyticsViewed } = useAppContext();
+  const { state, deleteMeal, addFavoriteMeal } = useAppContext();
   
   // Get tab from URL params with legacy support, default to 'analytics'
   const rawTab = searchParams.get('tab');
@@ -79,6 +111,7 @@ export default function Analytics() {
     // Handle legacy URLs
     if (rawTab === 'overview' || rawTab === 'trends') return 'analytics';
     if (rawTab === 'details') return 'history';
+    if (rawTab === 'ai' || rawTab === 'insights') return 'ai-insights';
     return rawTab || 'analytics';
   })();
   
@@ -93,15 +126,172 @@ export default function Analytics() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [mealToDelete, setMealToDelete] = useState<string | null>(null);
+  
+  // AI Analysis states
+  const [aiAnalysisData, setAIAnalysisData] = useState<AIAnalysisData | null>(null);
+  const [aiPeriod, setAIPeriod] = useState<'week' | 'month' | 'quarter'>('week');
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
 
-  // Mark analytics as viewed when component mounts
-  React.useEffect(() => {
-    markAnalyticsViewed();
-  }, [markAnalyticsViewed]);
+  // Note: Analytics viewing tracking disabled (API endpoint not implemented)
 
   // Handle tab changes and update URL
   const handleTabChange = (tab: string) => {
     setSearchParams({ tab });
+    
+    // Load AI analysis when switching to AI tab
+    if (tab === 'ai-insights' && !aiAnalysisData) {
+      generateAIAnalysis();
+    }
+  };
+
+  // Load AI analysis when period changes
+  React.useEffect(() => {
+    if (currentTab === 'ai-insights') {
+      generateAIAnalysis();
+    }
+  }, [aiPeriod]);
+
+  // Load AI analysis initially if on AI tab
+  React.useEffect(() => {
+    if (currentTab === 'ai-insights' && !aiAnalysisData) {
+      generateAIAnalysis();
+    }
+  }, [currentTab]);
+
+  const generateAIAnalysis = async () => {
+    if (!state.user || !state.userSettings) {
+      toast.error("Profil utilisateur manquant");
+      return;
+    }
+
+    // Check if AI features are enabled
+    if (!state.ai?.features?.nutritionAnalysis) {
+      toast.error("L'analyse IA n'est pas activée. Activez-la dans votre profil.");
+      return;
+    }
+
+    setIsLoadingAI(true);
+    try {
+      // Build userProfile
+      const userProfile = {
+        age: Number(state.userSettings.age) || 30,
+        gender: (state.userSettings.gender as 'male' | 'female' | 'other') || 'other',
+        weight: Number(state.user.weightKg) || 75,
+        height: Number(state.user.heightCm) || 175,
+        activityLevel: state.user.activityLevel,
+        fitnessGoal: (state.userSettings.fitnessGoal as 'weight_loss' | 'muscle_gain' | 'maintenance' | 'general_health') || 'general_health',
+        proteinGoal: Number(state.user.dailyProteinGoal) || 120,
+        calorieGoal: Number(state.user.calorieGoal) || 2000,
+        allergies: [],
+        dietaryRestrictions: state.user.dietPreferences || [],
+        cuisinePreferences: ['française', 'méditerranéenne'],
+        cookingTime: 'moderate' as const,
+        budget: 'medium' as const,
+        equipment: ['four', 'plaques', 'mixeur']
+      };
+
+      // Calculate period dates
+      const endDate = new Date();
+      let startDate: Date;
+      let analysisPeriod: 'week' | 'month' | '3months';
+      
+      switch (aiPeriod) {
+        case 'week':
+          startDate = subDays(endDate, 7);
+          analysisPeriod = 'week';
+          break;
+        case 'month':
+          startDate = subDays(endDate, 30);
+          analysisPeriod = 'month';
+          break;
+        case 'quarter':
+          startDate = subDays(endDate, 90);
+          analysisPeriod = '3months';
+          break;
+      }
+
+      // Filter meals for the period
+      const relevantMeals = meals.filter(meal => {
+        const mealDate = new Date(meal.timestamp);
+        return mealDate >= startDate && mealDate <= endDate;
+      });
+
+      if (relevantMeals.length === 0) {
+        const defaultAnalysis: AIAnalysisData = {
+          period: aiPeriod,
+          scores: { overall: 0, protein: 0, balance: 0, consistency: 0, variety: 0 },
+          insights: [{
+            type: 'info',
+            title: 'Commencez votre suivi',
+            description: 'Aucun repas n\'a été enregistré pour cette période. Commencez à logger vos repas pour obtenir une analyse détaillée.'
+          }],
+          recommendations: ['Commencez par enregistrer vos repas quotidiens'],
+          totalMeals: 0,
+          avgDailyProtein: 0,
+          avgDailyCalories: 0,
+          proteinGoalAchievement: 0,
+          bestDay: { date: 'Aucun repas enregistré', protein: 0 },
+          improvementAreas: []
+        };
+        setAIAnalysisData(defaultAnalysis);
+        return;
+      }
+
+      // Call AI analysis service
+      const request = {
+        period: analysisPeriod,
+        detailLevel: 'detailed' as const
+      };
+
+      const aiAnalysis = await nutritionalAnalysis.generateAnalysisReport(userProfile, relevantMeals, request);
+      
+      // Transform AI response to our format
+      const transformedData: AIAnalysisData = {
+        period: aiPeriod,
+        scores: {
+          overall: aiAnalysis.summary?.overallScore || 0,
+          protein: Math.min((aiAnalysis.summary?.proteinGoalAchievement || 0), 100),
+          balance: aiAnalysis.benchmarks?.vs_goals?.balance || 0,
+          consistency: aiAnalysis.metrics?.consistencyScore || 0,
+          variety: aiAnalysis.metrics?.varietyScore || 0
+        },
+        insights: [
+          ...(aiAnalysis.insights?.strengths?.map(s => ({
+            type: 'success' as const,
+            title: s.title,
+            description: s.description
+          })) || []),
+          ...(aiAnalysis.insights?.improvements?.map(i => ({
+            type: 'warning' as const,
+            title: i.title,
+            description: i.description
+          })) || []),
+          ...(aiAnalysis.insights?.alerts?.map(a => ({
+            type: 'error' as const,
+            title: a.title,
+            description: a.description
+          })) || [])
+        ],
+        recommendations: aiAnalysis.insights?.personalizedTips?.map(t => t.tip) || [],
+        totalMeals: aiAnalysis.summary?.totalMeals || relevantMeals.length,
+        avgDailyProtein: Math.round(aiAnalysis.summary?.avgDailyProtein || 0),
+        avgDailyCalories: Math.round(aiAnalysis.summary?.avgDailyCalories || 0),
+        proteinGoalAchievement: Math.round(aiAnalysis.summary?.proteinGoalAchievement || 0),
+        bestDay: {
+          date: 'Analyse en cours',
+          protein: Math.round(aiAnalysis.summary?.avgDailyProtein || 0)
+        },
+        improvementAreas: aiAnalysis.insights?.improvements?.map(i => i.title) || []
+      };
+
+      setAIAnalysisData(transformedData);
+      
+    } catch (error) {
+      console.error('Error generating AI analysis:', error);
+      toast.error("Erreur lors de l'analyse IA. Veuillez réessayer.");
+    } finally {
+      setIsLoadingAI(false);
+    }
   };
 
   const groupedMeals = useMemo(() => {
@@ -280,14 +470,21 @@ export default function Analytics() {
           {/* Main Content with Tabs */}
           <motion.div variants={itemVariants}>
             <Tabs value={currentTab} onValueChange={handleTabChange}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="analytics" className="flex items-center gap-3">
-                  <TrendingUp className="h-5 w-5" strokeWidth={2.5} />
-                  Analytics
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="analytics" className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" strokeWidth={2.5} />
+                  <span className="hidden sm:inline">Analytics</span>
+                  <span className="sm:hidden">Stats</span>
                 </TabsTrigger>
-                <TabsTrigger value="history" className="flex items-center gap-3">
-                  <Calendar className="h-5 w-5" strokeWidth={2.5} />
-                  Historique
+                <TabsTrigger value="ai-insights" className="flex items-center gap-2">
+                  <Target className="h-4 w-4" strokeWidth={2.5} />
+                  <span className="hidden sm:inline">IA Insights</span>
+                  <span className="sm:hidden">IA</span>
+                </TabsTrigger>
+                <TabsTrigger value="history" className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" strokeWidth={2.5} />
+                  <span className="hidden sm:inline">Historique</span>
+                  <span className="sm:hidden">Liste</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -382,6 +579,165 @@ export default function Analytics() {
                 >
                   <PeriodSummary />
                 </motion.div>
+              </TabsContent>
+
+              {/* AI Insights Tab */}
+              <TabsContent value="ai-insights" className="space-y-8 mt-8">
+                {isLoadingAI ? (
+                  <div className="text-center py-20">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                      className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full mx-auto mb-6"
+                    />
+                    <h2 className="text-xl font-bold mb-2">Analyse IA en cours</h2>
+                    <p className="text-base text-muted-foreground">
+                      Notre IA analyse vos habitudes nutritionnelles...
+                    </p>
+                  </div>
+                ) : aiAnalysisData ? (
+                  <>
+                    {/* Period Selector for AI */}
+                    <div className="flex justify-center">
+                      <div className="flex items-center gap-2 p-1 bg-muted rounded-2xl">
+                        {(['week', 'month', 'quarter'] as const).map((period) => (
+                          <Button
+                            key={period}
+                            variant={aiPeriod === period ? "default" : "ghost"}
+                            size="sm"
+                            onClick={() => setAIPeriod(period)}
+                            className="rounded-xl px-4 py-2"
+                          >
+                            {period === 'week' ? 'Semaine' : period === 'month' ? 'Mois' : 'Trimestre'}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* AI Score Overview */}
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                      {Object.entries({
+                        overall: { label: 'Global', icon: Award },
+                        protein: { label: 'Protéines', icon: Target },
+                        balance: { label: 'Équilibre', icon: Activity },
+                        consistency: { label: 'Régularité', icon: Clock },
+                        variety: { label: 'Variété', icon: Utensils }
+                      }).map(([key, { label, icon: Icon }]) => {
+                        const score = aiAnalysisData.scores[key as keyof NutritionalScore];
+                        const getScoreColor = (score: number) => {
+                          if (score >= 80) return 'text-green-600 bg-green-50 border-green-200';
+                          if (score >= 60) return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+                          return 'text-red-600 bg-red-50 border-red-200';
+                        };
+                        
+                        return (
+                          <Card key={key} className={`text-center ${getScoreColor(score)}`}>
+                            <CardContent className="p-4">
+                              <Icon className="h-6 w-6 mx-auto mb-2" />
+                              <div className="text-2xl font-bold">{score}</div>
+                              <div className="text-sm font-medium">{label}</div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+
+                    {/* AI Insights */}
+                    {aiAnalysisData.insights.length > 0 && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <Target className="h-5 w-5" />
+                            Insights IA
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          {aiAnalysisData.insights.slice(0, 6).map((insight, index) => {
+                            const getInsightIcon = (type: string) => {
+                              switch (type) {
+                                case 'success': return <CheckCircle className="h-5 w-5 text-green-600" />;
+                                case 'warning': return <AlertCircle className="h-5 w-5 text-yellow-600" />;
+                                case 'error': return <AlertCircle className="h-5 w-5 text-red-600" />;
+                                default: return <AlertCircle className="h-5 w-5 text-blue-600" />;
+                              }
+                            };
+                            
+                            return (
+                              <div key={index} className="flex gap-3 p-3 rounded-lg bg-muted/30">
+                                {getInsightIcon(insight.type)}
+                                <div className="flex-1">
+                                  <h4 className="font-semibold text-sm">{insight.title}</h4>
+                                  <p className="text-sm text-muted-foreground mt-1">{insight.description}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* AI Recommendations */}
+                    {aiAnalysisData.recommendations.length > 0 && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <TrendingUp className="h-5 w-5" />
+                            Recommandations
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <ul className="space-y-2">
+                            {aiAnalysisData.recommendations.slice(0, 5).map((rec, index) => (
+                              <li key={index} className="flex items-start gap-3 text-sm">
+                                <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0" />
+                                <span>{rec}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Key Metrics */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <Card>
+                        <CardContent className="p-4 text-center">
+                          <div className="text-2xl font-bold text-primary">{aiAnalysisData.totalMeals}</div>
+                          <div className="text-sm text-muted-foreground">Repas total</div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4 text-center">
+                          <div className="text-2xl font-bold text-primary">{aiAnalysisData.avgDailyProtein}g</div>
+                          <div className="text-sm text-muted-foreground">Protéines/jour</div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4 text-center">
+                          <div className="text-2xl font-bold text-primary">{aiAnalysisData.avgDailyCalories}</div>
+                          <div className="text-sm text-muted-foreground">Calories/jour</div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4 text-center">
+                          <div className="text-2xl font-bold text-primary">{aiAnalysisData.proteinGoalAchievement}%</div>
+                          <div className="text-sm text-muted-foreground">Objectif atteint</div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-20">
+                    <Target className="w-16 h-16 text-muted-foreground mx-auto mb-6" />
+                    <h2 className="text-xl font-bold mb-2">Analyse IA non disponible</h2>
+                    <p className="text-base text-muted-foreground mb-6">
+                      Activez l'analyse IA dans votre profil pour obtenir des insights personnalisés.
+                    </p>
+                    <Button onClick={() => navigate('/profile')} variant="outline">
+                      Aller au profil
+                    </Button>
+                  </div>
+                )}
               </TabsContent>
 
               {/* History Tab */}

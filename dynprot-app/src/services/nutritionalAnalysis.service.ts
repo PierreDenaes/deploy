@@ -344,7 +344,9 @@ export class NutritionalAnalysisService {
       const filteredMeals = this.filterMealsByPeriod(meals, request);
       
       if (filteredMeals.length === 0) {
-        throw new Error('Aucune donnée disponible pour la période sélectionnée');
+        console.log('No meals found for selected period in service, returning empty analysis');
+        // Retourner une analyse vide au lieu de lancer une erreur
+        return this.createEmptyAnalysis(request.period);
       }
 
       // Calculs des métriques de base
@@ -817,6 +819,60 @@ export class NutritionalAnalysisService {
   }
 
   // Méthodes utilitaires pour le rapport
+  private createEmptyAnalysis(period: 'week' | 'month' | '3months' | '6months' | 'year'): AnalysisReportResponse {
+    return {
+      summary: {
+        period,
+        totalMeals: 0,
+        avgDailyProtein: 0,
+        avgDailyCalories: 0,
+        proteinGoalAchievement: 0,
+        calorieGoalAchievement: 0,
+        overallScore: 0,
+        keyFindings: ['Aucun repas enregistré pour cette période']
+      },
+      metrics: this.getEmptyMetrics(),
+      patterns: {
+        mealDistribution: { breakfast: 0, lunch: 0, dinner: 0, snacks: 0 },
+        weekdayVsWeekend: { weekday: 0, weekend: 0 },
+        mealTiming: { regular: 0, irregular: 0 },
+        portionSizes: { small: 0, medium: 0, large: 0 },
+        hydrationPattern: { adequate: 0, insufficient: 0 },
+        consistencyPattern: 'irregular'
+      },
+      insights: {
+        strengths: [],
+        improvements: [
+          {
+            title: 'Commencez votre suivi',
+            description: 'Aucun repas n\'a été enregistré pour cette période. Commencez par enregistrer vos repas quotidiens.',
+            priority: 'high',
+            category: 'tracking'
+          }
+        ],
+        alerts: [],
+        personalizedTips: [
+          {
+            tip: 'Utilisez la fonctionnalité de suivi des repas',
+            reasoning: 'L\'enregistrement régulier de vos repas permet une analyse nutritionnelle précise',
+            category: 'tracking'
+          }
+        ]
+      },
+      trends: {
+        protein: [],
+        calories: [],
+        balance: [],
+        consistency: []
+      },
+      benchmarks: {
+        vs_goals: { protein: 0, calories: 0, balance: 0 },
+        vs_recommendations: { protein: 0, variety: 0, timing: 0 },
+        improvement_potential: { protein: 100, calories: 100, balance: 100 }
+      }
+    };
+  }
+
   private getEmptyMetrics(): NutritionalMetrics {
     return {
       avgDailyProtein: 0,

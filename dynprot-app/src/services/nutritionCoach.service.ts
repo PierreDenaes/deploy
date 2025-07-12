@@ -366,14 +366,38 @@ export class NutritionCoachService {
         // Extract JSON from markdown code blocks
         const jsonMatch = frenchData.response.match(/```json\s*([\s\S]*?)\s*```/);
         if (jsonMatch && jsonMatch[1]) {
-          const jsonString = jsonMatch[1].trim();
+          let jsonString = jsonMatch[1].trim();
+          
+          // Clean up common JSON formatting issues from AI responses
+          jsonString = jsonString
+            // Fix unquoted values with units (e.g., 25g -> "25g")
+            .replace(/:\s*(\d+g)\b/g, ': "$1"')
+            .replace(/:\s*(\d+mg)\b/g, ': "$1"')
+            .replace(/:\s*(\d+ml)\b/g, ': "$1"')
+            .replace(/:\s*(\d+kg)\b/g, ': "$1"')
+            .replace(/:\s*(\d+min)\b/g, ': "$1"')
+            // Fix unquoted difficulty levels
+            .replace(/:\s*(facile|moyen|difficile)\b/g, ': "$1"')
+            .replace(/:\s*(easy|medium|hard)\b/g, ': "$1"')
+            // Fix other common unquoted strings
+            .replace(/:\s*([a-zA-Z][a-zA-Z0-9_]*)\s*([,}])/g, ': "$1"$2');
+          
+          console.log('Cleaned JSON string:', jsonString);
           parsedData = JSON.parse(jsonString);
           console.log('Successfully parsed JSON from markdown:', parsedData);
         }
       } catch (parseError) {
         console.error('Failed to parse JSON from markdown:', parseError);
         console.log('Raw response string:', frenchData.response);
-        // Fall back to using the original data
+        
+        // Try alternative: use regex to extract data manually
+        try {
+          parsedData = this.extractDataWithRegex(frenchData.response);
+          console.log('Fallback: extracted data with regex:', parsedData);
+        } catch (regexError) {
+          console.error('Regex extraction also failed:', regexError);
+          // Fall back to using the original data
+        }
       }
     }
     
@@ -1196,6 +1220,86 @@ export class NutritionCoachService {
     }
     
     console.log('Final distribution:', recommendations.map(r => `${r.title} -> ${r.category}`));
+  }
+
+  private extractDataWithRegex(responseString: string): any {
+    // Fallback method to extract data when JSON parsing fails
+    console.log('Attempting regex extraction from:', responseString);
+    
+    // Try to extract basic meal recommendation structure
+    const mealRecommendations: any[] = [];
+    
+    // Look for meal titles
+    const titleMatches = responseString.match(/"title":\s*"([^"]+)"/g);
+    const descriptionMatches = responseString.match(/"description":\s*"([^"]+)"/g);
+    
+    if (titleMatches && titleMatches.length > 0) {
+      titleMatches.forEach((titleMatch, index) => {
+        const title = titleMatch.match(/"title":\s*"([^"]+)"/)?.[1] || `Repas ${index + 1}`;
+        const description = descriptionMatches?.[index]?.match(/"description":\s*"([^"]+)"/)?.[1] || 'Description non disponible';
+        
+        mealRecommendations.push({
+          id: `rec_${index + 1}`,
+          title: title,
+          description: description,
+          category: 'lunch', // Default category
+          nutrition: {
+            calories: 300,
+            protein: 20,
+            carbs: 30,
+            fat: 10
+          },
+          ingredients: [
+            { name: "Ingrédients à préciser", quantity: "1", unit: "portion" }
+          ],
+          instructions: ["Instructions de préparation à définir"],
+          prepTime: 15,
+          cookTime: 15,
+          servings: 1,
+          difficulty: 'easy' as const,
+          tags: ['ai_generated'],
+          confidence: 0.5,
+          source: 'ai_generated' as const
+        });
+      });
+    }
+    
+    // If no titles found, create a default meal
+    if (mealRecommendations.length === 0) {
+      mealRecommendations.push({
+        id: 'rec_fallback',
+        title: 'Repas équilibré',
+        description: 'Un repas équilibré riche en protéines',
+        category: 'lunch',
+        nutrition: {
+          calories: 350,
+          protein: 25,
+          carbs: 35,
+          fat: 12
+        },
+        ingredients: [
+          { name: "Protéine au choix", quantity: "100", unit: "g" },
+          { name: "Légumes", quantity: "150", unit: "g" },
+          { name: "Féculents", quantity: "80", unit: "g" }
+        ],
+        instructions: [
+          "Préparer les ingrédients",
+          "Cuire selon les préférences",
+          "Servir chaud"
+        ],
+        prepTime: 15,
+        cookTime: 20,
+        servings: 1,
+        difficulty: 'easy' as const,
+        tags: ['équilibré', 'protéiné'],
+        confidence: 0.7,
+        source: 'ai_generated' as const
+      });
+    }
+    
+    return {
+      meal_recommendations: mealRecommendations
+    };
   }
 }
 

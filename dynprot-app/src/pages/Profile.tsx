@@ -29,10 +29,6 @@ import { sanitizeName } from "@/utils/sanitize";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { ProfileService } from "@/services/api.profile";
-import { nutritionCoach } from "@/services/nutritionCoach.service";
-import { nutritionalAnalysis } from "@/services/nutritionalAnalysis.service";
-import MealRecommendationsModal from "@/components/MealRecommendationsModal";
-import type { CoachRecommendationResponse } from "@/services/nutritionCoach.service";
 
 // Utility to sanitize profile payloads
 function sanitizeProfilePayload(payload: Record<string, any>) {
@@ -59,10 +55,6 @@ export default function Profile() {
   const [isDeleting, setIsDeleting] = useState(false);
   const goalSetterRef = useRef<GoalSetterRef>(null);
   
-  // AI Modal states
-  const [showMealRecommendations, setShowMealRecommendations] = useState(false);
-  const [mealRecommendations, setMealRecommendations] = useState<CoachRecommendationResponse | null>(null);
-  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
 
   // Synchronize local name state with app context user name
   useEffect(() => {
@@ -151,156 +143,9 @@ export default function Profile() {
     });
   };
 
-  // Helper to map fitness goal values
-  const mapFitnessGoal = (goal: string | undefined): 'weight_loss' | 'muscle_gain' | 'maintenance' | 'general_health' => {
-    switch (goal) {
-      case 'weight_loss':
-      case 'lose_weight':
-        return 'weight_loss';
-      case 'muscle_gain':
-      case 'gain_muscle':
-        return 'muscle_gain';
-      case 'maintenance':
-      case 'maintain_weight':
-        return 'maintenance';
-      case 'general_health':
-      default:
-        return 'general_health';
-    }
-  };
 
-  // Helper to create user nutrition profile with proper data types
-  const createNutritionProfile = () => ({
-    age: Number(state.userSettings?.age) || 30,
-    gender: (state.userSettings?.gender as 'male' | 'female' | 'other') || 'other',
-    weight: Number(state.user.weightKg) || 75,
-    height: Number(state.user.heightCm) || 175,
-    activityLevel: state.user.activityLevel,
-    fitnessGoal: mapFitnessGoal(state.userSettings?.fitnessGoal),
-    proteinGoal: Number(state.user.dailyProteinGoal) || 120,
-    calorieGoal: Number(state.user.calorieGoal) || 2000,
-    allergies: [],
-    dietaryRestrictions: state.user.dietPreferences || [],
-    cuisinePreferences: ['française', 'méditerranéenne'],
-    cookingTime: 'moderate' as const,
-    budget: 'medium' as const,
-    equipment: ['four', 'plaques', 'mixeur']
-  });
 
-  // AI Features handlers
-  const toggleAIFeature = (feature: "proteinEstimation" | "mealRecommendation" | "nutritionAnalysis") => {
-    const wasEnabled = state.ai.features[feature];
-    
-    dispatch({
-      type: "SET_AI_STATE",
-      payload: {
-        features: {
-          ...state.ai.features,
-          [feature]: !state.ai.features[feature]
-        }
-      }
-    });
-    
-    // Show confirmation message
-    const featureNames = {
-      proteinEstimation: "Estimation des protéines",
-      mealRecommendation: "Recommandations de repas", 
-      nutritionAnalysis: "Analyse nutritionnelle"
-    };
-    
-    const isEnabled = !wasEnabled;
-    toast.success(`${featureNames[feature]} ${isEnabled ? 'activée' : 'désactivée'}`);
-    
-    // Navigate to dedicated page when enabling features
-    if (feature === 'mealRecommendation' && isEnabled) {
-      setTimeout(() => {
-        navigate('/recommendations');
-      }, 1000); // Small delay to show the toast
-    } else if (feature === 'nutritionAnalysis' && isEnabled) {
-      setTimeout(() => {
-        navigate('/nutrition-analysis');
-      }, 1000); // Small delay to show the toast
-    }
-  };
 
-  const handleGetMealRecommendation = async () => {
-    try {
-      if (!state.ai.features.mealRecommendation) {
-        toast.error("Veuillez d'abord activer les recommandations de repas");
-        return;
-      }
-
-      setIsLoadingRecommendations(true);
-      setShowMealRecommendations(true);
-
-      // Create user nutrition profile with proper data types
-      const userProfile = createNutritionProfile();
-
-      const request = {
-        type: 'meal' as const,
-        mealType: 'lunch' as const,
-        context: 'Suggestion rapide pour optimiser les protéines'
-      };
-
-      const recommendations = await nutritionCoach.getRecommendations(userProfile, request, state.meals.slice(-7));
-      
-      setMealRecommendations(recommendations);
-      toast.success(`${recommendations.recommendations.length} recommandations générées !`);
-      
-    } catch (error) {
-      console.error('Erreur lors de la génération de recommandations:', error);
-      toast.error("Impossible de générer les recommandations. Veuillez réessayer.");
-      setShowMealRecommendations(false);
-    } finally {
-      setIsLoadingRecommendations(false);
-    }
-  };
-
-  const handleGetNutritionalAnalysis = async () => {
-    try {
-      if (!state.ai.features.nutritionAnalysis) {
-        toast.error("Veuillez d'abord activer l'analyse nutritionnelle");
-        return;
-      }
-
-      if (state.meals.length === 0) {
-        toast.error("Aucun repas à analyser. Ajoutez d'abord quelques repas.");
-        return;
-      }
-
-      // Create user nutrition profile with proper data types  
-      const userProfile = {
-        age: Number(state.userSettings?.age) || 30,
-        gender: (state.userSettings?.gender as 'male' | 'female' | 'other') || 'other',
-        weight: Number(state.user.weightKg) || 75,
-        height: Number(state.user.heightCm) || 175,
-        activityLevel: state.user.activityLevel,
-        fitnessGoal: mapFitnessGoal(state.userSettings?.fitnessGoal),
-        proteinGoal: Number(state.user.dailyProteinGoal) || 120,
-        calorieGoal: Number(state.user.calorieGoal) || 2000
-      };
-
-      const request = {
-        period: 'week' as const,
-        focusAreas: [
-          'protein',
-          'balance',
-          'consistency',
-        ] as ('protein' | 'calories' | 'balance' | 'consistency' | 'variety' | 'timing')[],
-        detailLevel: 'detailed' as const
-      };
-
-      toast.info("Analyse nutritionnelle en cours...");
-      const analysis = await nutritionalAnalysis.generateAnalysisReport(userProfile, state.meals, request);
-      
-      toast.success("Analyse nutritionnelle terminée !");
-      console.log('Analyse:', analysis);
-      
-    } catch (error) {
-      console.error('Erreur lors de l\'analyse nutritionnelle:', error);
-      toast.error("Impossible de générer l'analyse. Veuillez réessayer.");
-    }
-  };
 
   const handleLogout = () => {
     setShowLogoutConfirm(true);
@@ -629,88 +474,40 @@ export default function Profile() {
                     </CardHeader>
                     <CardContent className="p-6 space-y-6">
                       <div className="space-y-6">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0 p-4 rounded-2xl bg-muted/30 border border-border/20">
-                          <div className="space-y-1">
-                            <Label htmlFor="protein-estimation" className="text-base md:text-lg font-semibold">Estimation des protéines</Label>
-                            <p className="text-base text-muted-foreground font-medium">
-                              Utilisez l'IA pour estimer les protéines à partir de photos.
-                            </p>
-                          </div>
-                          <Switch 
-                            id="protein-estimation" 
-                            checked={state.ai.features.proteinEstimation} 
-                            onCheckedChange={() => toggleAIFeature('proteinEstimation')}
-                            className="scale-110 sm:scale-125" 
-                          />
-                        </div>
-                        <Separator className="border-border/30" />
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0 p-4 rounded-2xl bg-muted/30 border border-border/20">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <Label htmlFor="meal-recommendations" className="text-base md:text-lg font-semibold">Recommandations de repas</Label>
-                              <Badge variant="secondary" className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">🤖 IA</Badge>
-                            </div>
-                            <p className="text-base text-muted-foreground font-medium">
-                              Obtenez des suggestions de repas basées sur vos objectifs.
-                            </p>
-                          </div>
-                          <Switch 
-                            id="meal-recommendations" 
-                            checked={state.ai.features.mealRecommendation} 
-                            onCheckedChange={(checked) => {
-                              toggleAIFeature('mealRecommendation');
-                              if (checked) {
-                                navigate('/recommendations');
-                              }
-                            }}
-                            className="scale-110 sm:scale-125" 
-                          />
-                        </div>
-                        <Separator className="border-border/30" />
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0 p-4 rounded-2xl bg-muted/30 border border-border/20">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <Label htmlFor="nutrition-analysis" className="text-base md:text-lg font-semibold">Analyse nutritionnelle</Label>
-                              <Badge variant="secondary" className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">🤖 IA</Badge>
-                            </div>
-                            <p className="text-base text-muted-foreground font-medium">
-                              Obtenez des analyses nutritionnelles détaillées de vos repas.
-                            </p>
-                          </div>
-                          <Switch 
-                            id="nutrition-analysis" 
-                            checked={state.ai.features.nutritionAnalysis} 
-                            onCheckedChange={(checked) => {
-                              toggleAIFeature('nutritionAnalysis');
-                              if (checked) {
-                                navigate('/nutrition-analysis');
-                              }
-                            }}
-                            className="scale-110 sm:scale-125" 
-                          />
-                        </div>
-                        
-                        <Separator className="border-border/30" />
-                        
-                        {/* Test buttons for AI functionality */}
+                        {/* Direct access to AI features */}
                         <div className="space-y-4">
-                          <h4 className="text-lg font-semibold">Tester les fonctionnalités</h4>
-                          <div className="flex flex-col sm:flex-row gap-3">
+                          <h4 className="text-lg font-semibold">Fonctionnalités disponibles</h4>
+                          <div className="grid gap-4">
                             <Button 
                               onClick={() => navigate('/recommendations')}
-                              disabled={!state.ai.features.mealRecommendation}
-                              className="flex-1 h-12 text-base font-semibold"
+                              className="h-16 text-left justify-start p-4"
                               variant="outline"
                             >
-                              Voir mes recommandations
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                  🍽️
+                                </div>
+                                <div className="text-left">
+                                  <div className="font-semibold">Recommandations de repas</div>
+                                  <div className="text-sm text-muted-foreground">Suggestions personnalisées basées sur vos objectifs</div>
+                                </div>
+                              </div>
                             </Button>
+                            
                             <Button 
-                              onClick={() => navigate('/nutrition-analysis')}
-                              disabled={!state.ai.features.nutritionAnalysis}
-                              className="flex-1 h-12 text-base font-semibold"
+                              onClick={() => navigate('/analytics?tab=ai-insights')}
+                              className="h-16 text-left justify-start p-4"
                               variant="outline"
                             >
-                              Analyser ma nutrition
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                  📊
+                                </div>
+                                <div className="text-left">
+                                  <div className="font-semibold">Analyse nutritionnelle</div>
+                                  <div className="text-sm text-muted-foreground">Insights détaillés sur vos habitudes alimentaires</div>
+                                </div>
+                              </div>
                             </Button>
                           </div>
                         </div>
@@ -1053,16 +850,6 @@ export default function Profile() {
           </DialogContent>
         </Dialog>
 
-        {/* AI Recommendations Modal */}
-        <MealRecommendationsModal
-          isOpen={showMealRecommendations}
-          onClose={() => {
-            setShowMealRecommendations(false);
-            setMealRecommendations(null);
-          }}
-          recommendations={mealRecommendations}
-          isLoading={isLoadingRecommendations}
-        />
       </div>
     </div>
   );

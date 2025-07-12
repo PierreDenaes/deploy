@@ -22,7 +22,6 @@ const UnifiedMealEntry = lazy(() => import('./pages/UnifiedMealEntry'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Recommendations = lazy(() => import('./pages/Recommendations'));
-const NutritionAnalysis = lazy(() => import('./pages/NutritionAnalysis'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Lazy load auth pages
@@ -111,7 +110,8 @@ const App = () => (
                   <Route path="/analytics" element={<Analytics />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/recommendations" element={<Recommendations />} />
-                  <Route path="/nutrition-analysis" element={<NutritionAnalysis />} />
+                  {/* Redirect nutrition-analysis to Analytics with AI tab */}
+                  <Route path="/nutrition-analysis" element={<Analytics />} />
                   <Route path="/protein-calculation-explained" element={<ProteinCalculationExplanation />} />
                   {/* Redirect legacy routes to analytics with appropriate tabs */}
                   <Route path="/history" element={<Analytics />} />
