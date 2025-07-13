@@ -48,8 +48,8 @@ export function WeeklyTrendChart({
       
       const dayData = dailyData.find((day) => day.date === dateStr);
       if (dayData) {
-        dayData.protein += safeNumber(meal.protein, 0);
-        dayData.calories += safeNumber(meal.calories, 0);
+        dayData.protein += Math.round(safeNumber(meal.protein, 0));
+        dayData.calories += Math.round(safeNumber(meal.calories, 0));
       }
     });
 
@@ -87,10 +87,10 @@ export function WeeklyTrendChart({
               <Tooltip 
                 labelFormatter={(value) => `Date: ${value}`} 
                 formatter={(value, name) => {
-                  if (name === "protein") return [`${value}g`, "Protein"];
-                  if (name === "calories") return [`${value} cal`, "Calories"];
-                  if (name === "proteinGoal") return [`${value}g`, "Protein Goal"];
-                  if (name === "calorieGoal") return [`${value} cal`, "Calorie Goal"];
+                  if (name === "protein") return [`${Math.round(value)}g`, "Protein"];
+                  if (name === "calories") return [`${Math.round(value)} cal`, "Calories"];
+                  if (name === "proteinGoal") return [`${Math.round(value)}g`, "Protein Goal"];
+                  if (name === "calorieGoal") return [`${Math.round(value)} cal`, "Calorie Goal"];
                   return [value, name];
                 }}
                 contentStyle={{

@@ -350,7 +350,7 @@ export default function Analytics() {
 
   const stats = useMemo(() => {
     const allFilteredMeals = groupedMeals.flatMap(group => group.meals);
-    const totalProtein = allFilteredMeals.reduce((sum, meal) => sum + meal.protein, 0);
+    const totalProtein = Math.round(allFilteredMeals.reduce((sum, meal) => sum + meal.protein, 0));
     const avgProtein = allFilteredMeals.length > 0 ? Math.round(totalProtein / allFilteredMeals.length) : 0;
     return {
       totalMeals: allFilteredMeals.length,
