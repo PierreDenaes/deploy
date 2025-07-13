@@ -108,72 +108,73 @@ export const getNutritionCoachRecommendations = async (req: AuthRequest, res: Re
       nutritionalSummary: await calculateNutritionalSummary(recentMeals, userProfile)
     };
 
-    // Construire le prompt système pour ChatGPT
-    const systemPrompt = req.body.systemPrompt || `Tu es un coach nutritionniste expert avec 15 ans d'expérience, spécialisé en cuisine française et internationale.
+    // Fonction pour générer un appel IA avec retry et validation
+    const generateAIRecommendationsWithRetry = async (attempt = 1): Promise<any> => {
+      const maxAttempts = 3;
+      
+      // Prompt système ultra-direct selon la tentative
+      let systemPrompt;
+      if (attempt === 1) {
+        systemPrompt = `Réponds UNIQUEMENT avec ce JSON EXACT en français :
+{"recommendations":[{"id":"rec_1","titre":"nom plat","description":"description","categorie":"petit-dejeuner","nutrition":{"calories":300,"proteines":25,"glucides":20,"lipides":10,"fibres":5},"ingredients":[{"nom":"ingredient","quantite":"100","unite":"g"}],"instructions":["étape 1"],"tempsPreparation":10,"tempsCuisson":5,"portions":1,"difficulte":"facile","tags":["tag"],"confiance":0.9,"source":"ai_generated"}],"explanation":"explication","tips":["conseil"],"nutritionalInsights":["insight"]}
 
-EXPERTISE :
-- Nutrition clinique et sportive
-- Cuisine équilibrée et savoureuse
-- Adaptation aux contraintes réelles (temps, budget, équipement)
-- Pédagogie et motivation
-
-PRINCIPES :
-- Recommandations scientifiquement fondées
-- Plaisir et variété alimentaire prioritaires
-- Praticité et faisabilité
-- Respect des contraintes individuelles
-- Ton professionnel mais accessible et encourageant
-
-RÉPONSE FORMAT OBLIGATOIRE :
-Réponds UNIQUEMENT en JSON valide avec cette structure exacte EN FRANÇAIS :
-{
-  "recommendations": [
-    {
-      "id": "rec_1",
-      "titre": "string",
-      "description": "string", 
-      "categorie": "petit-dejeuner|dejeuner|diner|collation",
-      "nutrition": {
-        "calories": number,
-        "proteines": number,
-        "glucides": number,
-        "lipides": number,
-        "fibres": number
-      },
-      "ingredients": [{"nom": "string", "quantite": "string", "unite": "string"}],
-      "instructions": ["string"],
-      "tempsPreparation": number,
-      "tempsCuisson": number,
-      "portions": number,
-      "difficulte": "facile|moyen|difficile",
-      "tags": ["string"],
-      "confiance": number,
-      "source": "ai_generated"
-    }
-  ],
-  "explanation": "string",
-  "tips": ["string"],
-  "nutritionalInsights": ["string"]
-}
-
-IMPORTANT :
-- Utilise UNIQUEMENT les catégories : "petit-dejeuner", "dejeuner", "diner", "collation"
-- Tous les champs doivent être en français
-- Assure-toi que le JSON est valide
-- Inclus toujours 2-4 recommandations variées`;
-
-    // Construire le prompt utilisateur avec les données contextuelles
-    const userPrompt = req.body.userPrompt || buildNutritionCoachPrompt(userContext);
-
-    // Appeler l'IA via AIService
-    const aiResponse = await AIService.generateChatCompletion(
-      systemPrompt,
-      userPrompt,
-      { 
-        maxTokens: req.body.maxTokens || 4000,
-        temperature: req.body.temperature || 0.7
+COPIE EXACTEMENT cette structure. Remplace uniquement les valeurs par de vraies recettes en français. 4 recommandations.`;
+      } else if (attempt === 2) {
+        systemPrompt = `ATTENTION: Tu as échoué au premier essai. 
+OBLIGATION ABSOLUE: Commencer ta réponse par {"recommendations":
+RIEN D'AUTRE. Pas de texte avant le JSON.
+Utilise exactement: "recommendations", "titre", "categorie", "nutrition", "ingredients" avec objets {nom,quantite,unite}
+4 recettes françaises complètes.`;
+      } else {
+        systemPrompt = `DERNIER ESSAI. Format exact obligatoire:
+{"recommendations":[{"id":"r1","titre":"Plat","description":"desc","categorie":"dejeuner","nutrition":{"calories":400,"proteines":30,"glucides":25,"lipides":15,"fibres":6},"ingredients":[{"nom":"Ingrédient","quantite":"150","unite":"g"}],"instructions":["Faire X"],"tempsPreparation":15,"tempsCuisson":10,"portions":1,"difficulte":"facile","tags":["équilibré"],"confiance":0.8,"source":"ai_generated"}],"explanation":"Recommandations adaptées","tips":["Conseil utile"],"nutritionalInsights":["Analyse nutritionnelle"]}`;
       }
-    );
+
+      const aiResponse = await AIService.generateChatCompletion(
+        systemPrompt,
+        req.body.userPrompt || buildNutritionCoachPrompt(userContext),
+        { 
+          maxTokens: req.body.maxTokens || 4000,
+          temperature: req.body.temperature || 0.3  // Température plus basse pour plus de précision
+        }
+      );
+
+      // Validation stricte de la réponse
+      const responseData = aiResponse.data;
+      
+      if (!responseData.recommendations || !Array.isArray(responseData.recommendations) || responseData.recommendations.length === 0) {
+        console.error(`❌ Tentative ${attempt} échouée - Structure incorrecte:`, Object.keys(responseData));
+        
+        if (attempt < maxAttempts) {
+          console.log(`🔄 Nouvelle tentative ${attempt + 1}/${maxAttempts}`);
+          return generateAIRecommendationsWithRetry(attempt + 1);
+        } else {
+          throw new Error(`IA n'a pas respecté le format après ${maxAttempts} tentatives`);
+        }
+      }
+
+      // Validation des champs obligatoires
+      const firstRec = responseData.recommendations[0];
+      const requiredFields = ['titre', 'categorie', 'nutrition', 'ingredients', 'instructions'];
+      const missingFields = requiredFields.filter(field => !firstRec[field]);
+      
+      if (missingFields.length > 0) {
+        console.error(`❌ Tentative ${attempt} - Champs manquants:`, missingFields);
+        
+        if (attempt < maxAttempts) {
+          console.log(`🔄 Nouvelle tentative ${attempt + 1}/${maxAttempts}`);
+          return generateAIRecommendationsWithRetry(attempt + 1);
+        } else {
+          throw new Error(`Champs obligatoires manquants: ${missingFields.join(', ')}`);
+        }
+      }
+
+      console.log(`✅ Tentative ${attempt} réussie - Format correct avec ${responseData.recommendations.length} recommandations`);
+      return aiResponse;
+    };
+
+    // Appeler l'IA avec retry automatique jusqu'à obtenir le bon format
+    const aiResponse = await generateAIRecommendationsWithRetry();
 
     // Log l'utilisation
     console.log('Nutrition coach recommendation generated', {
@@ -195,120 +196,13 @@ IMPORTANT :
       dataSample: JSON.stringify(aiResponse.data).substring(0, 500)
     });
 
-    // Ensure the response has the expected structure for nutrition coach
+    // La fonction retry garantit que nous avons le bon format
     let responseData = aiResponse.data;
     
-    // If the AI response doesn't have the expected structure, try to fix it
-    if (!responseData.recommendations && responseData.response) {
-      // Handle case where AI returned non-structured response
-      console.warn('AI returned non-structured response, attempting fallback');
-      responseData = {
-        recommendations: [],
-        explanation: responseData.response || 'Recommandations générées par IA',
-        tips: [],
-        nutritionalInsights: []
-      };
-    } else if (!responseData.recommendations) {
-      // Check for alternative field names that AI might use
-      if (responseData.meal_recommendations && Array.isArray(responseData.meal_recommendations)) {
-        console.log('🔄 Converting meal_recommendations to recommendations format');
-        responseData.recommendations = responseData.meal_recommendations.map((meal: any, index: number) => ({
-          id: `meal_${index}_${Date.now()}`,
-          titre: meal.meal_name || meal.title || meal.nom || `Repas ${index + 1}`,
-          description: meal.description || 'Repas équilibré et nutritif',
-          categorie: extractCategory(meal.meal_name, index),
-          nutrition: {
-            calories: extractNumber(meal.calories) || extractNumber(meal.nutrition?.calories) || 300,
-            proteines: extractNumber(meal.proteines) || extractNumber(meal.nutrition?.proteines) || extractNumber(meal.nutrition?.protein) || 20,
-            glucides: extractNumber(meal.glucides) || extractNumber(meal.nutrition?.glucides) || extractNumber(meal.nutrition?.carbs) || 30,
-            lipides: extractNumber(meal.lipides) || extractNumber(meal.nutrition?.lipides) || extractNumber(meal.nutrition?.fat) || 10,
-            fibres: extractNumber(meal.fibres) || extractNumber(meal.nutrition?.fibres) || extractNumber(meal.nutrition?.fiber) || 5
-          },
-          ingredients: convertIngredients(meal.ingredients || []),
-          instructions: Array.isArray(meal.instructions) ? meal.instructions : ['Instructions disponibles'],
-          tempsPreparation: extractNumber(meal.prep_time) || extractNumber(meal.tempsPreparation) || 15,
-          tempsCuisson: extractNumber(meal.cook_time) || extractNumber(meal.tempsCuisson) || 15,
-          portions: extractNumber(meal.servings) || extractNumber(meal.portions) || 1,
-          difficulte: 'facile' as const,
-          tags: Array.isArray(meal.tags) ? meal.tags : ['équilibré', 'protéiné'],
-          confiance: 0.8,
-          source: 'ai_generated' as const
-        }));
-        
-        console.log('✅ Converted meal_recommendations:', {
-          count: responseData.recommendations.length,
-          titles: responseData.recommendations.map((r: any) => r.titre)
-        });
-      } else if (responseData.recommandations_de_repas && Array.isArray(responseData.recommandations_de_repas)) {
-        console.log('🔄 Converting recommandations_de_repas to recommendations format');
-        responseData.recommendations = responseData.recommandations_de_repas.map((meal: any, index: number) => ({
-          id: `repas_${index}_${Date.now()}`,
-          titre: meal.nom || meal.titre || meal.name || meal.title || `Repas ${index + 1}`,
-          description: meal.description || 'Repas équilibré et nutritif',
-          categorie: extractCategory(meal.nom || meal.titre, index),
-          nutrition: {
-            calories: extractNumber(meal.calories) || extractNumber(meal.nutrition?.calories) || 300,
-            proteines: extractNumber(meal.proteines) || extractNumber(meal.nutrition?.proteines) || extractNumber(meal.nutrition?.protein) || 20,
-            glucides: extractNumber(meal.glucides) || extractNumber(meal.nutrition?.glucides) || extractNumber(meal.nutrition?.carbs) || 30,
-            lipides: extractNumber(meal.lipides) || extractNumber(meal.nutrition?.lipides) || extractNumber(meal.nutrition?.fat) || 10,
-            fibres: extractNumber(meal.fibres) || extractNumber(meal.nutrition?.fibres) || extractNumber(meal.nutrition?.fiber) || 5
-          },
-          ingredients: convertIngredients(meal.ingrédients || meal.ingredients || []),
-          instructions: Array.isArray(meal.instructions) ? meal.instructions : ['Instructions disponibles'],
-          tempsPreparation: extractNumber(meal.prep_time) || extractNumber(meal.tempsPreparation) || 15,
-          tempsCuisson: extractNumber(meal.cook_time) || extractNumber(meal.tempsCuisson) || 15,
-          portions: extractNumber(meal.servings) || extractNumber(meal.portions) || 1,
-          difficulte: 'facile' as const,
-          tags: Array.isArray(meal.tags) ? meal.tags : ['équilibré', 'protéiné'],
-          confiance: 0.8,
-          source: 'ai_generated' as const
-        }));
-        
-        console.log('✅ Converted recommandations_de_repas:', {
-          count: responseData.recommendations.length,
-          titles: responseData.recommendations.map((r: any) => r.titre)
-        });
-      } else if (responseData.meal_plan && Array.isArray(responseData.meal_plan)) {
-        console.log('🔄 Converting meal_plan to recommendations format');
-        responseData.recommendations = responseData.meal_plan.map((meal: any, index: number) => ({
-          id: `plan_${index}_${Date.now()}`,
-          titre: meal.nom || meal.name || meal.title || `${meal.meal || 'Repas'} ${index + 1}`,
-          description: meal.description || `Repas pour ${meal.meal || 'la journée'}`,
-          categorie: extractCategory(meal.meal || meal.nom, index),
-          nutrition: {
-            calories: extractNumber(meal.calories) || extractNumber(meal.nutrition?.calories) || 300,
-            proteines: extractNumber(meal.proteines) || extractNumber(meal.protein) || extractNumber(meal.nutrition?.proteines) || 20,
-            glucides: extractNumber(meal.glucides) || extractNumber(meal.carbs) || extractNumber(meal.nutrition?.glucides) || 30,
-            lipides: extractNumber(meal.lipides) || extractNumber(meal.fat) || extractNumber(meal.nutrition?.lipides) || 10,
-            fibres: extractNumber(meal.fibres) || extractNumber(meal.fiber) || extractNumber(meal.nutrition?.fibres) || 5
-          },
-          ingredients: convertIngredients(meal.ingredients || meal.ingrédients || []),
-          instructions: Array.isArray(meal.instructions) ? meal.instructions : ['Instructions disponibles'],
-          tempsPreparation: extractNumber(meal.prep_time) || extractNumber(meal.tempsPreparation) || 15,
-          tempsCuisson: extractNumber(meal.cook_time) || extractNumber(meal.tempsCuisson) || 15,
-          portions: extractNumber(meal.servings) || extractNumber(meal.portions) || 1,
-          difficulte: 'facile' as const,
-          tags: Array.isArray(meal.tags) ? meal.tags : ['équilibré', 'protéiné'],
-          confiance: 0.8,
-          source: 'ai_generated' as const
-        }));
-        
-        console.log('✅ Converted meal_plan:', {
-          count: responseData.recommendations.length,
-          titles: responseData.recommendations.map((r: any) => r.titre)
-        });
-      } else {
-        // Add empty recommendations array if missing
-        console.warn('⚠️ Aucun array recommendations trouvé, création array vide');
-        responseData.recommendations = [];
-      }
-    } else {
-      console.log('✅ Array recommendations trouvé:', {
-        count: Array.isArray(responseData.recommendations) ? responseData.recommendations.length : 'not array',
-        firstItem: Array.isArray(responseData.recommendations) && responseData.recommendations.length > 0 
-          ? Object.keys(responseData.recommendations[0]) : 'empty'
-      });
-    }
+    console.log('✅ Format validé par retry - Recommandations prêtes:', {
+      count: responseData.recommendations.length,
+      titles: responseData.recommendations.map((r: any) => r.titre).slice(0, 3)
+    });
     
     res.json({
       success: true,
@@ -868,103 +762,3 @@ function getActivityLevelLabel(level: string): string {
   return labels[level as keyof typeof labels] || level;
 }
 
-/**
- * Helper functions for meal_recommendations conversion
- */
-function extractCategory(mealName: string, index: number): 'petit-dejeuner' | 'dejeuner' | 'diner' | 'collation' {
-  if (!mealName) {
-    // Default categories based on index
-    const defaultCategories: ('petit-dejeuner' | 'dejeuner' | 'diner' | 'collation')[] = ['petit-dejeuner', 'dejeuner', 'diner', 'collation'];
-    return (defaultCategories[index % 4] || 'dejeuner') as 'petit-dejeuner' | 'dejeuner' | 'diner' | 'collation';
-  }
-  
-  const name = mealName.toLowerCase();
-  
-  // French breakfast terms
-  if (name.includes('petit-déjeuner') || name.includes('petit déjeuner') || name.includes('breakfast') || 
-      name.includes('café') || name.includes('thé') || name.includes('croissant') || 
-      name.includes('céréales') || name.includes('yaourt') || name.includes('tartine')) {
-    return 'petit-dejeuner';
-  }
-  
-  // French lunch terms  
-  if (name.includes('déjeuner') || name.includes('lunch') || name.includes('midi') ||
-      name.includes('salade') || name.includes('sandwich') || name.includes('quiche')) {
-    return 'dejeuner';
-  }
-  
-  // French dinner terms
-  if (name.includes('dîner') || name.includes('diner') || name.includes('dinner') || name.includes('soir') ||
-      name.includes('rôti') || name.includes('gratin') || name.includes('ragoût') || name.includes('soupe')) {
-    return 'diner';
-  }
-  
-  // French snack terms
-  if (name.includes('collation') || name.includes('snack') || name.includes('encas') || 
-      name.includes('goûter') || name.includes('fruit') || name.includes('noix')) {
-    return 'collation';
-  }
-  
-  // Default based on index if no keywords match
-  const defaultCategories: ('petit-dejeuner' | 'dejeuner' | 'diner' | 'collation')[] = ['petit-dejeuner', 'dejeuner', 'diner', 'collation'];
-  return (defaultCategories[index % 4] || 'dejeuner') as 'petit-dejeuner' | 'dejeuner' | 'diner' | 'collation';
-}
-
-function extractNumber(value: any): number | null {
-  if (typeof value === 'number' && !isNaN(value)) {
-    return Math.max(0, Math.round(value));
-  }
-  
-  if (typeof value === 'string') {
-    // Extract number from string (e.g., "150g" -> 150, "2.5 portions" -> 2.5)
-    const match = value.match(/([0-9]+\.?[0-9]*)/); 
-    if (match) {
-      if (typeof match[1] === 'string') {
-        const num = parseFloat(match[1]);
-        return !isNaN(num) ? Math.max(0, Math.round(num)) : null;
-      }
-    }
-  }
-  
-  return null;
-}
-
-function convertIngredients(ingredients: any[]): Array<{nom: string, quantite: string, unite: string}> {
-  if (!Array.isArray(ingredients)) {
-    return [{ nom: 'Ingrédients disponibles', quantite: '1', unite: 'portion' }];
-  }
-  
-  return ingredients.map((ingredient, index) => {
-    // Handle different ingredient formats
-    if (typeof ingredient === 'string') {
-      // Parse string like "200g de poulet" or "2 oeufs"
-      const match = ingredient.match(/^([0-9]+\.?[0-9]*)\s*([a-zA-Z]*)?\s+(?:de\s+)?(.+)$/);
-      if (match) {
-        return {
-          nom: (match[3] ? match[3].trim() : `Ingrédient ${index + 1}`),
-          quantite: match[1] || '1',
-          unite: match[2] || 'unité'
-        };
-      }
-      return {
-        nom: ingredient,
-        quantite: '1',
-        unite: 'portion'
-      };
-    }
-    
-    if (typeof ingredient === 'object' && ingredient !== null) {
-      return {
-        nom: ingredient.nom || ingredient.name || ingredient.ingredient || ingredient.item || `Ingrédient ${index + 1}`,
-        quantite: ingredient.quantite || ingredient.quantity || ingredient.amount || '1',
-        unite: ingredient.unite || ingredient.unit || ingredient.mesure || 'portion'
-      };
-    }
-    
-    return {
-      nom: `Ingrédient ${index + 1}`,
-      quantite: '1', 
-      unite: 'portion'
-    };
-  });
-}

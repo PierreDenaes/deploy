@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Filter, Heart, Clock, Users, Zap, ChefHat, Target, Plus, AlertCircle, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Filter, Heart, Clock, Users, Zap, ChefHat, Target, Plus, AlertCircle, RefreshCw, Sparkles, Activity, TrendingUp, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -203,10 +203,45 @@ export default function Recommendations() {
     }
   }, [favorites]);
 
-  // Charger les recommandations au montage seulement si nécessaire
+  // État pour afficher la page explicative
+  const [showExplanation, setShowExplanation] = useState(true);
+  const [usageToday, setUsageToday] = useState(0);
+  const [cachedRecommendations, setCachedRecommendations] = useState<CoachRecommendationResponse | null>(null);
+  
+  // Charger le cache et l'usage au montage
   useEffect(() => {
-    if (!recommendations) {
-      generateRecommendations();
+    // Charger les recommandations en cache
+    const cached = localStorage.getItem('dynprot_recommendations_cache');
+    if (cached) {
+      try {
+        const parsedCache = JSON.parse(cached);
+        const cacheAge = Date.now() - parsedCache.timestamp;
+        // Cache valide pendant 24h
+        if (cacheAge < 24 * 60 * 60 * 1000) {
+          setCachedRecommendations(parsedCache.data);
+          setRecommendations(parsedCache.data);
+          setShowExplanation(false);
+        }
+      } catch (error) {
+        console.error('Erreur lecture cache:', error);
+      }
+    }
+    
+    // Charger le compteur d'usage quotidien
+    const today = new Date().toDateString();
+    const usageData = localStorage.getItem('dynprot_ai_usage');
+    if (usageData) {
+      try {
+        const parsed = JSON.parse(usageData);
+        if (parsed.date === today) {
+          setUsageToday(parsed.count || 0);
+        } else {
+          // Reset si nouveau jour
+          localStorage.setItem('dynprot_ai_usage', JSON.stringify({ date: today, count: 0 }));
+        }
+      } catch (error) {
+        console.error('Erreur lecture usage:', error);
+      }
     }
   }, []);
 
@@ -232,6 +267,13 @@ export default function Recommendations() {
     // Validation initiale
     if (!state.user || !state.userSettings) {
       setError("Profil utilisateur incomplet. Veuillez compléter votre profil.");
+      return;
+    }
+
+    // Vérifier la limite quotidienne
+    if (usageToday >= 3) {
+      setError("Vous avez atteint votre limite quotidienne de 3 générations. Revenez demain ou consultez vos recommandations précédentes.");
+      toast.error("Limite quotidienne atteinte");
       return;
     }
 
@@ -288,7 +330,21 @@ export default function Recommendations() {
 
       setRecommendations(processedResult);
       setRetryCount(0);
-      toast.success(`${processedResult.recommendations.length} recommandations générées avec succès !`);
+      setShowExplanation(false);
+      
+      // Incrémenter le compteur d'usage uniquement en cas de succès
+      const newUsageCount = usageToday + 1;
+      setUsageToday(newUsageCount);
+      const today = new Date().toDateString();
+      localStorage.setItem('dynprot_ai_usage', JSON.stringify({ date: today, count: newUsageCount }));
+      
+      // Sauvegarder en cache
+      localStorage.setItem('dynprot_recommendations_cache', JSON.stringify({
+        data: processedResult,
+        timestamp: Date.now()
+      }));
+      
+      toast.success(`${processedResult.recommendations.length} recommandations générées avec succès ! (${3 - newUsageCount} restantes aujourd'hui)`);
       
     } catch (error) {
       console.error('Erreur lors de la génération:', error);
@@ -371,6 +427,26 @@ export default function Recommendations() {
         }
       }) : [];
 
+  // Fonction pour gérer le clic sur générer
+  const handleGenerateClick = () => {
+    if (usageToday >= 3) {
+      toast.error("Limite quotidienne atteinte (3 générations max)");
+      return;
+    }
+    generateRecommendations();
+  };
+
+  // Fonction pour formater le temps relatif
+  const formatRelativeTime = (timestamp: number) => {
+    const diff = Date.now() - timestamp;
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    if (hours < 1) {
+      const minutes = Math.floor(diff / (1000 * 60));
+      return `il y a ${minutes} minute${minutes > 1 ? 's' : ''}`;
+    }
+    return `il y a ${hours} heure${hours > 1 ? 's' : ''}`;
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background p-4">
@@ -412,15 +488,15 @@ export default function Recommendations() {
           <div className="text-center flex-1 px-4">
             <h1 className="text-lg sm:text-xl font-bold">Recommandations IA</h1>
             <p className="text-sm text-muted-foreground">
-              {filteredRecommendations.length} recommandation{filteredRecommendations.length > 1 ? 's' : ''}
+              {showExplanation ? "Personnalisées pour vous" : `${filteredRecommendations.length} recommandation${filteredRecommendations.length > 1 ? 's' : ''}`}
             </p>
           </div>
           <Button
             variant="outline"
             size="icon"
-            onClick={() => generateRecommendations()}
+            onClick={() => showExplanation ? handleGenerateClick() : generateRecommendations()}
             className="rounded-2xl h-10 w-10"
-            disabled={isLoading}
+            disabled={isLoading || usageToday >= 3}
           >
             {isLoading ? (
               <RefreshCw className="h-5 w-5 animate-spin" />
@@ -442,8 +518,180 @@ export default function Recommendations() {
           </Alert>
         )}
 
+        {/* Vue explicative */}
+        {showExplanation && !recommendations ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            {/* Hero Section */}
+            <Card className="border-0 shadow-ios bg-gradient-to-br from-primary/5 to-accent/5 mb-6">
+              <CardContent className="p-6">
+                <div className="text-center mb-6">
+                  <motion.div
+                    initial={{ scale: 0.8 }}
+                    animate={{ scale: 1 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                    className="w-20 h-20 bg-primary rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-ios-sm"
+                  >
+                    <ChefHat className="h-10 w-10 text-primary-foreground" />
+                  </motion.div>
+                  <h2 className="text-2xl font-bold mb-2">Recommandations IA personnalisées</h2>
+                  <p className="text-muted-foreground">Basées sur votre profil nutritionnel unique</p>
+                </div>
+              </CardContent>
+            </Card>
+
+
+            {/* Badge de quota */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
+              <Card className="border-0 shadow-ios-sm bg-muted/30 mb-6">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-primary/20 flex items-center justify-center">
+                        <Sparkles className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Générations aujourd'hui</p>
+                        <p className="text-xs text-muted-foreground">Renouvellement à minuit</p>
+                      </div>
+                    </div>
+                    <Badge 
+                      variant={usageToday >= 3 ? "destructive" : "secondary"} 
+                      className="rounded-2xl px-3"
+                    >
+                      {usageToday}/3
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Afficher les recommandations en cache si disponibles */}
+            {cachedRecommendations && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+                className="mb-6"
+              >
+                <Alert className="border-0 shadow-ios bg-accent/5 border-accent/20">
+                  <Clock className="h-4 w-4" />
+                  <AlertDescription>
+                    Vous avez des recommandations générées {formatRelativeTime(JSON.parse(localStorage.getItem('dynprot_recommendations_cache') || '{}').timestamp || Date.now())}
+                    <Button 
+                      variant="link" 
+                      className="ml-2 p-0 h-auto" 
+                      onClick={() => setShowExplanation(false)}
+                    >
+                      Les consulter
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              </motion.div>
+            )}
+
+            {/* Bouton CTA principal */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.5 }}
+            >
+              <Button 
+                size="lg" 
+                className="w-full h-14 rounded-2xl shadow-ios font-semibold text-base"
+                onClick={handleGenerateClick}
+                disabled={usageToday >= 3}
+              >
+                <Sparkles className="mr-2 h-5 w-5" />
+                Générer mes recommandations
+                <Badge 
+                  variant="secondary" 
+                  className="ml-2 rounded-xl bg-white/20 text-white border-white/30"
+                >
+                  {3 - usageToday} restant{3 - usageToday > 1 ? 's' : ''}
+                </Badge>
+              </Button>
+            </motion.div>
+
+            {/* Comment ça marche */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.6 }}
+              className="mt-8"
+            >
+              <Card className="border-0 shadow-ios bg-gradient-to-r from-accent/5 to-primary/5">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-accent" />
+                    Comment ça marche ?
+                  </CardTitle>
+                  <CardDescription>
+                    Notre IA analyse vos données pour créer des recommandations parfaitement adaptées
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-start gap-4">
+                    <div className="w-8 h-8 rounded-2xl bg-primary flex items-center justify-center flex-shrink-0">
+                      <span className="text-primary-foreground text-sm font-bold">1</span>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-sm mb-1">Analyse de votre profil</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        Âge, poids, objectifs nutritionnels et niveau d'activité physique issus de votre profil Analytics
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="w-8 h-8 rounded-2xl bg-primary flex items-center justify-center flex-shrink-0">
+                      <span className="text-primary-foreground text-sm font-bold">2</span>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-sm mb-1">Étude de vos habitudes alimentaires</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        Analyse des repas des 7 derniers jours pour comprendre vos préférences et équilibrer vos apports
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="w-8 h-8 rounded-2xl bg-primary flex items-center justify-center flex-shrink-0">
+                      <span className="text-primary-foreground text-sm font-bold">3</span>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-sm mb-1">Génération personnalisée</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        4 repas complets (petit-déjeuner, déjeuner, dîner, collation) avec recettes détaillées et valeurs nutritionnelles
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 p-4 rounded-2xl bg-background/50 border border-border/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Target className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">Objectifs visés</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground">
+                      <div>✓ Atteindre vos objectifs protéines</div>
+                      <div>✓ Respecter votre budget calorique</div>
+                      <div>✓ Équilibrer les macronutriments</div>
+                      <div>✓ Varier les plaisirs culinaires</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </motion.div>
+        ) : null}
+
         {/* Progress Overview */}
-        {recommendations?.weeklyGoalProgress && (
+        {!showExplanation && recommendations?.weeklyGoalProgress && (
           <div className="grid grid-cols-3 gap-3">
             <Card className="border-primary/20 bg-primary/5 shadow-ios-sm">
               <CardContent className="p-4 text-center">
@@ -473,7 +721,8 @@ export default function Recommendations() {
         )}
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
+        {!showExplanation && recommendations && (
+          <div className="flex flex-col sm:flex-row gap-4">
           <Tabs value={activeCategory} onValueChange={(value) => setActiveCategory(value as any)} className="flex-1">
             <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="all">Tous</TabsTrigger>
@@ -496,9 +745,11 @@ export default function Recommendations() {
             </SelectContent>
           </Select>
         </div>
+        )}
 
         {/* Recommendations Grid */}
-        <div className="grid gap-4 sm:grid-cols-2">
+        {!showExplanation && recommendations && (
+          <div className="grid gap-4 sm:grid-cols-2">
           {filteredRecommendations.map((meal, index) => (
             <motion.div
               key={meal.id}
@@ -632,9 +883,10 @@ export default function Recommendations() {
             </motion.div>
           ))}
         </div>
+        )}
 
         {/* Tips */}
-        {recommendations?.tips && recommendations.tips.length > 0 && (
+        {!showExplanation && recommendations?.tips && recommendations.tips.length > 0 && (
           <Card className="border-0 shadow-ios bg-gradient-to-r from-accent/5 to-primary/5">
             <CardContent className="p-4">
               <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
