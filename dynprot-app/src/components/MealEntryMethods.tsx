@@ -23,12 +23,12 @@ const mealMethods: MealMethod[] = [
     bgColor: 'bg-blue-50 hover:bg-blue-100'
   },
   {
-    id: 'voice',
-    icon: Mic,
-    label: 'Vocal',
-    description: 'Décrivez à la voix',
-    color: 'text-green-600',
-    bgColor: 'bg-green-50 hover:bg-green-100'
+    id: 'scan',
+    icon: Scan,
+    label: 'Scanner',
+    description: 'Code-barres',
+    color: 'text-orange-600',
+    bgColor: 'bg-orange-50 hover:bg-orange-100'
   },
   {
     id: 'text',
@@ -37,19 +37,11 @@ const mealMethods: MealMethod[] = [
     description: 'Tapez votre repas',
     color: 'text-purple-600',
     bgColor: 'bg-purple-50 hover:bg-purple-100'
-  },
-  {
-    id: 'scan',
-    icon: Scan,
-    label: 'Scanner',
-    description: 'Code-barres',
-    color: 'text-orange-600',
-    bgColor: 'bg-orange-50 hover:bg-orange-100'
   }
 ];
 
 interface MealEntryMethodsProps {
-  onMethodSelect: (method: 'photo' | 'voice' | 'text' | 'scan') => void;
+  onMethodSelect: (method: 'photo' | 'text' | 'scan') => void;
   onChatMode: () => void;
   disabled?: boolean;
   className?: string;
@@ -71,7 +63,7 @@ export const MealEntryMethods: React.FC<MealEntryMethodsProps> = ({
       </div>
 
       {/* Methods Grid */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-3 gap-4 sm:gap-6">
         {mealMethods.map((method, index) => {
           const Icon = method.icon;
           
@@ -161,7 +153,7 @@ export const MealEntryMethods: React.FC<MealEntryMethodsProps> = ({
                 <MessageCircle className="w-4 h-4 text-primary" strokeWidth={2.5} />
               </div>
               <span className="font-medium text-foreground">
-                💬 Discuter avec l'assistant
+                💬 Discuter avec l'assistant (vocal + texte)
               </span>
             </motion.div>
           </CardContent>

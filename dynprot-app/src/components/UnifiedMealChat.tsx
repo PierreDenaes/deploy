@@ -11,7 +11,6 @@ import { useAppContext } from '@/context/AppContext';
 import { useTimeContext } from '@/hooks/useTimeContext';
 import ChatMessage from './ChatMessage';
 import ChatGPTInput from './ChatGPTInput';
-import MealEntryMethods from './MealEntryMethods';
 import ChatProcessor from '@/services/ChatProcessor';
 import { ProductInfo } from '@/services/barcodeService';
 import { 
@@ -38,10 +37,9 @@ interface UnifiedMealChatProps {
 
 export const UnifiedMealChat: React.FC<UnifiedMealChatProps> = ({ className }) => {
   const navigate = useNavigate();
-  const { user, addMeal } = useAppContext();
-  const timeContext = useTimeContext(user?.name);
+  const { state: appState, addMeal } = useAppContext();
+  const timeContext = useTimeContext(appState.user.name);
   const [state, setState] = useState<ChatState>(initialState);
-  const [showChatMode, setShowChatMode] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatProcessor = useRef(ChatProcessor.getInstance());
 
@@ -371,23 +369,6 @@ export const UnifiedMealChat: React.FC<UnifiedMealChatProps> = ({ className }) =
     }
   }, [addMessage, navigate, handleSaveMeal]);
 
-  // Handle method selection from entry interface
-  const handleMethodSelect = useCallback((method: 'photo' | 'voice' | 'text' | 'scan') => {
-    setShowChatMode(true);
-
-    // Add a welcome message for the selected method
-    const welcomeMessages = {
-      photo: "📷 Super ! Prenez une photo de votre repas et je l'analyserai pour vous.",
-      voice: "🎤 Parfait ! Appuyez sur le micro et décrivez-moi votre repas.",
-      text: "⌨️ Excellent ! Décrivez-moi votre repas dans le champ ci-dessous.",
-      scan: "📱 Génial ! Utilisez le scanner pour identifier un produit par son code-barres."
-    };
-
-    addMessage({
-      type: 'bot',
-      content: welcomeMessages[method]
-    });
-  }, [addMessage]);
 
   return (
     <div className={cn("flex flex-col h-full max-w-4xl mx-auto bg-gradient-to-br from-background via-secondary/10 to-accent/5", className)}>
@@ -426,46 +407,40 @@ export const UnifiedMealChat: React.FC<UnifiedMealChatProps> = ({ className }) =
           )}
         </div>
 
-        {/* Personalized Greeting */}
+        {/* Personalized Greeting with Timeline Icon */}
         <motion.div 
-          className="text-center space-y-2"
+          className="text-center space-y-3"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
         >
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-            {timeContext.greeting}
-          </h1>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            {timeContext.timeInfo}
-          </p>
-          <p className="text-sm sm:text-base text-foreground/80 font-medium">
-            {timeContext.mealSuggestion}
-          </p>
+          {/* Time Period Icon */}
+          <motion.div
+            className={`inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br ${timeContext.bgGradient} shadow-sm`}
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <timeContext.icon className={`w-6 h-6 ${timeContext.iconColor}`} strokeWidth={2.5} />
+          </motion.div>
+          
+          {/* Greeting Text */}
+          <div className="space-y-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+              {timeContext.greeting}
+            </h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
+              {timeContext.timeInfo}
+            </p>
+          </div>
         </motion.div>
       </motion.div>
 
-      {/* Content Area */}
-      <div className="flex-1 overflow-y-auto p-6">
-        {!showChatMode ? (
-          /* Entry Methods Interface */
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
-            className="h-full flex items-center justify-center"
-          >
-            <div className="w-full max-w-2xl">
-              <MealEntryMethods
-                onMethodSelect={handleMethodSelect}
-                onChatMode={() => setShowChatMode(true)}
-                disabled={state.isLoading}
-              />
-            </div>
-          </motion.div>
-        ) : (
-          /* Chat Mode */
-          <div className="space-y-6">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Chat Messages Area */}
+        {state.messages.length > 0 && (
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
             <AnimatePresence mode="popLayout">
               {state.messages.map((message, index) => (
                 <motion.div
@@ -526,28 +501,56 @@ export const UnifiedMealChat: React.FC<UnifiedMealChatProps> = ({ className }) =
             <div ref={messagesEndRef} />
           </div>
         )}
+
+        {/* Bottom Input Area - Always present when messages exist */}
+        {state.messages.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="backdrop-blur-xl border-t border-border/30 p-4"
+          >
+            <ChatGPTInput
+              value={state.currentInput}
+              onChange={(value) => updateState({ currentInput: value })}
+              onSend={handleUserMessage}
+              onPhotoCapture={handlePhotoCapture}
+              onVoiceTranscript={handleVoiceTranscript}
+              onBarcodeDetected={handleBarcodeDetected}
+              isLoading={state.isLoading}
+              placeholder="Continuez la conversation..."
+            />
+          </motion.div>
+        )}
+
+        {/* Empty State with Unified Input */}
+        {state.messages.length === 0 && (
+          <div className="flex-1 flex flex-col justify-center p-6">
+            <motion.div
+              className="w-full max-w-2xl mx-auto space-y-8"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.3 }}
+            >
+              {/* Unified Input Area */}
+              <div className="space-y-6">
+                <ChatGPTInput
+                  value={state.currentInput}
+                  onChange={(value) => updateState({ currentInput: value })}
+                  onSend={handleUserMessage}
+                  onPhotoCapture={handlePhotoCapture}
+                  onVoiceTranscript={handleVoiceTranscript}
+                  onBarcodeDetected={handleBarcodeDetected}
+                  isLoading={state.isLoading}
+                  placeholder={timeContext.mealSuggestion}
+                />
+              </div>
+
+            </motion.div>
+          </div>
+        )}
       </div>
 
-      {/* Input Area - Only in Chat Mode */}
-      {showChatMode && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="backdrop-blur-xl"
-        >
-          <ChatGPTInput
-            value={state.currentInput}
-            onChange={(value) => updateState({ currentInput: value })}
-            onSend={handleUserMessage}
-            onPhotoCapture={handlePhotoCapture}
-            onVoiceTranscript={handleVoiceTranscript}
-            onBarcodeDetected={handleBarcodeDetected}
-            isLoading={state.isLoading}
-            placeholder="Décrivez votre repas..."
-          />
-        </motion.div>
-      )}
 
       {/* ChatGPT-like interface with integrated attachments and press-to-talk */}
     </div>
