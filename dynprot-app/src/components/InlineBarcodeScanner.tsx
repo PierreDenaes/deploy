@@ -65,29 +65,46 @@ export const InlineBarcodeScanner: React.FC<InlineBarcodeScannerProps> = ({
         return;
       }
 
-      // Request camera access with fallback constraints
+      // Request camera access with optimized mobile constraints
       let stream: MediaStream;
       try {
+        // Primary config optimized for mobile barcode scanning
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: 'environment',
-            width: { ideal: 1280, min: 640 },
-            height: { ideal: 720, min: 480 }
+            width: { ideal: 1920, min: 1280 },
+            height: { ideal: 1080, min: 720 },
+            frameRate: { ideal: 30, min: 15 },
+            focusMode: 'continuous',
+            exposureMode: 'continuous',
+            whiteBalanceMode: 'continuous'
           }
         });
       } catch (primaryError) {
-        console.warn('Primary camera config failed, trying fallback:', primaryError);
-        // Fallback with more relaxed constraints
+        console.warn('Primary mobile camera config failed, trying high-res fallback:', primaryError);
+        // High-resolution fallback
         try {
           stream = await navigator.mediaDevices.getUserMedia({
             video: {
-              width: { ideal: 1280 },
-              height: { ideal: 720 }
+              facingMode: 'environment',
+              width: { ideal: 1920, min: 1280 },
+              height: { ideal: 1080, min: 720 }
             }
           });
-        } catch (fallbackError) {
-          console.error('All camera configs failed:', fallbackError);
-          throw fallbackError;
+        } catch (highResError) {
+          console.warn('High-res fallback failed, trying standard fallback:', highResError);
+          // Standard fallback for older devices
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: {
+                width: { ideal: 1280, min: 640 },
+                height: { ideal: 720, min: 480 }
+              }
+            });
+          } catch (fallbackError) {
+            console.error('All camera configs failed:', fallbackError);
+            throw fallbackError;
+          }
         }
       }
 

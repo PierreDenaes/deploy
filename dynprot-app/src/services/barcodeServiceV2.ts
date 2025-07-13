@@ -20,11 +20,11 @@ export class BarcodeServiceV2 {
   private static readonly OPENFOODFACTS_API = 'https://world.openfoodfacts.org/api/v0/product';
 
   /**
-   * Initialize the barcode reader with optimal settings
+   * Initialize the barcode reader with optimal mobile settings
    */
   private static getReader(): BrowserMultiFormatReader {
     if (!this.reader) {
-      // Create reader with hints in constructor
+      // Create reader with mobile-optimized hints
       const hints = new Map();
       hints.set(DecodeHintType.POSSIBLE_FORMATS, [
         BarcodeFormat.EAN_13,
@@ -36,6 +36,8 @@ export class BarcodeServiceV2 {
         BarcodeFormat.DATA_MATRIX
       ]);
       hints.set(DecodeHintType.TRY_HARDER, true);
+      hints.set(DecodeHintType.PURE_BARCODE, false); // Better for real-world images
+      hints.set(DecodeHintType.ALSO_INVERTED, true); // Handle inverted barcodes
       
       this.reader = new BrowserMultiFormatReader(hints);
     }
@@ -118,14 +120,33 @@ export class BarcodeServiceV2 {
           console.log(`ZXing scan attempt ${scanCount}, video ready: ${video.readyState >= 2}`);
         }
 
-        // Create a canvas to capture video frame for ZXing
+        // Create a canvas to capture video frame for ZXing with mobile optimization
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         if (!context) return;
 
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
+        
+        // Optimize canvas for mobile barcode scanning
+        context.imageSmoothingEnabled = false; // Preserve sharp edges for barcodes
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Apply contrast enhancement for mobile cameras
+        if (canvas.width > 0 && canvas.height > 0) {
+          const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imageData.data;
+          
+          // Simple contrast enhancement
+          for (let i = 0; i < data.length; i += 4) {
+            // Increase contrast for better barcode detection
+            data[i] = Math.min(255, Math.max(0, (data[i] - 128) * 1.2 + 128));     // Red
+            data[i + 1] = Math.min(255, Math.max(0, (data[i + 1] - 128) * 1.2 + 128)); // Green
+            data[i + 2] = Math.min(255, Math.max(0, (data[i + 2] - 128) * 1.2 + 128)); // Blue
+          }
+          
+          context.putImageData(imageData, 0, 0);
+        }
 
         // Use ZXing to decode from canvas
         const imageData = canvas.toDataURL('image/png');
@@ -146,9 +167,9 @@ export class BarcodeServiceV2 {
           }
         }
 
-        // Continue scanning with controlled frequency
+        // Continue scanning with mobile-optimized frequency
         if (isScanning) {
-          setTimeout(scan, 200); // 5fps for good performance
+          setTimeout(scan, 150); // ~6.7fps for better mobile performance
         }
       } catch (error) {
         // ZXing throws NotFoundException when no barcode is found - this is normal

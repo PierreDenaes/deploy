@@ -474,8 +474,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           
           dispatch({ type: 'SET_USER', payload: userProfile });
           
-          // Load last analytics viewed timestamp from auth user
-          // Removed: authUser?.last_analytics_viewed block, as this property does not exist on AuthUser
+          // Load last analytics viewed timestamp from profile
+          if (profile.last_analytics_viewed) {
+            dispatch({ 
+              type: 'SET_LAST_ANALYTICS_VIEWED', 
+              payload: profile.last_analytics_viewed 
+            });
+          }
           
           // Update user settings
           dispatch({ 
