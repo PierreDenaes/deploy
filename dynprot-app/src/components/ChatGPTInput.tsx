@@ -76,7 +76,7 @@ export const ChatGPTInput: React.FC<ChatGPTInputProps> = ({
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+      textareaRef.current.style.height = `${Math.max(40, Math.min(textareaRef.current.scrollHeight, 120))}px`;
     }
   }, [value]);
 
@@ -187,10 +187,10 @@ export const ChatGPTInput: React.FC<ChatGPTInputProps> = ({
             placeholder={activeAttachment ? `Mode ${activeAttachment} actif...` : placeholder}
             disabled={disabled || !!activeAttachment}
             className={cn(
-              "min-h-[20px] max-h-[120px] resize-none border-0 bg-transparent p-0 text-[16px] leading-5",
+              "min-h-[40px] max-h-[120px] resize-none border-0 bg-transparent p-2 text-base leading-relaxed",
               "focus:ring-0 focus:border-0 placeholder:text-muted-foreground text-foreground",
               "scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent",
-              "font-medium tracking-tight",
+              "font-normal tracking-normal",
               (disabled || activeAttachment) && "cursor-not-allowed"
             )}
             rows={1}
