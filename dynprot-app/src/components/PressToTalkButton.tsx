@@ -31,6 +31,7 @@ export const PressToTalkButton: React.FC<PressToTalkButtonProps> = ({
   const startPositionRef = useRef({ x: 0, y: 0 });
   const isPressingRef = useRef(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const transcriptRef = useRef('');
 
   // Check for browser support
   const isSpeechSupported = useCallback(() => {
@@ -38,11 +39,18 @@ export const PressToTalkButton: React.FC<PressToTalkButtonProps> = ({
   }, []);
 
   const startRecording = useCallback(() => {
+    console.log('🎤 startRecording called');
     if (!isSpeechSupported() || disabled) return;
+
+    // Empêcher démarrage multiple
+    if (recognitionRef.current) {
+      console.log('⚠️ Recognition already running, stopping previous');
+      recognitionRef.current.stop();
+    }
 
     try {
       const recognition = new SpeechRecognition();
-      recognition.continuous = true;
+      recognition.continuous = false; // Changé à false pour éviter auto-restart
       recognition.interimResults = true;
       recognition.lang = 'fr-FR';
       recognition.maxAlternatives = 1;
@@ -50,8 +58,11 @@ export const PressToTalkButton: React.FC<PressToTalkButtonProps> = ({
       recognitionRef.current = recognition;
       setTranscript('');
       setInterimTranscript('');
+      transcriptRef.current = ''; // Reset ref aussi
+      console.log('🔄 Recognition config set');
 
       recognition.onstart = () => {
+        console.log('🟢 Recognition started');
         setIsRecording(true);
       };
 
@@ -68,11 +79,19 @@ export const PressToTalkButton: React.FC<PressToTalkButtonProps> = ({
           }
         }
 
+        console.log('📝 onresult event:', {
+          resultIndex: event.resultIndex,
+          resultsLength: event.results.length,
+          finalTranscript,
+          interimTranscript
+        });
+
         // Remplace complètement au lieu d'ajouter pour éviter duplications
         if (finalTranscript) {
           setTranscript(prev => {
             const newTranscript = prev + finalTranscript;
-            console.log('Final transcript added:', finalTranscript, 'Total:', newTranscript);
+            transcriptRef.current = newTranscript; // Sync avec la ref
+            console.log('✅ Final transcript added:', finalTranscript, 'Total:', newTranscript);
             return newTranscript;
           });
         }
@@ -80,25 +99,38 @@ export const PressToTalkButton: React.FC<PressToTalkButtonProps> = ({
       };
 
       recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
+        console.error('🔴 Speech recognition error:', event.error);
         stopRecording();
       };
 
       recognition.onend = () => {
-        console.log('Recognition ended, isPressingRef.current:', isPressingRef.current);
+        console.log('🔴 Recognition ended, isPressingRef.current:', isPressingRef.current);
         // Ne plus redémarrer automatiquement - cause les répétitions
         setIsRecording(false);
-        if (!isPressingRef.current) {
-          // Seulement nettoyer si on n'est plus en train de presser
-          recognitionRef.current = null;
+        recognitionRef.current = null;
+        
+        // Déclencher handleComplete directement si on a un transcript
+        if (transcriptRef.current.trim()) {
+          console.log('🚀 Auto-triggering handleComplete from onend, transcript:', transcriptRef.current);
+          setTimeout(() => {
+            const finalTranscript = transcriptRef.current.trim();
+            if (finalTranscript) {
+              console.log('📤 Sending transcript from auto-trigger:', finalTranscript);
+              onTranscript(finalTranscript);
+              setTranscript('');
+              setInterimTranscript('');
+              transcriptRef.current = '';
+            }
+          }, 100);
         }
       };
 
+      console.log('🚀 Starting recognition...');
       recognition.start();
       
       // Timeout de sécurité de 30 secondes
       timeoutRef.current = setTimeout(() => {
-        console.log('Recording timeout reached');
+        console.log('⏰ Recording timeout reached');
         stopRecording();
       }, 30000);
     } catch (error) {
@@ -124,12 +156,14 @@ export const PressToTalkButton: React.FC<PressToTalkButtonProps> = ({
   }, []);
 
   const handleComplete = useCallback(() => {
+    console.log('🎯 handleComplete called, transcript:', transcript);
     const finalTranscript = transcript.trim();
     if (finalTranscript) {
+      console.log('📤 Sending transcript:', finalTranscript);
       onTranscript(finalTranscript);
+      setTranscript(''); // Reset seulement après envoi
+      setInterimTranscript('');
     }
-    setTranscript('');
-    setInterimTranscript('');
   }, [transcript, onTranscript]);
 
   // Mouse events
@@ -156,14 +190,16 @@ export const PressToTalkButton: React.FC<PressToTalkButtonProps> = ({
   }, [disabled, hasText, onSend, startRecording]);
 
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    console.log('🖱️ handleMouseUp called, isPressingRef.current:', isPressingRef.current);
     if (!isPressingRef.current) return;
 
     isPressingRef.current = false;
     
     if (isRecording) {
+      console.log('🛑 Stopping recording from mouseUp');
       stopRecording();
       // Attendre un peu pour que la reconnaissance se termine
-      setTimeout(handleComplete, 100);
+      setTimeout(handleComplete, 500); // Même délai que touch
     }
     
     setIsDragging(false);
@@ -202,6 +238,7 @@ export const PressToTalkButton: React.FC<PressToTalkButtonProps> = ({
 
   // Touch events for mobile
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    console.log('👆 handleTouchStart called');
     if (disabled) return;
 
     if (hasText && onSend) {
@@ -225,15 +262,16 @@ export const PressToTalkButton: React.FC<PressToTalkButtonProps> = ({
   }, [disabled, hasText, onSend, startRecording]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    console.log('handleTouchEnd called, isPressingRef.current:', isPressingRef.current);
+    console.log('👆 handleTouchEnd called, isPressingRef.current:', isPressingRef.current);
     if (!isPressingRef.current) return;
 
     isPressingRef.current = false;
     
     if (isRecording) {
+      console.log('🛑 Stopping recording from touchEnd');
       stopRecording();
       // Attendre que la reconnaissance se termine avant de traiter le transcript
-      setTimeout(handleComplete, 200);
+      setTimeout(handleComplete, 500); // Augmenté à 500ms
     }
     
     setIsDragging(false);
