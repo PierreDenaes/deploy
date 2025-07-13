@@ -44,7 +44,7 @@ function sanitizeProfilePayload(payload: Record<string, any>) {
 export default function Profile() {
   const navigate = useNavigate();
   const { state, dispatch, resetAppData, deleteUserAccount } = useAppContext();
-  const { user: authUser, logout } = useAuth();
+  const { user: authUser, logout, updateUserProfile } = useAuth();
   const [name, setName] = useState(state.user.name);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -110,6 +110,14 @@ export default function Profile() {
           name: sanitizedName
         }
       });
+      
+      // Update auth user name as well for persistence
+      if (authUser) {
+        updateUserProfile({
+          name: sanitizedName
+        });
+      }
+      
       setName(sanitizedName); 
       toast.success("Profil enregistré avec succès !");
     } catch (error) {
