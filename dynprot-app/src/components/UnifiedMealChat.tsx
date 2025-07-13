@@ -8,8 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAppContext } from '@/context/AppContext';
+import { useTimeContext } from '@/hooks/useTimeContext';
 import ChatMessage from './ChatMessage';
 import ChatGPTInput from './ChatGPTInput';
+import MealEntryMethods from './MealEntryMethods';
 import ChatProcessor from '@/services/ChatProcessor';
 import { ProductInfo } from '@/services/barcodeService';
 import { 
@@ -30,25 +32,6 @@ const initialState: ChatState = {
   conversationContext: {}
 };
 
-// Interface simplified - no more modals needed
-
-// Messages d'accueil
-const welcomeMessages: ChatMessageType[] = [
-  {
-    id: 'welcome-1',
-    type: 'bot',
-    content: "👋 Salut ! Je suis votre assistant nutritionnel. Décrivez votre repas ou utilisez les icônes pour prendre une photo, enregistrer votre voix ou scanner un produit.",
-    timestamp: new Date(),
-    data: {
-      suggestions: [
-        { label: "Prendre une photo", value: "photo", weight: 0 },
-        { label: "Décrire à la voix", value: "voice", weight: 0 },
-        { label: "Scanner un produit", value: "scan", weight: 0 }
-      ]
-    }
-  }
-];
-
 interface UnifiedMealChatProps {
   className?: string;
 }
@@ -56,10 +39,9 @@ interface UnifiedMealChatProps {
 export const UnifiedMealChat: React.FC<UnifiedMealChatProps> = ({ className }) => {
   const navigate = useNavigate();
   const { user, addMeal } = useAppContext();
-  const [state, setState] = useState<ChatState>({
-    ...initialState,
-    messages: welcomeMessages
-  });
+  const timeContext = useTimeContext(user?.name);
+  const [state, setState] = useState<ChatState>(initialState);
+  const [showChatMode, setShowChatMode] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatProcessor = useRef(ChatProcessor.getInstance());
 
@@ -389,16 +371,34 @@ export const UnifiedMealChat: React.FC<UnifiedMealChatProps> = ({ className }) =
     }
   }, [addMessage, navigate, handleSaveMeal]);
 
+  // Handle method selection from entry interface
+  const handleMethodSelect = useCallback((method: 'photo' | 'voice' | 'text' | 'scan') => {
+    setShowChatMode(true);
+
+    // Add a welcome message for the selected method
+    const welcomeMessages = {
+      photo: "📷 Super ! Prenez une photo de votre repas et je l'analyserai pour vous.",
+      voice: "🎤 Parfait ! Appuyez sur le micro et décrivez-moi votre repas.",
+      text: "⌨️ Excellent ! Décrivez-moi votre repas dans le champ ci-dessous.",
+      scan: "📱 Génial ! Utilisez le scanner pour identifier un produit par son code-barres."
+    };
+
+    addMessage({
+      type: 'bot',
+      content: welcomeMessages[method]
+    });
+  }, [addMessage]);
+
   return (
     <div className={cn("flex flex-col h-full max-w-4xl mx-auto bg-gradient-to-br from-background via-secondary/10 to-accent/5", className)}>
       {/* Header */}
       <motion.div 
-        className="flex items-center justify-between glass border-b border-border/30 backdrop-blur-xl px-4 sm:px-6 py-4"
+        className="glass border-b border-border/30 backdrop-blur-xl px-4 sm:px-6 py-4"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <div className="flex items-center flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-4">
           <motion.div
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -407,134 +407,147 @@ export const UnifiedMealChat: React.FC<UnifiedMealChatProps> = ({ className }) =
               variant="ghost"
               size="icon"
               onClick={() => navigate('/')}
-              className="mr-3 sm:mr-4 rounded-2xl h-10 w-10 sm:h-12 sm:w-12 hover:bg-primary/10 flex-shrink-0"
+              className="rounded-2xl h-10 w-10 sm:h-12 sm:w-12 hover:bg-primary/10"
             >
               <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.5} />
             </Button>
           </motion.div>
-          
-          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-            <motion.div 
-              className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-primary/20 to-accent/20 rounded-2xl flex items-center justify-center shadow-ios flex-shrink-0"
-              animate={{ 
-                scale: state.isLoading ? [1, 1.05, 1] : 1,
-                rotate: state.isLoading ? [0, 5, -5, 0] : 0
-              }}
-              transition={{ 
-                duration: 2,
-                repeat: state.isLoading ? Infinity : 0,
-                ease: "easeInOut"
-              }}
+
+          {state.isLoading && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
             >
-              <MessageSquare className="h-6 w-6 sm:h-7 sm:w-7 text-primary" strokeWidth={2.5} />
+              <Badge variant="secondary" className="px-4 py-2 rounded-2xl bg-primary/10 text-primary border-primary/20 shadow-ios">
+                <Sparkles className="w-4 h-4 mr-2 animate-pulse" strokeWidth={2} />
+                Analyse en cours...
+              </Badge>
             </motion.div>
-            <div className="min-w-0">
-              <h1 className="text-lg sm:text-2xl font-bold text-foreground tracking-tight truncate">
-                <span className="sm:hidden">Assistant</span>
-                <span className="hidden sm:inline">Assistant Nutritionnel</span>
-              </h1>
-              <p className="text-sm sm:text-base text-muted-foreground font-medium truncate">
-                <span className="sm:hidden">Analysez vos repas</span>
-                <span className="hidden sm:inline">Analysez vos repas facilement</span>
-              </p>
-            </div>
-          </div>
+          )}
         </div>
 
-        {state.isLoading && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="ml-auto"
-          >
-            <Badge variant="secondary" className="px-4 py-2 rounded-2xl bg-primary/10 text-primary border-primary/20 shadow-ios">
-              <Sparkles className="w-4 h-4 mr-2 animate-pulse" strokeWidth={2} />
-              Analyse en cours...
-            </Badge>
-          </motion.div>
-        )}
+        {/* Personalized Greeting */}
+        <motion.div 
+          className="text-center space-y-2"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+        >
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+            {timeContext.greeting}
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
+            {timeContext.timeInfo}
+          </p>
+          <p className="text-sm sm:text-base text-foreground/80 font-medium">
+            {timeContext.mealSuggestion}
+          </p>
+        </motion.div>
       </motion.div>
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        <AnimatePresence mode="popLayout">
-          {state.messages.map((message, index) => (
-            <motion.div
-              key={message.id}
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              transition={{ 
-                duration: 0.4,
-                delay: index * 0.1,
-                type: "spring",
-                stiffness: 200,
-                damping: 20
-              }}
-            >
-              <ChatMessage
-                message={message}
-                onSuggestionClick={handleSuggestionClick}
-                onActionClick={handleChatActionClick}
-              />
-            </motion.div>
-          ))}
-        </AnimatePresence>
-        
-        {/* Loading indicator */}
-        {state.isLoading && (
+      {/* Content Area */}
+      <div className="flex-1 overflow-y-auto p-6">
+        {!showChatMode ? (
+          /* Entry Methods Interface */
           <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className="flex justify-start"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="h-full flex items-center justify-center"
           >
-            <div className="glass rounded-3xl p-6 shadow-ios border border-border/20">
-              <div className="flex items-center gap-4">
-                <div className="flex gap-2">
-                  <motion.div 
-                    className="w-3 h-3 bg-primary rounded-full"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.7, 1, 0.7] }}
-                    transition={{ duration: 1, repeat: Infinity, delay: 0 }}
-                  />
-                  <motion.div 
-                    className="w-3 h-3 bg-accent rounded-full"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.7, 1, 0.7] }}
-                    transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
-                  />
-                  <motion.div 
-                    className="w-3 h-3 bg-primary rounded-full"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.7, 1, 0.7] }}
-                    transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
-                  />
-                </div>
-                <span className="text-lg text-muted-foreground font-medium">Analyse en cours...</span>
-              </div>
+            <div className="w-full max-w-2xl">
+              <MealEntryMethods
+                onMethodSelect={handleMethodSelect}
+                onChatMode={() => setShowChatMode(true)}
+                disabled={state.isLoading}
+              />
             </div>
           </motion.div>
+        ) : (
+          /* Chat Mode */
+          <div className="space-y-6">
+            <AnimatePresence mode="popLayout">
+              {state.messages.map((message, index) => (
+                <motion.div
+                  key={message.id}
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                  transition={{ 
+                    duration: 0.4,
+                    delay: index * 0.1,
+                    type: "spring",
+                    stiffness: 200,
+                    damping: 20
+                  }}
+                >
+                  <ChatMessage
+                    message={message}
+                    onSuggestionClick={handleSuggestionClick}
+                    onActionClick={handleChatActionClick}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+            
+            {/* Loading indicator */}
+            {state.isLoading && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="flex justify-start"
+              >
+                <div className="glass rounded-3xl p-6 shadow-ios border border-border/20">
+                  <div className="flex items-center gap-4">
+                    <div className="flex gap-2">
+                      <motion.div 
+                        className="w-3 h-3 bg-primary rounded-full"
+                        animate={{ scale: [1, 1.2, 1], opacity: [0.7, 1, 0.7] }}
+                        transition={{ duration: 1, repeat: Infinity, delay: 0 }}
+                      />
+                      <motion.div 
+                        className="w-3 h-3 bg-accent rounded-full"
+                        animate={{ scale: [1, 1.2, 1], opacity: [0.7, 1, 0.7] }}
+                        transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
+                      />
+                      <motion.div 
+                        className="w-3 h-3 bg-primary rounded-full"
+                        animate={{ scale: [1, 1.2, 1], opacity: [0.7, 1, 0.7] }}
+                        transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
+                      />
+                    </div>
+                    <span className="text-lg text-muted-foreground font-medium">Analyse en cours...</span>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+            
+            <div ref={messagesEndRef} />
+          </div>
         )}
-        
-        <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="backdrop-blur-xl"
-      >
-        <ChatGPTInput
-          value={state.currentInput}
-          onChange={(value) => updateState({ currentInput: value })}
-          onSend={handleUserMessage}
-          onPhotoCapture={handlePhotoCapture}
-          onVoiceTranscript={handleVoiceTranscript}
-          onBarcodeDetected={handleBarcodeDetected}
-          isLoading={state.isLoading}
-          placeholder="Décrivez votre repas..."
-        />
-      </motion.div>
+      {/* Input Area - Only in Chat Mode */}
+      {showChatMode && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="backdrop-blur-xl"
+        >
+          <ChatGPTInput
+            value={state.currentInput}
+            onChange={(value) => updateState({ currentInput: value })}
+            onSend={handleUserMessage}
+            onPhotoCapture={handlePhotoCapture}
+            onVoiceTranscript={handleVoiceTranscript}
+            onBarcodeDetected={handleBarcodeDetected}
+            isLoading={state.isLoading}
+            placeholder="Décrivez votre repas..."
+          />
+        </motion.div>
+      )}
 
       {/* ChatGPT-like interface with integrated attachments and press-to-talk */}
     </div>
