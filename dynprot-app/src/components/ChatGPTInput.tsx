@@ -68,6 +68,7 @@ export const ChatGPTInput: React.FC<ChatGPTInputProps> = ({
   const [isFocused, setIsFocused] = useState(false);
   const [activeAttachment, setActiveAttachment] = useState<AttachmentMode>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const hasText = value.trim().length > 0;
   const canSend = hasText && !isLoading && !disabled;
@@ -94,6 +95,71 @@ export const ChatGPTInput: React.FC<ChatGPTInputProps> = ({
       handleSubmit();
     }
   }, [handleSubmit]);
+
+  // Handle mobile keyboard visibility
+  const handleFocus = useCallback(() => {
+    setIsFocused(true);
+    
+    // Mobile-specific behavior for keeping input visible
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || 
+                    (navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
+    
+    if (isMobile && containerRef.current) {
+      const scrollToInput = () => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        // Get the container's position
+        const rect = container.getBoundingClientRect();
+        const viewportHeight = window.visualViewport?.height || window.innerHeight;
+        const safeArea = 20; // Padding from keyboard
+        
+        // Check if input is hidden or too close to keyboard
+        if (rect.bottom > viewportHeight - safeArea) {
+          // Calculate scroll amount to keep input visible
+          const scrollAmount = rect.bottom - (viewportHeight - safeArea);
+          
+          // Scroll to keep input visible
+          window.scrollBy({
+            top: scrollAmount,
+            behavior: 'smooth'
+          });
+        }
+      };
+
+      // Use Visual Viewport API if available, otherwise fallback to timeout
+      if (window.visualViewport) {
+        const handleViewportChange = () => scrollToInput();
+        window.visualViewport.addEventListener('resize', handleViewportChange);
+        
+        // Cleanup listener
+        setTimeout(() => {
+          window.visualViewport?.removeEventListener('resize', handleViewportChange);
+        }, 3000);
+      } else {
+        // Fallback for older browsers
+        setTimeout(scrollToInput, 300);
+      }
+    }
+  }, []);
+
+  const handleBlur = useCallback(() => {
+    setIsFocused(false);
+    
+    // Prevent unwanted scrolling when keyboard closes on mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || 
+                    (navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
+    
+    if (isMobile) {
+      // Small delay to let keyboard close animation finish
+      setTimeout(() => {
+        // Ensure we don't scroll past the top of the document
+        if (window.scrollY < 0) {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }, 100);
+    }
+  }, []);
 
   const handleAttachmentClick = useCallback((type: AttachmentMode) => {
     setActiveAttachment(type);
@@ -124,7 +190,7 @@ export const ChatGPTInput: React.FC<ChatGPTInputProps> = ({
   }, [hasText, handleSubmit]);
 
   return (
-    <div className={cn("relative", className)}>
+    <div ref={containerRef} className={cn("relative", className)}>
       {/* Attachment Components - Expanded above input */}
       <AnimatePresence>
         {activeAttachment === 'photo' && (
@@ -182,8 +248,8 @@ export const ChatGPTInput: React.FC<ChatGPTInputProps> = ({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
             placeholder={activeAttachment ? `Mode ${activeAttachment} actif...` : placeholder}
             disabled={disabled || !!activeAttachment}
             className={cn(
