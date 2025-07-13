@@ -234,27 +234,43 @@ export const InlineBarcodeScanner: React.FC<InlineBarcodeScannerProps> = ({
   };
 
   const handleManualSearch = async () => {
-    if (!manualInput.trim()) return;
+    console.log('handleManualSearch called with input:', manualInput);
+    
+    if (!manualInput.trim()) {
+      console.log('Empty input, returning early');
+      return;
+    }
     
     const barcode = manualInput.trim();
+    console.log('Validating barcode:', barcode);
+    
     if (!BarcodeServiceV2.isValidBarcode(barcode)) {
+      console.log('Invalid barcode format');
       setError('Format de code-barres invalide (8, 12, 13 ou 14 chiffres requis)');
+      setStatus('manual');
       return;
     }
 
+    console.log('Starting manual search for barcode:', barcode);
     setDetectedBarcode(barcode);
     setStatus('processing');
+    setError(null);
 
     try {
+      console.log('Calling BarcodeServiceV2.lookupProduct...');
       const product = await BarcodeServiceV2.lookupProduct(barcode);
+      console.log('Product lookup result:', product);
       
       if (product) {
+        console.log('Product found, setting success status');
         setStatus('success');
         setTimeout(() => {
+          console.log('Calling onDetected with product');
           onDetected(product);
         }, 1000);
       } else {
-        setError('Produit non trouvé dans la base de données');
+        console.log('No product found for barcode');
+        setError(`Produit avec le code-barres ${barcode} non trouvé`);
         setStatus('manual');
       }
     } catch (err) {
@@ -354,33 +370,37 @@ export const InlineBarcodeScanner: React.FC<InlineBarcodeScannerProps> = ({
         <div className="relative">
           {isManualMode ? (
             <div className="p-4 space-y-4">
+              {/* Debug info */}
+              <div className="text-xs text-gray-500 text-center">
+                Status: {status} | Input: "{manualInput}" | Error: {error || 'none'}
+              </div>
               <div className="space-y-3">
                 <Input
                   value={manualInput}
                   onChange={(e) => setManualInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && manualInput.trim()) {
+                      handleManualSearch();
+                    }
+                  }}
                   placeholder="Ex: 5053990156009"
                   className="text-center text-lg font-mono"
                   maxLength={14}
                   pattern="[0-9]*"
                   inputMode="numeric"
                 />
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleManualSearch}
-                    disabled={!manualInput.trim()}
-                    className="flex-1 bg-primary hover:bg-primary/90"
-                  >
-                    <Search className="w-4 h-4 mr-2" />
-                    Rechercher
-                  </Button>
-                  <Button
-                    onClick={() => setManualInput('5053990156009')}
-                    variant="outline"
-                    size="sm"
-                  >
-                    Test
-                  </Button>
-                </div>
+                <Button
+                  onClick={() => {
+                    console.log('Button clicked, manual input:', manualInput);
+                    console.log('Button disabled state:', !manualInput.trim());
+                    handleManualSearch();
+                  }}
+                  disabled={!manualInput.trim()}
+                  className="w-full bg-primary hover:bg-primary/90"
+                >
+                  <Search className="w-4 h-4 mr-2" />
+                  Rechercher
+                </Button>
               </div>
             </div>
           ) : (

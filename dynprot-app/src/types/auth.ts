@@ -9,6 +9,7 @@ export interface AuthUser {
   createdAt: string;
   emailVerified: boolean;
   hasCompletedOnboarding: boolean;
+  last_analytics_viewed?: string | null;
 }
 
 export interface LoginCredentials {

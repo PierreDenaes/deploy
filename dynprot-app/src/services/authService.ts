@@ -31,7 +31,8 @@ export const authService = {
           name: [response.user.first_name, response.user.last_name].filter(Boolean).join(' ') || 'Utilisateur',
           createdAt: response.user.created_at ? String(response.user.created_at) : '',
           emailVerified: !!response.user.email_verified,
-          hasCompletedOnboarding: !!response.user.has_completed_onboarding
+          hasCompletedOnboarding: !!response.user.has_completed_onboarding,
+          last_analytics_viewed: response.user.last_analytics_viewed ? String(response.user.last_analytics_viewed) : null
         },
         token: response.tokens.accessToken
       };
@@ -90,7 +91,8 @@ export const authService = {
           name: [response.user.first_name, response.user.last_name].filter(Boolean).join(' ') || 'Utilisateur',
           createdAt: response.user.created_at ? String(response.user.created_at) : '',
           emailVerified: !!response.user.email_verified,
-          hasCompletedOnboarding: !!response.user.has_completed_onboarding
+          hasCompletedOnboarding: !!response.user.has_completed_onboarding,
+          last_analytics_viewed: response.user.last_analytics_viewed ? String(response.user.last_analytics_viewed) : null
         },
         token: response.tokens.accessToken
       };
@@ -116,7 +118,8 @@ export const authService = {
             name: [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Utilisateur',
             createdAt: user.created_at ? String(user.created_at) : '',
             emailVerified: !!user.email_verified,
-            hasCompletedOnboarding: !!user.has_completed_onboarding
+            hasCompletedOnboarding: !!user.has_completed_onboarding,
+            last_analytics_viewed: user.last_analytics_viewed ? String(user.last_analytics_viewed) : null
           },
           token: ''
         };
@@ -162,7 +165,8 @@ export const authService = {
             name: [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Utilisateur',
             createdAt: user.created_at ? String(user.created_at) : '',
             emailVerified: !!user.email_verified,
-            hasCompletedOnboarding: !!user.has_completed_onboarding
+            hasCompletedOnboarding: !!user.has_completed_onboarding,
+            last_analytics_viewed: user.last_analytics_viewed ? String(user.last_analytics_viewed) : null
           },
           token: ''
         };
