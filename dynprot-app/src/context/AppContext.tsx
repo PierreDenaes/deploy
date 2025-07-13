@@ -8,6 +8,7 @@ import { AuthService } from '../services/api.auth';
 import { ErrorHandler } from '../utils/errorHandling';
 import { useTypedLoading, LoadingOperations } from '../hooks/useLoadingState';
 import { safeNumber, safeDate } from '../utils/numberUtils';
+import { apiClient } from '../services/api.service';
 
 // Types for our global state
 export interface UserProfile {
@@ -943,23 +944,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const markAnalyticsViewed = useCallback(async () => {
     try {
-      // Update server-side timestamp
-      const response = await fetch('/api/profile/analytics-viewed', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-
-      if (response.ok) {
-        // Update local state only if server update was successful
-        dispatch({ type: 'MARK_ANALYTICS_VIEWED' });
-      } else {
-        console.error('Failed to update analytics viewed timestamp on server');
-        // Still update local state as fallback
-        dispatch({ type: 'MARK_ANALYTICS_VIEWED' });
-      }
+      // Update server-side timestamp using centralized API client
+      await apiClient.post('/profile/analytics-viewed');
+      // Update local state only if server update was successful
+      dispatch({ type: 'MARK_ANALYTICS_VIEWED' });
     } catch (error) {
       console.error('Error updating analytics viewed timestamp:', error);
       // Still update local state as fallback

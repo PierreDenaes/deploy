@@ -103,7 +103,7 @@ interface AIAnalysisData {
 export default function Analytics() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { state, deleteMeal, addFavoriteMeal } = useAppContext();
+  const { state, deleteMeal, addFavoriteMeal, markAnalyticsViewed } = useAppContext();
   
   // Get tab from URL params with legacy support, default to 'analytics'
   const rawTab = searchParams.get('tab');
@@ -132,7 +132,10 @@ export default function Analytics() {
   const [aiPeriod, setAIPeriod] = useState<'week' | 'month' | 'quarter'>('week');
   const [isLoadingAI, setIsLoadingAI] = useState(false);
 
-  // Note: Analytics viewing tracking disabled (API endpoint not implemented)
+  // Mark analytics as viewed when component mounts
+  React.useEffect(() => {
+    markAnalyticsViewed();
+  }, [markAnalyticsViewed]);
 
   // Handle tab changes and update URL
   const handleTabChange = (tab: string) => {
