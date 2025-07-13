@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { X, Zap, AlertCircle, CheckCircle2, Keyboard } from 'lucide-react';
-import { BarcodeService, BarcodeResult, ProductInfo } from '../services/barcodeService';
+import { BarcodeServiceV2, BarcodeResult, ProductInfo } from '../services/barcodeServiceV2';
 
 interface BarcodeScannerProps {
   onDetected: (product: ProductInfo) => void;
@@ -16,7 +16,6 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
   isOpen
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const stopScanningRef = useRef<(() => void) | null>(null);
   const [isScanning, setIsScanning] = useState(false);
@@ -42,29 +41,86 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
       setStatus('initializing');
       setError(null);
 
-      // Request camera access
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'environment', // Use back camera on mobile
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+      // Check if getUserMedia is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setError('Camera API non supportée par ce navigateur');
+        setStatus('error');
+        return;
+      }
+
+      // Request camera access with fallback constraints
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'environment', // Use back camera on mobile
+            width: { ideal: 1280, min: 640 },
+            height: { ideal: 720, min: 480 }
+          }
+        });
+      } catch (primaryError) {
+        console.warn('Primary camera config failed, trying fallback:', primaryError);
+        // Fallback with more relaxed constraints
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            }
+          });
+        } catch (fallbackError) {
+          console.error('All camera configs failed:', fallbackError);
+          throw fallbackError;
         }
-      });
+      }
 
       streamRef.current = stream;
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play();
-          setStatus('scanning');
-          setIsScanning(true);
-          startScanning();
+        
+        // Enhanced video load handling
+        const handleVideoLoad = () => {
+          if (videoRef.current) {
+            videoRef.current.play().then(() => {
+              console.log('Video playing successfully');
+              setStatus('scanning');
+              setIsScanning(true);
+              startScanning();
+            }).catch((playError) => {
+              console.error('Error playing video:', playError);
+              setError('Erreur lors du démarrage de la vidéo');
+              setStatus('error');
+            });
+          }
         };
+
+        videoRef.current.onloadedmetadata = handleVideoLoad;
+        
+        // Fallback timeout in case loadedmetadata doesn't fire
+        setTimeout(() => {
+          if (videoRef.current && videoRef.current.readyState >= 2 && status === 'initializing') {
+            console.log('Video ready via timeout fallback');
+            handleVideoLoad();
+          }
+        }, 2000);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error accessing camera:', err);
-      setError('Impossible d\'accéder à la caméra. Vérifiez les permissions.');
+      
+      // Provide specific error messages based on error type
+      let errorMessage = 'Impossible d\'accéder à la caméra.';
+      if (err.name === 'NotAllowedError') {
+        errorMessage = 'Accès à la caméra refusé. Vérifiez les permissions.';
+      } else if (err.name === 'NotFoundError') {
+        errorMessage = 'Aucune caméra trouvée sur cet appareil.';
+      } else if (err.name === 'NotReadableError') {
+        errorMessage = 'Caméra en cours d\'utilisation par une autre application.';
+      } else if (err.name === 'OverconstrainedError') {
+        errorMessage = 'Configuration caméra non supportée.';
+      }
+      
+      setError(errorMessage);
       setStatus('error');
     }
   };
@@ -87,38 +143,55 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
   };
 
   const startScanning = () => {
-    if (!videoRef.current || !canvasRef.current) return;
-
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    
-    // Set canvas size to match video
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    console.log('Starting barcode scanning with canvas size:', canvas.width, 'x', canvas.height);
-
-    // Arrêter le scan précédent s'il existe
-    if (stopScanningRef.current) {
-      stopScanningRef.current();
+    if (!videoRef.current) {
+      console.warn('Video ref not available for scanning');
+      return;
     }
 
-    // Démarrer le nouveau scan et stocker la fonction de stop
-    const stopScanningFn = BarcodeService.startContinuousScanning(
-      video,
-      canvas,
-      handleBarcodeDetected
-    );
+    const video = videoRef.current;
     
-    stopScanningRef.current = stopScanningFn;
+    // Wait for video to be ready
+    const initializeScanning = () => {
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        console.log('Video not ready, waiting...');
+        setTimeout(initializeScanning, 100);
+        return;
+      }
 
-    // Auto-cleanup after 60 seconds (increased timeout)
+      try {
+        console.log('Starting ZXing barcode scanning with video dimensions:', video.videoWidth, 'x', video.videoHeight);
+        
+        // Arrêter le scan précédent s'il existe
+        if (stopScanningRef.current) {
+          stopScanningRef.current();
+        }
+
+        // Démarrer le nouveau scan ZXing
+        const stopScanningFn = BarcodeServiceV2.startContinuousScanning(
+          video,
+          handleBarcodeDetected
+        );
+        
+        stopScanningRef.current = stopScanningFn;
+
+      } catch (scanError) {
+        console.error('Error setting up ZXing scanner:', scanError);
+        setError('Erreur de configuration du scanner');
+        setStatus('error');
+      }
+    };
+
+    // Start scanning initialization
+    initializeScanning();
+
+    // Auto-cleanup after 60 seconds
     const timeout = setTimeout(() => {
       if (stopScanningRef.current) {
         stopScanningRef.current();
         stopScanningRef.current = null;
       }
       setIsScanning(false);
+      console.log('Scanning auto-stopped after 60 seconds');
     }, 60000);
 
     return () => {
@@ -127,7 +200,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
   };
 
   const handleBarcodeDetected = async (result: BarcodeResult) => {
-    if (!BarcodeService.isValidBarcode(result.data)) {
+    if (!BarcodeServiceV2.isValidBarcode(result.data)) {
       return; // Continue scanning for valid barcodes
     }
 
@@ -143,7 +216,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
 
     try {
       // Look up product information
-      const product = await BarcodeService.lookupProduct(result.data);
+      const product = await BarcodeServiceV2.lookupProduct(result.data);
       
       if (product) {
         setStatus('success');
@@ -186,7 +259,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     setIsScanning(false);
 
     try {
-      const product = await BarcodeService.lookupProduct(testBarcode);
+      const product = await BarcodeServiceV2.lookupProduct(testBarcode);
       
       if (product) {
         setStatus('success');
@@ -209,7 +282,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     if (!manualInput.trim()) return;
     
     const barcode = manualInput.trim();
-    if (!BarcodeService.isValidBarcode(barcode)) {
+    if (!BarcodeServiceV2.isValidBarcode(barcode)) {
       setError('Format de code-barres invalide (8, 12, 13 ou 14 chiffres requis)');
       return;
     }
@@ -218,7 +291,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     setStatus('processing');
 
     try {
-      const product = await BarcodeService.lookupProduct(barcode);
+      const product = await BarcodeServiceV2.lookupProduct(barcode);
       
       if (product) {
         setStatus('success');
@@ -318,10 +391,6 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
               className="w-full h-64 bg-gray-100 rounded-lg object-cover"
               playsInline
               muted
-            />
-            <canvas
-              ref={canvasRef}
-              className="hidden"
             />
             
             {/* Scanning overlay */}
@@ -439,8 +508,8 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
 
         <div className="text-xs text-gray-500 text-center mt-4">
           {status === 'manual' 
-            ? 'Codes acceptés : EAN-13, EAN-8, UPC-A, UPC-E (8-14 chiffres)'
-            : 'Placez le code-barres dans le cadre pour le scanner automatiquement'
+            ? 'Codes acceptés : EAN-13, EAN-8, UPC-A, UPC-E, Code 128, QR codes'
+            : 'Placez le code-barres ou QR code dans le cadre pour le scanner automatiquement'
           }
         </div>
       </div>

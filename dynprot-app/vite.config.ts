@@ -111,7 +111,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     optimizeDeps: {
-      include: ['crypto-js'],
+      include: ['crypto-js', '@zxing/library', '@zxing/browser'],
     },
   };
 });

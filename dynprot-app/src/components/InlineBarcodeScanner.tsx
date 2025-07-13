@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Scan, X, CheckCircle2, AlertCircle, Keyboard, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { BarcodeService, BarcodeResult, ProductInfo } from '../services/barcodeService';
+import { BarcodeServiceV2, BarcodeResult, ProductInfo } from '../services/barcodeServiceV2';
 import { cn } from '@/lib/utils';
 
 interface InlineBarcodeScannerProps {
@@ -18,7 +18,6 @@ export const InlineBarcodeScanner: React.FC<InlineBarcodeScannerProps> = ({
   isActive
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const stopScanningRef = useRef<(() => void) | null>(null);
   
@@ -59,70 +58,145 @@ export const InlineBarcodeScanner: React.FC<InlineBarcodeScannerProps> = ({
       setStatus('initializing');
       setError(null);
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+      // Check if getUserMedia is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setError('Camera API non supportée par ce navigateur');
+        setStatus('error');
+        return;
+      }
+
+      // Request camera access with fallback constraints
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'environment',
+            width: { ideal: 1280, min: 640 },
+            height: { ideal: 720, min: 480 }
+          }
+        });
+      } catch (primaryError) {
+        console.warn('Primary camera config failed, trying fallback:', primaryError);
+        // Fallback with more relaxed constraints
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            }
+          });
+        } catch (fallbackError) {
+          console.error('All camera configs failed:', fallbackError);
+          throw fallbackError;
         }
-      });
+      }
 
       streamRef.current = stream;
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play();
-          setStatus('scanning');
-          setIsScanning(true);
-          startScanning();
+        
+        // Enhanced video load handling
+        const handleVideoLoad = () => {
+          if (videoRef.current) {
+            videoRef.current.play().then(() => {
+              console.log('Inline video playing successfully');
+              setStatus('scanning');
+              setIsScanning(true);
+              startScanning();
+            }).catch((playError) => {
+              console.error('Error playing inline video:', playError);
+              setError('Erreur lors du démarrage de la vidéo');
+              setStatus('error');
+            });
+          }
         };
+
+        videoRef.current.onloadedmetadata = handleVideoLoad;
+        
+        // Fallback timeout in case loadedmetadata doesn't fire
+        setTimeout(() => {
+          if (videoRef.current && videoRef.current.readyState >= 2 && status === 'initializing') {
+            console.log('Inline video ready via timeout fallback');
+            handleVideoLoad();
+          }
+        }, 2000);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error accessing camera:', err);
-      setError('Impossible d\'accéder à la caméra');
+      
+      // Provide specific error messages based on error type
+      let errorMessage = 'Impossible d\'accéder à la caméra.';
+      if (err.name === 'NotAllowedError') {
+        errorMessage = 'Accès caméra refusé. Vérifiez les permissions.';
+      } else if (err.name === 'NotFoundError') {
+        errorMessage = 'Aucune caméra trouvée.';
+      } else if (err.name === 'NotReadableError') {
+        errorMessage = 'Caméra utilisée par une autre app.';
+      } else if (err.name === 'OverconstrainedError') {
+        errorMessage = 'Config caméra non supportée.';
+      }
+      
+      setError(errorMessage);
       setStatus('error');
     }
   };
 
   const startScanning = () => {
-    if (!videoRef.current || !canvasRef.current) return;
-
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    if (stopScanningRef.current) {
-      stopScanningRef.current();
-    }
-
-    const stopScanningFn = BarcodeService.startContinuousScanning(
-      video,
-      canvas,
-      handleBarcodeDetected
-    );
-    
-    stopScanningRef.current = stopScanningFn;
-  };
-
-  const handleBarcodeDetected = async (result: BarcodeResult) => {
-    if (!BarcodeService.isValidBarcode(result.data)) {
+    if (!videoRef.current) {
+      console.warn('Video ref not available for inline scanning');
       return;
     }
 
-    if (stopScanningRef.current) {
-      stopScanningRef.current();
-      stopScanningRef.current = null;
+    const video = videoRef.current;
+    
+    // Wait for video to be ready
+    const initializeScanning = () => {
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        console.log('Inline video not ready, waiting...');
+        setTimeout(initializeScanning, 100);
+        return;
+      }
+
+      try {
+        console.log('Starting inline ZXing barcode scanning with video dimensions:', video.videoWidth, 'x', video.videoHeight);
+        
+        if (stopScanningRef.current) {
+          stopScanningRef.current();
+        }
+
+        const stopScanningFn = BarcodeServiceV2.startContinuousScanning(
+          video,
+          handleBarcodeDetected
+        );
+        
+        stopScanningRef.current = stopScanningFn;
+
+      } catch (scanError) {
+        console.error('Error setting up inline ZXing scanner:', scanError);
+        setError('Erreur de configuration du scanner');
+        setStatus('error');
+      }
+    };
+
+    // Start scanning initialization
+    initializeScanning();
+  };
+
+  const handleBarcodeDetected = async (result: BarcodeResult) => {
+    if (!BarcodeServiceV2.isValidBarcode(result.data)) {
+      return;
     }
 
+    // Stop scanning immediately - NO RESTART
+    cleanup();
+    
     setDetectedBarcode(result.data);
     setStatus('processing');
     setIsScanning(false);
 
     try {
-      const product = await BarcodeService.lookupProduct(result.data);
+      const product = await BarcodeServiceV2.lookupProduct(result.data);
       
       if (product) {
         setStatus('success');
@@ -132,25 +206,13 @@ export const InlineBarcodeScanner: React.FC<InlineBarcodeScannerProps> = ({
       } else {
         setError(`Produit avec le code-barres ${result.data} non trouvé`);
         setStatus('error');
-        setTimeout(() => {
-          setStatus('scanning');
-          setIsScanning(true);
-          setError(null);
-          setDetectedBarcode(null);
-          if (!isManualMode) startScanning();
-        }, 3000);
+        // NO AUTO-RESTART - User must manually restart
       }
     } catch (err) {
       console.error('Error looking up product:', err);
       setError('Erreur lors de la recherche du produit');
       setStatus('error');
-      setTimeout(() => {
-        setStatus('scanning');
-        setIsScanning(true);
-        setError(null);
-        setDetectedBarcode(null);
-        if (!isManualMode) startScanning();
-      }, 2000);
+      // NO AUTO-RESTART - User must manually restart
     }
   };
 
@@ -158,7 +220,7 @@ export const InlineBarcodeScanner: React.FC<InlineBarcodeScannerProps> = ({
     if (!manualInput.trim()) return;
     
     const barcode = manualInput.trim();
-    if (!BarcodeService.isValidBarcode(barcode)) {
+    if (!BarcodeServiceV2.isValidBarcode(barcode)) {
       setError('Format de code-barres invalide (8, 12, 13 ou 14 chiffres requis)');
       return;
     }
@@ -167,7 +229,7 @@ export const InlineBarcodeScanner: React.FC<InlineBarcodeScannerProps> = ({
     setStatus('processing');
 
     try {
-      const product = await BarcodeService.lookupProduct(barcode);
+      const product = await BarcodeServiceV2.lookupProduct(barcode);
       
       if (product) {
         setStatus('success');
@@ -193,9 +255,11 @@ export const InlineBarcodeScanner: React.FC<InlineBarcodeScannerProps> = ({
   };
 
   const switchToScanMode = () => {
+    cleanup(); // Clean any existing state
     setIsManualMode(false);
     setStatus('initializing');
     setError(null);
+    setDetectedBarcode(null);
     setManualInput('');
     startCamera();
   };
@@ -372,8 +436,6 @@ export const InlineBarcodeScanner: React.FC<InlineBarcodeScannerProps> = ({
               )}
             </div>
           )}
-          
-          <canvas ref={canvasRef} className="hidden" />
         </div>
 
         {/* Status and Controls */}
@@ -390,7 +452,28 @@ export const InlineBarcodeScanner: React.FC<InlineBarcodeScannerProps> = ({
           )}
 
           <div className="flex justify-center gap-2">
-            {isManualMode ? (
+            {status === 'error' && !isManualMode ? (
+              <>
+                <Button
+                  onClick={switchToScanMode}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Scan className="w-4 h-4" />
+                  Rescanner
+                </Button>
+                <Button
+                  onClick={switchToManualMode}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Keyboard className="w-4 h-4" />
+                  Saisie manuelle
+                </Button>
+              </>
+            ) : isManualMode ? (
               <Button
                 onClick={switchToScanMode}
                 variant="outline"
@@ -400,7 +483,7 @@ export const InlineBarcodeScanner: React.FC<InlineBarcodeScannerProps> = ({
                 <Scan className="w-4 h-4" />
                 Retour au scan
               </Button>
-            ) : (
+            ) : status === 'scanning' ? (
               <Button
                 onClick={switchToManualMode}
                 variant="outline"
@@ -410,13 +493,13 @@ export const InlineBarcodeScanner: React.FC<InlineBarcodeScannerProps> = ({
                 <Keyboard className="w-4 h-4" />
                 Saisie manuelle
               </Button>
-            )}
+            ) : null}
           </div>
 
           <div className="text-xs text-gray-500 text-center mt-3">
             {isManualMode 
-              ? 'Codes acceptés : EAN-13, EAN-8, UPC-A, UPC-E (8-14 chiffres)'
-              : 'Placez le code-barres dans le cadre pour le scanner automatiquement'
+              ? 'Codes acceptés : EAN-13, EAN-8, UPC-A, UPC-E, Code 128, QR codes'
+              : 'Placez le code-barres ou QR code dans le cadre pour le scanner automatiquement'
             }
           </div>
         </div>
