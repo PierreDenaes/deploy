@@ -37,6 +37,15 @@ Cette variable est automatiquement configurée par Render :
 DATABASE_URL=postgresql://... (auto-configuré par Render)
 ```
 
+### 🌐 Configuration CORS
+**CRITIQUE :** Cette variable doit inclure l'URL de votre frontend en production :
+
+```bash
+CORS_ORIGIN=https://dynprot-frontend.onrender.com,http://localhost:5173,http://localhost:3000
+```
+
+⚠️ **Remplacez `dynprot-frontend` par le nom exact de votre service frontend Render.**
+
 ## ⚙️ Configuration dans Render
 
 ### 1. Backend (dynprot-backend)
@@ -44,8 +53,12 @@ Dans votre service backend Render :
 
 1. Allez dans **Environment** 
 2. Ajoutez chaque variable avec sa valeur
-3. Marquez les secrets comme **Secret** (JWT_SECRET, JWT_REFRESH_SECRET, OPENAI_API_KEY, CLOUDINARY_API_SECRET)
-4. Cliquez **Save Changes**
+3. **IMPORTANT :** Ajoutez `CORS_ORIGIN` avec l'URL de votre frontend :
+   ```
+   CORS_ORIGIN=https://votre-frontend-name.onrender.com,http://localhost:5173,http://localhost:3000
+   ```
+4. Marquez les secrets comme **Secret** (JWT_SECRET, JWT_REFRESH_SECRET, OPENAI_API_KEY, CLOUDINARY_API_SECRET)
+5. Cliquez **Save Changes**
 
 ### 2. Frontend (dynprot-frontend)
 Les variables frontend sont déjà configurées dans `render.yaml` :
@@ -75,6 +88,20 @@ Dans les logs de votre service backend, vérifiez :
 Si vous voyez des warnings JWT, ajoutez les variables manquantes.
 
 ## 🐛 Résolution des problèmes
+
+### ❌ Erreur CORS "No 'Access-Control-Allow-Origin' header"
+**Symptôme :** `Access to fetch at 'https://dynprot-backend.onrender.com' from origin 'https://dynprot-frontend.onrender.com' has been blocked by CORS policy`
+
+**Solution :**
+1. Allez dans le dashboard Render de votre **service backend**
+2. Cliquez sur **Environment** dans la sidebar
+3. Ajoutez ou modifiez la variable `CORS_ORIGIN` :
+   ```
+   CORS_ORIGIN=https://dynprot-frontend.onrender.com,http://localhost:5173,http://localhost:3000
+   ```
+4. Remplacez `dynprot-frontend` par le nom exact de votre service frontend
+5. Cliquez **Save Changes**
+6. Le service backend va redémarrer automatiquement
 
 ### Erreur 500 sur l'inscription
 - ✅ Vérifiez que JWT_SECRET et JWT_REFRESH_SECRET sont configurés
