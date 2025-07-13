@@ -9,7 +9,8 @@ import {
   requestPasswordReset,
   resetPassword,
   deleteAccount,
-  verifyEmail
+  verifyEmail,
+  updateProfile
 } from '../controllers/auth.controller';
 import { authenticateToken } from '../middleware/auth.middleware';
 
@@ -26,6 +27,7 @@ router.post('/verify-email', verifyEmail);
 // Protected auth routes
 router.post('/logout', authenticateToken, logout);
 router.get('/me', authenticateToken, getCurrentUser);
+router.put('/profile', authenticateToken, updateProfile);
 router.post('/change-password', authenticateToken, changePassword);
 router.post('/delete-account', authenticateToken, deleteAccount);
 

@@ -67,6 +67,10 @@ export const RefreshTokenSchema = z.object({
   refreshToken: z.string().min(1, 'Refresh token is required')
 });
 
+export const UserUpdateSchema = z.object({
+  name: z.string().min(1).max(100).optional()
+});
+
 // =====================================================
 // USER PROFILE SCHEMAS
 // =====================================================
@@ -200,6 +204,8 @@ export const CreateDataExportSchema = z.object({
 export type AuthUser = Omit<User, 'password_hash'> & {
   profile?: user_profiles;
 };
+
+export type UserUpdate = z.infer<typeof UserUpdateSchema>;
 
 export type MealEntryWithAnalysis = meal_entries & {
   meal_analyses?: meal_analyses[];

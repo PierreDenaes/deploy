@@ -11,9 +11,11 @@ import {
   LoginSchema,
   RegisterSchema,
   RefreshTokenSchema,
+  UserUpdateSchema,
   ApiResponse,
   AuthTokens,
-  AuthUser
+  AuthUser,
+  UserUpdate
 } from '../types/api.types';
 
 // =====================================================
@@ -928,6 +930,105 @@ export async function verifyEmail(req: Request, res: Response): Promise<void> {
       success: false,
       error: 'Email verification failed',
       message: 'An error occurred while verifying your email'
+    } as ApiResponse);
+  }
+}
+
+export async function updateProfile(req: Request, res: Response): Promise<void> {
+  try {
+    const user = (req as any).user as AuthUser;
+    
+    // Validate request body
+    const validation = UserUpdateSchema.safeParse(req.body);
+    if (!validation.success) {
+      res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        message: 'Invalid profile update data',
+        details: validation.error.issues.map(issue => ({
+          field: issue.path.join('.'),
+          message: issue.message,
+          code: issue.code
+        }))
+      } as ApiResponse);
+      return;
+    }
+
+    const updateData: UserUpdate = validation.data;
+
+    // Get existing user for logging
+    const existingUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        user_profiles: true
+      }
+    });
+
+    if (!existingUser) {
+      res.status(404).json({
+        success: false,
+        error: 'User not found',
+        message: 'User does not exist'
+      } as ApiResponse);
+      return;
+    }
+
+    // Prepare update data - map 'name' to 'first_name' and clear 'last_name'
+    const dbUpdateData: any = {};
+    if (updateData.name) {
+      dbUpdateData.first_name = updateData.name;
+      dbUpdateData.last_name = null; // Clear last_name to avoid concatenation
+    }
+
+    // Update user
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: dbUpdateData,
+      include: {
+        user_profiles: true
+      }
+    });
+
+    // Log profile update activity
+    await logActivity(
+      user.id,
+      'USER_PROFILE_UPDATED',
+      'users',
+      updatedUser.id,
+      { name: existingUser.first_name },
+      { name: updatedUser.first_name },
+      getClientContext(req)
+    );
+
+    // Create auth user object (exclude password)
+    const authUser: AuthUser = {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      username: updatedUser.username,
+      first_name: updatedUser.first_name,
+      last_name: updatedUser.last_name,
+      avatar_url: updatedUser.avatar_url,
+      email_verified: updatedUser.email_verified,
+      has_completed_onboarding: updatedUser.has_completed_onboarding,
+      is_active: updatedUser.is_active,
+      created_at: updatedUser.created_at,
+      updated_at: updatedUser.updated_at,
+      last_login_at: updatedUser.last_login_at,
+      last_analytics_viewed: updatedUser.last_analytics_viewed,
+      profile: updatedUser.user_profiles || undefined
+    };
+
+    res.status(200).json({
+      success: true,
+      data: { user: authUser },
+      message: 'Profile updated successfully'
+    } as ApiResponse);
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update profile',
+      message: 'An error occurred while updating the user profile'
     } as ApiResponse);
   }
 }
