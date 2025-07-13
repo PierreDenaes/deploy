@@ -28,7 +28,7 @@ export const authService = {
         user: {
           id: response.user.id,
           email: response.user.email,
-          name: [response.user.first_name, response.user.last_name].filter(Boolean).join(' ') || 'Utilisateur',
+          name: response.user.first_name || 'Utilisateur',
           createdAt: response.user.created_at ? String(response.user.created_at) : '',
           emailVerified: !!response.user.email_verified,
           hasCompletedOnboarding: !!response.user.has_completed_onboarding,
@@ -88,7 +88,7 @@ export const authService = {
         user: {
           id: response.user.id,
           email: response.user.email,
-          name: [response.user.first_name, response.user.last_name].filter(Boolean).join(' ') || 'Utilisateur',
+          name: response.user.first_name || 'Utilisateur',
           createdAt: response.user.created_at ? String(response.user.created_at) : '',
           emailVerified: !!response.user.email_verified,
           hasCompletedOnboarding: !!response.user.has_completed_onboarding,
@@ -115,7 +115,7 @@ export const authService = {
           user: {
             id: user.id,
             email: user.email,
-            name: [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Utilisateur',
+            name: user.first_name || 'Utilisateur',
             createdAt: user.created_at ? String(user.created_at) : '',
             emailVerified: !!user.email_verified,
             hasCompletedOnboarding: !!user.has_completed_onboarding,
@@ -162,7 +162,7 @@ export const authService = {
           user: {
             id: user.id,
             email: user.email,
-            name: [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Utilisateur',
+            name: user.first_name || 'Utilisateur',
             createdAt: user.created_at ? String(user.created_at) : '',
             emailVerified: !!user.email_verified,
             hasCompletedOnboarding: !!user.has_completed_onboarding,

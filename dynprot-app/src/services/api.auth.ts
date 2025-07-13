@@ -228,6 +228,17 @@ export class AuthService {
     }
   }
 
+  // Mettre à jour le profil utilisateur (nom, etc.)
+  static async updateUserProfile(updates: { name?: string }): Promise<AuthUser> {
+    const response: ApiResponse<{ user: AuthUser }> = await apiClient.put('/auth/profile', updates);
+    
+    if (response.success && response.data) {
+      return response.data.user;
+    }
+    
+    throw new Error(response.message || 'Erreur lors de la mise à jour du profil');
+  }
+
   // Supprimer le compte utilisateur
   static async deleteAccount(data: DeleteAccountRequest): Promise<void> {
     // Validation côté client - très stricte pour la sécurité

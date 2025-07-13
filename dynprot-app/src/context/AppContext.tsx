@@ -456,13 +456,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         // Load user profile from API
         await executeOperation(LoadingOperations.LOAD_PROFILE, async () => {
           const profile = await ProfileService.getProfile();
+          // Récupérer le nom custom du localStorage ou fallback vers authUser
+          const savedName = localStorage.getItem('userDisplayName');
+          const displayName = savedName || authUser?.name || 'Utilisateur';
           
           // Map API profile to local user state
           const userProfile: UserProfile = {
             id: profile.id,
-            name: profile.first_name
-              ? `${profile.first_name} ${profile.last_name || ''}`.trim()
-              : authUser.name || 'Utilisateur',
+            name: displayName,
             dailyProteinGoal: profile.daily_protein_goal,
             weightKg: profile.weight_kg || 75,
             heightCm: profile.height_cm || 175,

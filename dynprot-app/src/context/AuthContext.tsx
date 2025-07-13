@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import { AuthState, AuthContextType, AuthUser, LoginCredentials, RegisterCredentials } from '@/types/auth';
-import { DeleteAccountRequest } from '@/services/api.auth';
+import { DeleteAccountRequest, AuthService } from '@/services/api.auth';
 import { authService } from '@/services/authService';
 import { TokenManager } from '@/services/api.service';
 import { toast } from 'sonner';
@@ -184,8 +184,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Update user profile function
-  const updateUserProfile = (updates: Partial<AuthUser>) => {
-    dispatch({ type: 'UPDATE_USER', payload: updates });
+  const updateUserProfile = async (updates: Partial<AuthUser>) => {
+    try {
+      // Si on met à jour le nom, utiliser l'API auth
+      if (updates.name) {
+        const backendUser = await AuthService.updateUserProfile({ name: updates.name });
+        // Transform backend user to frontend format
+        const frontendUser = {
+          id: backendUser.id,
+          email: backendUser.email,
+          name: backendUser.first_name || 'Utilisateur',
+          createdAt: backendUser.created_at ? String(backendUser.created_at) : '',
+          emailVerified: !!backendUser.email_verified,
+          hasCompletedOnboarding: !!backendUser.has_completed_onboarding,
+          last_analytics_viewed: backendUser.last_analytics_viewed ? String(backendUser.last_analytics_viewed) : null
+        };
+        dispatch({ type: 'UPDATE_USER', payload: frontendUser });
+      } else {
+        // Pour autres updates, juste local
+        dispatch({ type: 'UPDATE_USER', payload: updates });
+      }
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+      // En cas d'erreur, update quand même localement
+      dispatch({ type: 'UPDATE_USER', payload: updates });
+    }
   };
 
   const value: AuthContextType = {

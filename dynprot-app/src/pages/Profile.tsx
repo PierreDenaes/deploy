@@ -91,17 +91,13 @@ export default function Profile() {
     }
     
     try {
-      // Split the full name into first and last name
-      const nameParts = sanitizedName.trim().split(' ');
-      const firstName = nameParts[0];
-      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
-
-      // Save name to backend using first_name and last_name
-      await ProfileService.updateProfile(sanitizeProfilePayload({
-        first_name: firstName,
-        last_name: lastName
-      }));
-
+      // Mettre à jour via l'API auth (met à jour le champ name de l'utilisateur)
+      if (authUser) {
+        await updateUserProfile({
+          name: sanitizedName
+        });
+      }
+      
       // Update local state
       dispatch({
         type: "SET_USER",
@@ -111,15 +107,8 @@ export default function Profile() {
         }
       });
       
-      // Update auth user name as well for persistence
-      if (authUser) {
-        updateUserProfile({
-          name: sanitizedName
-        });
-      }
-      
       setName(sanitizedName); 
-      toast.success("Profil enregistré avec succès !");
+      toast.success("Nom enregistré avec succès !");
     } catch (error) {
       console.error('Erreur lors de la sauvegarde du nom:', error);
       toast.error("Erreur lors de la sauvegarde. Veuillez réessayer.");
