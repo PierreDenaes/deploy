@@ -166,14 +166,14 @@ export default function FavoritesMealsList({
             const currentHour = new Date().getHours();
             if (progressContext && progressContext.progressPercentage < 50 && currentHour > 14) {
               return (
-                <span className="text-orange-600 font-medium">
+                <span className="text-orange-600 dark:text-orange-400 font-medium">
                   ⚡ Privilégiez vos favoris riches en protéines !
                 </span>
               );
             }
             if (progressContext?.streakActive) {
               return (
-                <span className="text-green-600 font-medium">
+                <span className="text-green-600 dark:text-green-400 font-medium">
                   🔥 Maintenez votre série avec vos favoris !
                 </span>
               );
@@ -190,7 +190,7 @@ export default function FavoritesMealsList({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="p-4 border rounded-xl bg-card hover:bg-muted/30 transition-all duration-200 hover:shadow-md dashboard-hover"
+              className="p-4 border border-border rounded-xl bg-card hover:bg-muted/30 dark:hover:bg-muted/20 transition-all duration-200 hover:shadow-md dashboard-hover"
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
@@ -202,7 +202,7 @@ export default function FavoritesMealsList({
                       )}
                       {isValidDate(favorite.lastUsed) && 
                        (new Date().getTime() - safeDate(favorite.lastUsed).getTime()) < 86400000 && (
-                        <Badge variant="outline" className="text-xs px-1 py-0 bg-green-50 text-green-700 border-green-200">
+                        <Badge variant="outline" className="text-xs px-1 py-0 bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800">
                           Récent
                         </Badge>
                       )}
@@ -262,7 +262,7 @@ export default function FavoritesMealsList({
                         disabled={addingFavoriteId === favorite.id}
                         className={cn(
                           "h-10 px-4 font-semibold rounded-xl transition-all duration-200",
-                          "bg-primary text-primary-foreground hover:bg-primary/90",
+                          "bg-primary text-primary-foreground hover:bg-primary/90 dark:hover:bg-primary/80",
                           "shadow-md hover:shadow-lg active:shadow-sm",
                           addingFavoriteId === favorite.id && "opacity-75"
                         )}

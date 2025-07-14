@@ -134,7 +134,7 @@ const Dashboard = () => {
             <h1 className="text-4xl font-bold text-foreground tracking-tight mb-2">
               {contextualGreeting}
             </h1>
-            <p className="text-secondary text-lg font-medium">
+            <p className="text-foreground/70 dark:text-foreground/80 text-lg font-medium">
               {state.user.name} • {format(new Date(), "eeee d MMMM", { locale: fr })}
             </p>
           </motion.header>
@@ -235,7 +235,7 @@ const Dashboard = () => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.4 }}
-                  className="text-center mt-3 text-white/80 text-sm"
+                  className="text-center mt-3 text-white/90 dark:text-white/80 text-sm"
                 >
                   {progressPercentage < 25 ? "💪 Chaque repas compte !" : 
                    progressPercentage < 75 ? "🚀 Vous y êtes presque !" : 

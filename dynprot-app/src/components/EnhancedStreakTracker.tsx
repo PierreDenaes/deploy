@@ -109,10 +109,10 @@ export default function EnhancedStreakTracker({
       <Card className={cn(
         "border-0 shadow-lg transition-all duration-300",
         {
-          'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200': achievement.color === 'purple',
-          'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200': achievement.color === 'gold',
-          'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200': achievement.color === 'blue',
-          'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200': achievement.color === 'gray'
+          'bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/50 border-purple-200 dark:border-purple-800': achievement.color === 'purple',
+          'bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-950/50 dark:to-yellow-900/50 border-yellow-200 dark:border-yellow-800': achievement.color === 'gold',
+          'bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/50 border-blue-200 dark:border-blue-800': achievement.color === 'blue',
+          'bg-gradient-to-br from-muted/50 to-muted border-border': achievement.color === 'gray'
         }
       )}>
         <CardContent className="p-6">
@@ -133,10 +133,10 @@ export default function EnhancedStreakTracker({
                 className={cn(
                   "w-12 h-12 rounded-2xl flex items-center justify-center text-2xl",
                   {
-                    'bg-purple-200 text-purple-700': achievement.color === 'purple',
-                    'bg-yellow-200 text-yellow-700': achievement.color === 'gold',
-                    'bg-blue-200 text-blue-700': achievement.color === 'blue',
-                    'bg-gray-200 text-gray-700': achievement.color === 'gray'
+                    'bg-purple-200 dark:bg-purple-800 text-purple-700 dark:text-purple-300': achievement.color === 'purple',
+                    'bg-yellow-200 dark:bg-yellow-800 text-yellow-700 dark:text-yellow-300': achievement.color === 'gold',
+                    'bg-blue-200 dark:bg-blue-800 text-blue-700 dark:text-blue-300': achievement.color === 'blue',
+                    'bg-muted text-muted-foreground': achievement.color === 'gray'
                   }
                 )}
               >
@@ -146,15 +146,15 @@ export default function EnhancedStreakTracker({
                 <h3 className={cn(
                   "text-lg font-bold",
                   {
-                    'text-purple-800': achievement.color === 'purple',
-                    'text-yellow-800': achievement.color === 'gold',
-                    'text-blue-800': achievement.color === 'blue',
-                    'text-gray-800': achievement.color === 'gray'
+                    'text-purple-800 dark:text-purple-200': achievement.color === 'purple',
+                    'text-yellow-800 dark:text-yellow-200': achievement.color === 'gold',
+                    'text-blue-800 dark:text-blue-200': achievement.color === 'blue',
+                    'text-foreground': achievement.color === 'gray'
                   }
                 )}>
                   {message.title}
                 </h3>
-                <p className="text-sm opacity-70">
+                <p className="text-sm text-muted-foreground">
                   {message.subtitle}
                 </p>
               </div>
@@ -164,16 +164,16 @@ export default function EnhancedStreakTracker({
               <Badge variant="outline" className={cn(
                 "font-semibold",
                 {
-                  'bg-purple-100 text-purple-700 border-purple-300': achievement.color === 'purple',
-                  'bg-yellow-100 text-yellow-700 border-yellow-300': achievement.color === 'gold',
-                  'bg-blue-100 text-blue-700 border-blue-300': achievement.color === 'blue',
-                  'bg-gray-100 text-gray-700 border-gray-300': achievement.color === 'gray'
+                  'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700': achievement.color === 'purple',
+                  'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700': achievement.color === 'gold',
+                  'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700': achievement.color === 'blue',
+                  'bg-muted text-muted-foreground border-border': achievement.color === 'gray'
                 }
               )}>
                 {achievement.level}
               </Badge>
               {bestStreak > currentStreak && (
-                <p className="text-xs opacity-60 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Record: {bestStreak}j
                 </p>
               )}
@@ -183,8 +183,8 @@ export default function EnhancedStreakTracker({
           {/* Visualisation de la semaine */}
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-3">
-              <Target className="h-4 w-4 opacity-60" />
-              <span className="text-sm font-medium opacity-70">
+              <Target className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-muted-foreground">
                 Cette semaine ({goalsMetThisWeek}/7)
               </span>
             </div>
@@ -226,7 +226,7 @@ export default function EnhancedStreakTracker({
           {currentStreak < 14 && (
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="opacity-70">Prochain niveau</span>
+                <span className="text-muted-foreground">Prochain niveau</span>
                 <span className="font-medium">
                   {currentStreak < 3 ? `${currentStreak}/3 Rookie` :
                    currentStreak < 7 ? `${currentStreak}/7 Champion` :
@@ -238,9 +238,9 @@ export default function EnhancedStreakTracker({
                   className={cn(
                     "h-full rounded-full",
                     {
-                      'bg-blue-500': currentStreak < 3,
-                      'bg-yellow-500': currentStreak >= 3 && currentStreak < 7,
-                      'bg-purple-500': currentStreak >= 7
+                      'bg-blue-500 dark:bg-blue-400': currentStreak < 3,
+                      'bg-yellow-500 dark:bg-yellow-400': currentStreak >= 3 && currentStreak < 7,
+                      'bg-purple-500 dark:bg-purple-400': currentStreak >= 7
                     }
                   )}
                   initial={{ width: 0 }}
