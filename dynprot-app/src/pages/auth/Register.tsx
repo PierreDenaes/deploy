@@ -125,9 +125,13 @@ const Register = () => {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-            className="mx-auto w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-4 shadow-lg"
+            className="mx-auto w-16 h-16 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center mb-4 shadow-lg"
           >
-            <span className="text-3xl font-bold text-white">D</span>
+            <img 
+              src="/logo.jpg" 
+              alt="DynProt Logo" 
+              className="w-14 h-14 object-contain filter drop-shadow-sm rounded-xl"
+            />
           </motion.div>
           <CardTitle className="text-3xl font-bold">Créez votre compte</CardTitle>
           <CardDescription className="text-base text-muted-foreground">

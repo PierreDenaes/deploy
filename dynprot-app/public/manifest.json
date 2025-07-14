@@ -1,0 +1,62 @@
+{
+  "name": "DynProt - Protein Tracking App",
+  "short_name": "DynProt",
+  "description": "AI-powered protein tracking and nutrition management app",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#007aff",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["health", "fitness", "lifestyle"],
+  "shortcuts": [
+    {
+      "name": "Ajouter un repas",
+      "short_name": "Nouveau repas",
+      "description": "Ajouter rapidement un nouveau repas",
+      "url": "/add-meal",
+      "icons": [
+        {
+          "src": "/logo.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Tableau de bord",
+      "short_name": "Dashboard",
+      "description": "Voir vos statistiques du jour",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/logo.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ]
+}

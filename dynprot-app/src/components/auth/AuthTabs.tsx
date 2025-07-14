@@ -69,9 +69,13 @@ const AuthTabs = () => {
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-              className="mx-auto w-20 h-20 bg-gradient-to-br from-primary to-accent rounded-2xl flex items-center justify-center mb-6 shadow-ios-lg"
+              className="mx-auto w-20 h-20 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6 shadow-ios-lg"
             >
-              <span className="text-4xl font-bold text-white tracking-tight">D</span>
+              <img 
+                src="/logo.jpg" 
+                alt="DynProt Logo" 
+                className="w-16 h-16 object-contain filter drop-shadow-md rounded-xl"
+              />
             </motion.div>
             
             <TabsList className="grid w-full grid-cols-2 mb-8">

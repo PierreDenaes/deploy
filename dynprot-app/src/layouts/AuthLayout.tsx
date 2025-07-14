@@ -24,7 +24,11 @@ const AuthLayout = () => {
           >
             <div className="mb-8">
               <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6">
-                <span className="text-3xl font-bold">D</span>
+                <img 
+                  src="/logo.jpg" 
+                  alt="DynProt Logo" 
+                  className="w-12 h-12 object-contain filter drop-shadow-sm rounded-xl"
+                />
               </div>
               <h1 className="text-4xl font-bold mb-4">
                 Bienvenue sur DynProt

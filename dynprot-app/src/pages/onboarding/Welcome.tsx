@@ -69,8 +69,12 @@ const Welcome = () => {
             transition={{ duration: 0.6 }}
             className="text-center mb-12 pt-8"
           >
-            <div className="mx-auto w-20 h-20 bg-primary rounded-2xl flex items-center justify-center mb-6 shadow-ios">
-              <span className="text-4xl font-bold text-white">D</span>
+            <div className="mx-auto w-20 h-20 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6 shadow-ios">
+              <img 
+                src="/logo.jpg" 
+                alt="DynProt Logo" 
+                className="w-16 h-16 object-contain filter drop-shadow-md rounded-xl"
+              />
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
               Bienvenue sur DynProt

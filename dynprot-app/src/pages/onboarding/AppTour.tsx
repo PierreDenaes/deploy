@@ -123,8 +123,12 @@ const AppTour = () => {
             transition={{ duration: 0.6 }}
             className="text-center mb-8 pt-8"
           >
-            <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mb-4 shadow-ios">
-              <Smartphone className="h-8 w-8 text-white" />
+            <div className="mx-auto w-16 h-16 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-4 shadow-ios">
+              <img 
+                src="/logo.jpg" 
+                alt="DynProt Logo" 
+                className="w-12 h-12 object-contain filter drop-shadow-sm rounded-xl"
+              />
             </div>
             <h1 className="text-3xl font-bold text-foreground mb-2">
               Visite rapide de l'application
@@ -206,8 +210,12 @@ const AppTour = () => {
                             {/* Phone Header */}
                             <div className="h-16 bg-primary flex items-center justify-center relative">
                               <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
-                                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                                  <span className="text-sm font-bold text-primary">D</span>
+                                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center p-1">
+                                  <img 
+                                    src="/logo.jpg" 
+                                    alt="DynProt Logo" 
+                                    className="w-full h-full object-contain rounded-md"
+                                  />
                                 </div>
                               </div>
                               <h3 className="text-white font-semibold text-base">
