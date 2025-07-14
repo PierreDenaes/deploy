@@ -65,6 +65,22 @@
     --sidebar-border: 220 13% 91%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Dashboard Spacing System */
+    --spacing-xs: 0.75rem; /* 12px */
+    --spacing-sm: 1rem; /* 16px */
+    --spacing-md: 1.5rem; /* 24px */
+    --spacing-lg: 2rem; /* 32px */
+    --spacing-xl: 2.5rem; /* 40px */
+    --spacing-2xl: 3rem; /* 48px */
+    
+    /* Dashboard Typography Scale */
+    --text-protein-main: 4.5rem; /* 72px - Main protein metric */
+    --text-protein-goal: 1.875rem; /* 30px - Goal display */
+    --text-section-title: 1.125rem; /* 18px - Section titles */
+    --text-motivational: 1rem; /* 16px - Motivational messages */
+    --text-secondary: 0.875rem; /* 14px - Secondary info */
+    --text-caption: 0.75rem; /* 12px - Captions and hints */
   }
 
   .dark {
@@ -304,5 +320,38 @@
   /* Extra small screens responsive helper */
   @media (min-width: 480px) {
     .xs\:inline { display: inline !important; }
+  }
+
+  /* Dashboard Spacing Utilities */
+  .dashboard-spacing-xs { margin: var(--spacing-xs); }
+  .dashboard-spacing-sm { margin: var(--spacing-sm); }
+  .dashboard-spacing-md { margin: var(--spacing-md); }
+  .dashboard-spacing-lg { margin: var(--spacing-lg); }
+  .dashboard-spacing-xl { margin: var(--spacing-xl); }
+  .dashboard-spacing-2xl { margin: var(--spacing-2xl); }
+
+  .dashboard-gap-xs { gap: var(--spacing-xs); }
+  .dashboard-gap-sm { gap: var(--spacing-sm); }
+  .dashboard-gap-md { gap: var(--spacing-md); }
+  .dashboard-gap-lg { gap: var(--spacing-lg); }
+  .dashboard-gap-xl { gap: var(--spacing-xl); }
+  .dashboard-gap-2xl { gap: var(--spacing-2xl); }
+
+  /* Dashboard Typography Utilities */
+  .text-protein-main { font-size: var(--text-protein-main); }
+  .text-protein-goal { font-size: var(--text-protein-goal); }
+  .text-section-title { font-size: var(--text-section-title); }
+  .text-motivational { font-size: var(--text-motivational); }
+  .text-secondary { font-size: var(--text-secondary); }
+  .text-caption { font-size: var(--text-caption); }
+
+  /* Dashboard Animation Utilities */
+  .dashboard-transition {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dashboard-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   }
 }

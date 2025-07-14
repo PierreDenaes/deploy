@@ -37,20 +37,39 @@ interface FavoritesMealsListProps {
   showQuickAdd?: boolean;
   maxItems?: number;
   className?: string;
+  displayOnly?: boolean; // New prop to disable all add buttons
+  progressContext?: {
+    currentProtein: number;
+    goalProtein: number;
+    progressPercentage: number;
+    streakActive: boolean;
+  };
 }
 
 export default function FavoritesMealsList({ 
   onAddMeal, 
   showQuickAdd = true, 
   maxItems,
-  className 
+  className,
+  displayOnly = false,
+  progressContext
 }: FavoritesMealsListProps) {
   const { state, addMealFromFavorite, deleteFavoriteMeal } = useAppContext();
   const [addingFavoriteId, setAddingFavoriteId] = useState<string | null>(null);
 
   const sortedFavorites = [...(state.favoriteMeals || [])]
     .sort((a, b) => {
-      // Sort by most recently used, then by use count
+      // Si l'utilisateur est en retard (< 50% après 14h), prioriser les favoris riches en protéines
+      const currentHour = new Date().getHours();
+      if (progressContext && progressContext.progressPercentage < 50 && currentHour > 14) {
+        // Trier par protéines d'abord, puis par usage récent
+        const proteinDiff = (b.protein || 0) - (a.protein || 0);
+        if (Math.abs(proteinDiff) > 5) { // Différence significative de protéines
+          return proteinDiff;
+        }
+      }
+      
+      // Tri normal : par usage récent, puis par fréquence
       const aLastUsed = safeDate(a.lastUsed).getTime();
       const bLastUsed = safeDate(b.lastUsed).getTime();
       
@@ -65,7 +84,11 @@ export default function FavoritesMealsList({
     setAddingFavoriteId(favoriteId);
     try {
       await addMealFromFavorite(favoriteId);
-      toast.success("Repas ajouté avec succès !");
+      const favorite = sortedFavorites.find(f => f.id === favoriteId);
+      toast.success(`${favorite?.name || 'Repas'} ajouté ! 🎉`, {
+        description: `+${favorite?.protein || 0}g de protéines`,
+        duration: 3000,
+      });
       onAddMeal?.();
     } catch (error) {
       toast.error("Erreur lors de l'ajout du repas");
@@ -139,10 +162,27 @@ export default function FavoritesMealsList({
           </Badge>
         </CardTitle>
         <CardDescription>
-          Ajoutez vos repas favoris à la journée d'aujourd'hui
+          {(() => {
+            const currentHour = new Date().getHours();
+            if (progressContext && progressContext.progressPercentage < 50 && currentHour > 14) {
+              return (
+                <span className="text-orange-600 font-medium">
+                  ⚡ Privilégiez vos favoris riches en protéines !
+                </span>
+              );
+            }
+            if (progressContext?.streakActive) {
+              return (
+                <span className="text-green-600 font-medium">
+                  🔥 Maintenez votre série avec vos favoris !
+                </span>
+              );
+            }
+            return "Vos repas favoris prêts en un clic ! ⚡";
+          })()}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         <AnimatePresence>
           {sortedFavorites.map((favorite) => (
             <motion.div
@@ -150,17 +190,23 @@ export default function FavoritesMealsList({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="p-4 border rounded-lg bg-card hover:bg-muted/50 transition-colors"
+              className="p-4 border rounded-xl bg-card hover:bg-muted/30 transition-all duration-200 hover:shadow-md dashboard-hover"
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
-                    <h4 className="font-medium text-sm truncate">
+                    <h4 className="font-semibold text-sm truncate flex items-center gap-2">
                       {favorite.name}
+                      {favorite.useCount > 5 && (
+                        <Star className="h-3 w-3 text-yellow-500 fill-current" />
+                      )}
+                      {isValidDate(favorite.lastUsed) && 
+                       (new Date().getTime() - safeDate(favorite.lastUsed).getTime()) < 86400000 && (
+                        <Badge variant="outline" className="text-xs px-1 py-0 bg-green-50 text-green-700 border-green-200">
+                          Récent
+                        </Badge>
+                      )}
                     </h4>
-                    {favorite.useCount > 5 && (
-                      <Star className="h-3 w-3 text-yellow-500 fill-current" />
-                    )}
                   </div>
                   
                   <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
@@ -198,43 +244,72 @@ export default function FavoritesMealsList({
                 </div>
                 
                 <div className="flex items-center gap-1 ml-3">
-                  {showQuickAdd && (
-                    <Button
-                      size="sm"
-                      onClick={() => handleAddFromFavorite(favorite.id)}
-                      disabled={addingFavoriteId === favorite.id}
-                      className="h-8 px-3"
+                  {showQuickAdd && !displayOnly && (
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 17 }}
                     >
-                      {addingFavoriteId === favorite.id ? (
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                        </motion.div>
-                      ) : (
-                        <Plus className="h-3 w-3 mr-1" />
-                      )}
-                      Ajouter
-                    </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          handleAddFromFavorite(favorite.id);
+                          // Haptic feedback simulation
+                          if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                            navigator.vibrate(50);
+                          }
+                        }}
+                        disabled={addingFavoriteId === favorite.id}
+                        className={cn(
+                          "h-10 px-4 font-semibold rounded-xl transition-all duration-200",
+                          "bg-primary text-primary-foreground hover:bg-primary/90",
+                          "shadow-md hover:shadow-lg active:shadow-sm",
+                          addingFavoriteId === favorite.id && "opacity-75"
+                        )}
+                      >
+                        {addingFavoriteId === favorite.id ? (
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            className="flex items-center gap-2"
+                          >
+                            <Plus className="h-4 w-4" />
+                            <span>Ajout...</span>
+                          </motion.div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Plus className="h-4 w-4" />
+                            <span>Ajouter</span>
+                          </div>
+                        )}
+                      </Button>
+                    </motion.div>
                   )}
                   
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-8 px-1">
-                        <MoreVertical className="h-3 w-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => handleDeleteFavorite(favorite.id, favorite.name)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Retirer des favoris
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {displayOnly && (
+                    <Badge variant="secondary" className="text-xs px-2 py-1">
+                      Inspiration
+                    </Badge>
+                  )}
+                  
+                  {!displayOnly && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 px-1">
+                          <MoreVertical className="h-3 w-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteFavorite(favorite.id, favorite.name)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Retirer des favoris
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               </div>
               
